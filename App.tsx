@@ -116,17 +116,40 @@ export default function App() {
 
                 // Platform Logic
                 if (filters.platform) {
-                    params += `&with_watch_providers=${filters.platform}`;
+                    // Special handling for Chinese platforms which often lack provider data in TMDB
+                    // We fallback to searching by Production Company / Network ID if provider search is likely to fail
                     
-                    // Smart Region Logic:
-                    // WeTV (336), iQIYI (446), Youku (447)
-                    // TMDB data for these in 'CN' is often empty. 
-                    // We switch to 'TW' (Taiwan) or 'SG' (Singapore) where data is better populated.
-                    if (['336', '446', '447'].includes(filters.platform)) {
-                        params += `&watch_region=TW`; 
-                    } 
-                    // Global Platforms default to US if not specified
+                    // Youku (Provider 447 -> Company 48460)
+                    if (filters.platform === '447') {
+                        if (targetType === 'tv') {
+                            params += `&with_networks=48460`; // Youku Network
+                        } else {
+                            params += `&with_companies=48460`; // Youku Company
+                        }
+                        // Remove region constraint for company search to get broader results
+                    }
+                    // iQIYI (Provider 446 -> Company 172414)
+                    else if (filters.platform === '446') {
+                         // Try provider first in TW, but if we want to be safe, maybe mix?
+                         // Let's stick to provider for iQIYI as it works okay in TW, but fallback to company if needed?
+                         // Actually, user complained about "no results", so let's use the more robust method: Company/Network
+                         if (targetType === 'tv') {
+                            params += `&with_networks=172414`; 
+                        } else {
+                            params += `&with_companies=172414`;
+                        }
+                    }
+                    // Tencent/WeTV (Provider 336 -> Company 74457 Tencent Video / 84946 Penguin Pictures)
+                    else if (filters.platform === '336') {
+                        if (targetType === 'tv') {
+                            params += `&with_networks=74457|84946`; 
+                        } else {
+                            params += `&with_companies=74457|84946`;
+                        }
+                    }
+                    // Standard International Platforms
                     else {
+                        params += `&with_watch_providers=${filters.platform}`;
                         params += `&watch_region=US`;
                     }
                 }
