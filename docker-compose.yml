@@ -4,7 +4,7 @@ services:
     image: ghcr.io/huanhq99/streamhub:latest
     container_name: streamhub
     ports:
-      - "80:80"
+      - "3000:80"
     environment:
       - TMDB_API_KEY=your_tmdb_api_key_here
       - TMDB_API_URL=https://api.themoviedb.org/3
