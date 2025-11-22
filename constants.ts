@@ -31,11 +31,7 @@ export const PLATFORMS = [
     { label: 'Netflix', id: '8' },
     { label: 'Disney+', id: '337' },
     { label: 'Prime Video', id: '9' },
-    { label: 'Apple TV+', id: '350' },
-    { label: 'WeTV', id: '336' },       // International Name for Tencent
-    { label: 'iQIYI', id: '446' },      // International Name
-    { label: 'Youku', id: '447' },
-    { label: 'Bilibili', id: '448' }
+    { label: 'Apple TV+', id: '350' }
 ];
 
 export const TYPES = [
