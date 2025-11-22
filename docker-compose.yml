@@ -8,4 +8,5 @@ services:
     environment:
       - TMDB_API_KEY=your_tmdb_api_key_here
       - TMDB_API_URL=https://api.themoviedb.org/3
+      - TMDB_IMAGE_URL=https://image.tmdb.org/t/p/w500
     restart: always

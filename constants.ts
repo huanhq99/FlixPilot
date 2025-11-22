@@ -13,9 +13,9 @@ const getEnv = (key: string, defaultVal: string) => {
 
 export const TMDB_API_KEY = getEnv('TMDB_API_KEY', '');
 export const TMDB_BASE_URL = getEnv('TMDB_API_URL', 'https://api.themoviedb.org/3');
-export const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
-export const BACKDROP_BASE_URL = 'https://image.tmdb.org/t/p/w1280';
-export const PROFILE_BASE_URL = 'https://image.tmdb.org/t/p/w185';
+export const IMAGE_BASE_URL = getEnv('TMDB_IMAGE_URL', 'https://image.tmdb.org/t/p/w500');
+export const BACKDROP_BASE_URL = getEnv('TMDB_IMAGE_URL', 'https://image.tmdb.org/t/p/w1280').replace('/w500', '/w1280');
+export const PROFILE_BASE_URL = getEnv('TMDB_IMAGE_URL', 'https://image.tmdb.org/t/p/w185').replace('/w500', '/w185');
 
 export const REGIONS = [
     { label: '全部', code: '' },
