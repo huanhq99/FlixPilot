@@ -119,14 +119,11 @@ export default function App() {
                     params += `&with_watch_providers=${filters.platform}`;
                     
                     // Smart Region Logic:
-                    // WeTV (336) & iQIYI (446) International Libraries are often cataloged under TW/TH in TMDB
-                    // If user selects these, we switch to TW region to get better results for international shows.
-                    if (['336', '446'].includes(filters.platform)) {
+                    // WeTV (336), iQIYI (446), Youku (447)
+                    // TMDB data for these in 'CN' is often empty. 
+                    // We switch to 'TW' (Taiwan) or 'SG' (Singapore) where data is better populated.
+                    if (['336', '446', '447'].includes(filters.platform)) {
                         params += `&watch_region=TW`; 
-                    } 
-                    // Youku (447) / Bilibili (448) are mostly domestic
-                    else if (['447', '448'].includes(filters.platform)) {
-                        params += `&watch_region=CN`;
                     } 
                     // Global Platforms default to US if not specified
                     else {

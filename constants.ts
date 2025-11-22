@@ -31,7 +31,10 @@ export const PLATFORMS = [
     { label: 'Netflix', id: '8' },
     { label: 'Disney+', id: '337' },
     { label: 'Prime Video', id: '9' },
-    { label: 'Apple TV+', id: '350' }
+    { label: 'Apple TV+', id: '350' },
+    { label: 'WeTV', id: '336' },
+    { label: 'iQIYI', id: '446' },
+    { label: 'Youku', id: '447' }
 ];
 
 export const TYPES = [
