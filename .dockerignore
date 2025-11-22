@@ -2,6 +2,5 @@ node_modules
 dist
 .git
 .gitignore
-Dockerfile
-nginx.conf
-README.md
+.env
+.env.local
