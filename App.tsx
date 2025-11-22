@@ -164,7 +164,8 @@ export default function App() {
             }
         }
 
-        const response = await fetch(`${TMDB_BASE_URL}${endpoint}?api_key=${TMDB_API_KEY}${params}`);
+        const cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+        const response = await fetch(`${TMDB_BASE_URL}/${cleanEndpoint}?api_key=${TMDB_API_KEY}${params}`);
         if (!response.ok) throw new Error('API 请求失败');
         const data = await response.json();
         setTotalPages(Math.min(data.total_pages, 500));
