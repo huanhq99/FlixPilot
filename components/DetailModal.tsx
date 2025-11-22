@@ -10,9 +10,10 @@ interface DetailModalProps {
     selectedMedia: MediaItem;
     onClose: () => void;
     isDarkMode: boolean;
+    embyLibrary?: Set<string>;
 }
 
-const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDarkMode }) => {
+const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDarkMode, embyLibrary }) => {
     const isStreaming = selectedMedia.status === 'streaming';
     const isReleased = selectedMedia.status === 'released';
     const isTV = selectedMedia.mediaType === 'tv';
@@ -314,38 +315,49 @@ const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDar
                                     </div>
                                 ) : episodes.length > 0 ? (
                                     <div className="max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-indigo-500/20">
-                                        {episodes.map(episode => (
-                                            <div key={episode.id} className={`p-4 flex gap-4 hover:bg-black/5 dark:hover:bg-white/5 transition-colors`}>
-                                                <div className="w-32 aspect-video shrink-0 rounded-lg overflow-hidden bg-gray-200 dark:bg-zinc-800 relative">
-                                                    {episode.still_path ? (
-                                                        <img src={`${IMAGE_BASE_URL}${episode.still_path}`} className="w-full h-full object-cover" alt={episode.name} />
-                                                    ) : (
-                                                        <div className="w-full h-full flex items-center justify-center text-zinc-500">
-                                                            <Film size={20} />
+                                        {episodes.map(episode => {
+                                            const inLibrary = embyLibrary?.has(`tv_${selectedMedia.id}_s${episode.season_number}_e${episode.episode_number}`);
+                                            return (
+                                                <div key={episode.id} className={`p-4 flex gap-4 hover:bg-black/5 dark:hover:bg-white/5 transition-colors`}>
+                                                    <div className="w-32 aspect-video shrink-0 rounded-lg overflow-hidden bg-gray-200 dark:bg-zinc-800 relative">
+                                                        {episode.still_path ? (
+                                                            <img src={`${IMAGE_BASE_URL}${episode.still_path}`} className="w-full h-full object-cover" alt={episode.name} />
+                                                        ) : (
+                                                            <div className="w-full h-full flex items-center justify-center text-zinc-500">
+                                                                <Film size={20} />
+                                                            </div>
+                                                        )}
+                                                        
+                                                        {inLibrary && (
+                                                            <div className="absolute top-1 left-1 bg-emerald-500 text-white p-0.5 rounded-full shadow-md z-10" title="已入库">
+                                                                <CheckCircle2 size={12} strokeWidth={3} />
+                                                            </div>
+                                                        )}
+
+                                                        <div className="absolute bottom-1 right-1 bg-black/60 text-white text-[9px] px-1 rounded font-mono backdrop-blur-sm">
+                                                            E{episode.episode_number}
                                                         </div>
-                                                    )}
-                                                    <div className="absolute bottom-1 right-1 bg-black/60 text-white text-[9px] px-1 rounded font-mono backdrop-blur-sm">
-                                                        E{episode.episode_number}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0 py-1">
+                                                        <div className="flex justify-between items-start">
+                                                            <h4 className={`font-bold text-sm truncate flex items-center gap-2 ${isDarkMode ? 'text-zinc-200' : 'text-slate-800'}`}>
+                                                                {episode.name}
+                                                                {inLibrary && <span className="text-[10px] text-emerald-500 border border-emerald-500/30 px-1 rounded bg-emerald-500/10">已入库</span>}
+                                                            </h4>
+                                                            <span className="flex items-center gap-1 text-amber-500 text-xs font-bold">
+                                                                <Star size={10} fill="currentColor"/> {episode.vote_average.toFixed(1)}
+                                                            </span>
+                                                        </div>
+                                                        <div className={`text-xs mt-1 mb-2 line-clamp-2 ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
+                                                            {episode.overview || '暂无本集简介'}
+                                                        </div>
+                                                        <div className={`text-[10px] font-mono ${isDarkMode ? 'text-zinc-600' : 'text-slate-400'}`}>
+                                                            播出日期: {episode.air_date}
+                                                        </div>
                                                     </div>
                                                 </div>
-                                                <div className="flex-1 min-w-0 py-1">
-                                                    <div className="flex justify-between items-start">
-                                                        <h4 className={`font-bold text-sm truncate ${isDarkMode ? 'text-zinc-200' : 'text-slate-800'}`}>
-                                                            {episode.name}
-                                                        </h4>
-                                                        <span className="flex items-center gap-1 text-amber-500 text-xs font-bold">
-                                                            <Star size={10} fill="currentColor"/> {episode.vote_average.toFixed(1)}
-                                                        </span>
-                                                    </div>
-                                                    <div className={`text-xs mt-1 mb-2 line-clamp-2 ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
-                                                        {episode.overview || '暂无本集简介'}
-                                                    </div>
-                                                    <div className={`text-[10px] font-mono ${isDarkMode ? 'text-zinc-600' : 'text-slate-400'}`}>
-                                                        播出日期: {episode.air_date}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 ) : (
                                     <div className="p-8 text-center text-sm opacity-50">暂无分集信息</div>

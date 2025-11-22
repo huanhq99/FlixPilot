@@ -1,4 +1,3 @@
-
 export interface Episode {
   id: number;
   name: string;
@@ -76,4 +75,27 @@ export interface FilterState {
   platform: string;
   year: string;
   sort: string;
+}
+
+export interface EmbyConfig {
+  serverUrl: string;
+  apiKey: string;
+  userId?: string; // Optional, if we want to check watch status later, but for library presence, admin key is usually enough or just recursive query
+}
+
+export interface EmbyItem {
+  Id: string;
+  Name: string;
+  Type: string;
+  ProviderIds?: {
+    Tmdb?: string;
+    Imdb?: string;
+  };
+  UserData?: {
+    Played: boolean;
+  };
+  // For Episodes
+  SeriesId?: string;
+  ParentIndexNumber?: number; // Season Number
+  IndexNumber?: number; // Episode Number
 }

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PlayCircle, Star, ImageIcon } from 'lucide-react';
+import { PlayCircle, Star, ImageIcon, CheckCircle2 } from 'lucide-react';
 import { MediaItem } from '../types';
 
 interface MediaCardProps {
@@ -7,9 +7,10 @@ interface MediaCardProps {
     viewMode: 'grid' | 'list';
     onClick: (id: number, type: 'movie' | 'tv') => void;
     isDarkMode: boolean;
+    isInLibrary?: boolean;
 }
 
-const MediaCard: React.FC<MediaCardProps> = React.memo(({ item, viewMode, onClick, isDarkMode }) => {
+const MediaCard: React.FC<MediaCardProps> = React.memo(({ item, viewMode, onClick, isDarkMode, isInLibrary }) => {
     const [imgError, setImgError] = useState(false);
     const [loaded, setLoaded] = useState(false);
 
@@ -69,6 +70,11 @@ const MediaCard: React.FC<MediaCardProps> = React.memo(({ item, viewMode, onClic
                             <span className={`text-[10px] sm:text-xs font-normal ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`}>
                                 ({item.year})
                             </span>
+                            {isInLibrary && (
+                                <span className="text-emerald-500" title="已入库">
+                                    <CheckCircle2 size={14} />
+                                </span>
+                            )}
                         </h3>
                         <p className={`text-[10px] truncate ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>{item.subtitle}</p>
                     </div>
@@ -131,13 +137,21 @@ const MediaCard: React.FC<MediaCardProps> = React.memo(({ item, viewMode, onClic
                     </span>
                 </div>
 
-                {/* Top Right Rating */}
-                {item.voteAverage > 0 && (
-                    <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/60 backdrop-blur-md px-1.5 py-0.5 rounded border border-amber-500/30 text-amber-400 shadow-lg z-10">
-                        <Star size={8} fill="currentColor" />
-                        <span className="text-[10px] font-bold">{item.voteAverage.toFixed(1)}</span>
-                    </div>
-                )}
+                {/* Top Right Badges (Rating & Library) */}
+                <div className="absolute top-2 right-2 flex flex-col gap-1 items-end z-10">
+                    {item.voteAverage > 0 && (
+                        <div className="flex items-center gap-1 bg-black/60 backdrop-blur-md px-1.5 py-0.5 rounded border border-amber-500/30 text-amber-400 shadow-lg">
+                            <Star size={8} fill="currentColor" />
+                            <span className="text-[10px] font-bold">{item.voteAverage.toFixed(1)}</span>
+                        </div>
+                    )}
+                    {isInLibrary && (
+                        <div className="flex items-center gap-1 bg-emerald-600/90 backdrop-blur-md px-1.5 py-0.5 rounded border border-emerald-400/30 text-white shadow-lg">
+                            <CheckCircle2 size={10} />
+                            <span className="text-[9px] font-bold">已入库</span>
+                        </div>
+                    )}
+                </div>
 
                 {/* Bottom Transparent Gradient Layer */}
                 <div className="absolute bottom-0 left-0 right-0 h-2/3 bg-gradient-to-t from-black/90 via-black/40 to-transparent z-0 pointer-events-none"></div>

@@ -10,14 +10,17 @@ import {
   Loader2,
   Film,
   RefreshCw,
-  ArrowUp
+  ArrowUp,
+  Settings
 } from 'lucide-react';
 import { TMDB_API_KEY, TMDB_BASE_URL } from './constants';
-import { MediaItem, FilterState } from './types';
+import { MediaItem, FilterState, EmbyConfig } from './types';
 import { processMediaItem, fetchDetails } from './services/tmdbService';
+import { fetchEmbyLibrary } from './services/embyService';
 import Filters from './components/Filters';
 import MediaCard from './components/MediaCard';
 import DetailModal from './components/DetailModal';
+import SettingsModal from './components/SettingsModal';
 
 export default function App() {
   const [mediaList, setMediaList] = useState<MediaItem[]>([]);
@@ -30,6 +33,15 @@ export default function App() {
     const saved = localStorage.getItem('darkMode');
     return saved ? JSON.parse(saved) : false;
   });
+
+  // Emby State
+  const [showSettings, setShowSettings] = useState(false);
+  const [embyConfig, setEmbyConfig] = useState<EmbyConfig>(() => {
+      const saved = localStorage.getItem('embyConfig');
+      return saved ? JSON.parse(saved) : { serverUrl: '', apiKey: '' };
+  });
+  const [embyLibrary, setEmbyLibrary] = useState<Set<string>>(new Set());
+  const [syncingEmby, setSyncingEmby] = useState(false);
 
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -54,6 +66,26 @@ export default function App() {
     if (isDarkMode) document.documentElement.classList.add('dark');
     else document.documentElement.classList.remove('dark');
   }, [isDarkMode]);
+
+  // Initial Emby Sync
+  useEffect(() => {
+      if (embyConfig.serverUrl && embyConfig.apiKey) {
+          syncEmbyLibrary(embyConfig);
+      }
+  }, []);
+
+  const syncEmbyLibrary = async (config: EmbyConfig) => {
+      setSyncingEmby(true);
+      const ids = await fetchEmbyLibrary(config);
+      setEmbyLibrary(ids);
+      setSyncingEmby(false);
+  };
+
+  const handleSaveSettings = (newConfig: EmbyConfig) => {
+      setEmbyConfig(newConfig);
+      localStorage.setItem('embyConfig', JSON.stringify(newConfig));
+      syncEmbyLibrary(newConfig);
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearchTerm(searchTerm), 800);
@@ -257,8 +289,17 @@ export default function App() {
             selectedMedia={selectedMedia} 
             onClose={() => setSelectedMedia(null)} 
             isDarkMode={isDarkMode}
+            embyLibrary={embyLibrary}
           />
       )}
+
+      <SettingsModal 
+        isOpen={showSettings} 
+        onClose={() => setShowSettings(false)} 
+        onSave={handleSaveSettings}
+        currentConfig={embyConfig}
+        isDarkMode={isDarkMode}
+      />
 
       <header className={`sticky top-0 z-40 backdrop-blur-xl border-b transition-colors duration-300 ${isDarkMode ? 'bg-black/70 border-white/5' : 'bg-white/70 border-slate-200'}`}>
         <div className="max-w-[1400px] mx-auto px-3 md:px-6 h-14 md:h-16 flex items-center justify-between gap-2 md:gap-4">
@@ -300,6 +341,17 @@ export default function App() {
                 <ListIcon size={16} />
               </button>
             </div>
+
+            <button 
+              onClick={() => setShowSettings(true)}
+              className={`p-1.5 md:p-2 rounded-full transition-all hover:scale-110 active:scale-95 shrink-0 relative ${isDarkMode ? 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+              title="Emby 设置"
+            >
+              <Settings size={16} className={`md:w-[18px] md:h-[18px] ${syncingEmby ? 'animate-spin' : ''}`} />
+              {embyLibrary.size > 0 && (
+                  <span className="absolute top-0 right-0 w-2 h-2 bg-emerald-500 rounded-full ring-2 ring-white dark:ring-zinc-900"></span>
+              )}
+            </button>
 
             <button 
               onClick={() => setIsDarkMode(!isDarkMode)}
@@ -350,6 +402,7 @@ export default function App() {
                         viewMode="grid" 
                         onClick={openModal} 
                         isDarkMode={isDarkMode}
+                        isInLibrary={embyLibrary.has(`${item.mediaType}_${item.id}`)}
                     />
                   ))}
                 </div>
@@ -362,6 +415,7 @@ export default function App() {
                         viewMode="list" 
                         onClick={openModal} 
                         isDarkMode={isDarkMode}
+                        isInLibrary={embyLibrary.has(`${item.mediaType}_${item.id}`)}
                     />
                   ))}
                 </div>
