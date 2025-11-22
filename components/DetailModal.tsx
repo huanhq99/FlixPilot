@@ -3,7 +3,7 @@ import {
     ArrowLeft, Star, Clock, CheckCircle2, Film, PlayCircle, Youtube, User, Terminal, HelpCircle, Calendar, X, Tv, Layers, LayoutList, Disc, MonitorPlay, Globe, Languages
 } from 'lucide-react';
 import { MediaItem, Episode } from '../types';
-import { IMAGE_BASE_URL } from '../constants';
+import { IMAGE_BASE_URL, PROFILE_BASE_URL } from '../constants';
 import { fetchSeasonDetails } from '../services/tmdbService';
 
 interface DetailModalProps {
@@ -319,7 +319,7 @@ const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDar
                                     <div key={actor.id} className={`flex items-center gap-3 p-2.5 rounded-xl border transition-colors ${isDarkMode ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
                                         <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 shrink-0">
                                             {actor.profile_path ? (
-                                                <img src={`${IMAGE_BASE_URL}${actor.profile_path}`} className="w-full h-full object-cover" alt={actor.name} />
+                                                <img src={`${PROFILE_BASE_URL}${actor.profile_path}`} className="w-full h-full object-cover" alt={actor.name} />
                                             ) : (
                                                 <User className="w-full h-full p-2 text-gray-400" />
                                             )}

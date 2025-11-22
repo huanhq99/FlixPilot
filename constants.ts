@@ -1,10 +1,21 @@
 
 import { TrendingUp, Clock, Star } from 'lucide-react';
 
-export const TMDB_API_KEY = '83020de488099117460a41251fcb64a8';
-export const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
+// Helper to get env variables from window.env (Docker runtime) or import.meta.env (Build time)
+const getEnv = (key: string, defaultVal: string) => {
+    // @ts-ignore
+    if (typeof window !== 'undefined' && window.env && window.env[key]) {
+        // @ts-ignore
+        return window.env[key];
+    }
+    return import.meta.env[`VITE_${key}`] || defaultVal;
+};
+
+export const TMDB_API_KEY = getEnv('TMDB_API_KEY', '');
+export const TMDB_BASE_URL = getEnv('TMDB_API_URL', 'https://api.themoviedb.org/3');
 export const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
-export const BACKDROP_BASE_URL = 'https://image.tmdb.org/t/p/original';
+export const BACKDROP_BASE_URL = 'https://image.tmdb.org/t/p/w1280';
+export const PROFILE_BASE_URL = 'https://image.tmdb.org/t/p/w185';
 
 export const REGIONS = [
     { label: '全部', code: '' },
