@@ -8,4 +8,6 @@ services:
     environment:
       - TMDB_API_KEY=your_tmdb_api_key_here
       - TMDB_API_URL=https://api.themoviedb.org/3
+      - HTTP_PROXY=http://127.0.0.1:7890
+      - HTTPS_PROXY=http://127.0.0.1:7890
     restart: always
