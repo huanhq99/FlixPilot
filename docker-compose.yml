@@ -1,6 +1,6 @@
 services:
   web:
-    image: ghcr.io/huanhq99/streamhub:latest
+    build: .
     ports:
       - "80:80"
     restart: always
