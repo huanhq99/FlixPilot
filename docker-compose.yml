@@ -7,6 +7,8 @@ services:
       - "80:80"
     environment:
       - TMDB_API_KEY=your_tmdb_api_key_here
+      # API 代理地址 (例如使用 Cloudflare Workers 搭建的地址)
       - TMDB_API_URL=https://api.themoviedb.org/3
+      # 图片代理地址
       - TMDB_IMAGE_URL=https://image.tmdb.org/t/p/w500
     restart: always
