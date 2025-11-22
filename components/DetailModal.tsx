@@ -68,7 +68,7 @@ const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDar
     return (
         <div className={`fixed inset-0 z-50 overflow-y-auto ${isDarkMode ? 'bg-[#09090b]' : 'bg-slate-50'}`}>
             {/* Hero Section */}
-            <div className="relative h-[45vh] md:h-[55vh] w-full">
+            <div className="relative h-[40vh] sm:h-[45vh] md:h-[55vh] w-full">
                 {selectedMedia.backdropUrl ? (
                     <img src={selectedMedia.backdropUrl} className="w-full h-full object-cover" alt="backdrop" />
                 ) : (
@@ -79,24 +79,24 @@ const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDar
                 <div className="absolute top-4 left-4 z-20">
                     <button 
                         onClick={onClose} 
-                        className="flex items-center gap-2 px-4 py-2 rounded-full bg-black/40 backdrop-blur-md text-white hover:bg-black/60 transition-all border border-white/10"
+                        className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full bg-black/40 backdrop-blur-md text-white hover:bg-black/60 transition-all border border-white/10"
                     >
-                        <ArrowLeft size={18} /> <span className="text-sm font-medium">返回</span>
+                        <ArrowLeft size={16} className="md:w-[18px] md:h-[18px]" /> <span className="text-xs md:text-sm font-medium">返回</span>
                     </button>
                 </div>
 
-                <div className="absolute bottom-0 left-0 w-full p-6 md:p-10 bg-gradient-to-t from-black/90 via-black/50 to-transparent">
+                <div className="absolute bottom-0 left-0 w-full p-4 md:p-10 bg-gradient-to-t from-black/90 via-black/50 to-transparent">
                     <div className="max-w-7xl mx-auto">
-                        <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold text-white mb-4 drop-shadow-lg leading-tight">
+                        <h1 className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-bold text-white mb-2 md:mb-4 drop-shadow-lg leading-tight">
                             {selectedMedia.title}
                         </h1>
-                        <div className="flex flex-wrap items-center gap-3 md:gap-4 text-sm text-white/90">
-                            <span className={`px-2.5 py-1 rounded border font-bold flex items-center gap-1.5 backdrop-blur-md ${statusBg} ${statusColor} ${selectedMedia.badgeColorClass ? 'border-white/20' : ''}`}>
+                        <div className="flex flex-wrap items-center gap-2 md:gap-4 text-xs md:text-sm text-white/90">
+                            <span className={`px-2 py-0.5 md:px-2.5 md:py-1 rounded border font-bold flex items-center gap-1 backdrop-blur-md ${statusBg} ${statusColor} ${selectedMedia.badgeColorClass ? 'border-white/20' : ''}`}>
                                 {statusIcon}
                                 {statusText}
                             </span>
-                            <span className="flex items-center gap-1 text-amber-400 font-bold bg-black/30 px-2 py-1 rounded backdrop-blur-md">
-                                <Star size={14} fill="currentColor" /> {selectedMedia.voteAverage.toFixed(1)}
+                            <span className="flex items-center gap-1 text-amber-400 font-bold bg-black/30 px-2 py-0.5 md:py-1 rounded backdrop-blur-md">
+                                <Star size={12} className="md:w-[14px] md:h-[14px]" fill="currentColor" /> {selectedMedia.voteAverage.toFixed(1)}
                             </span>
                             
                             {/* TV Episode Badge in Hero */}
@@ -121,22 +121,22 @@ const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDar
                 </div>
             </div>
 
-            <div className="max-w-7xl mx-auto px-6 py-8 relative z-10">
-                <div className="space-y-10">
+            <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8 relative z-10">
+                <div className="space-y-6 md:space-y-10">
                     
                     {/* Action Buttons & Info Grid */}
-                    <div className="space-y-8">
-                        <div className="flex flex-wrap gap-4">
-                            <button className="flex items-center justify-center gap-2 px-8 py-3.5 rounded-full bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/30 hover:scale-105 active:scale-95">
-                                <PlayCircle size={22} fill="currentColor" className="text-white/20" /> 
+                    <div className="space-y-6 md:space-y-8">
+                        <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
+                            <button className="flex items-center justify-center gap-2 px-8 py-3 md:py-3.5 rounded-full bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/30 hover:scale-105 active:scale-95 w-full sm:w-auto text-sm md:text-base">
+                                <PlayCircle size={20} className="md:w-[22px] md:h-[22px] text-white/20" fill="currentColor" /> 
                                 {isStreaming ? '前往播放' : '全网搜搜'}
                             </button>
                             {selectedMedia.videos && selectedMedia.videos.length > 0 && (
                                 <button 
                                     onClick={() => window.open(`https://www.youtube.com/watch?v=${selectedMedia.videos![0].key}`, '_blank')}
-                                    className={`flex items-center justify-center gap-2 px-6 py-3.5 rounded-full font-medium transition-all border ${isDarkMode ? 'bg-white/5 border-white/10 hover:bg-white/10 text-white' : 'bg-white border-slate-200 text-slate-800 hover:bg-slate-50'}`}
+                                    className={`flex items-center justify-center gap-2 px-6 py-3 md:py-3.5 rounded-full font-medium transition-all border w-full sm:w-auto text-sm md:text-base ${isDarkMode ? 'bg-white/5 border-white/10 hover:bg-white/10 text-white' : 'bg-white border-slate-200 text-slate-800 hover:bg-slate-50'}`}
                                 >
-                                    <Youtube size={22} className="text-red-500"/> 预告片
+                                    <Youtube size={20} className="md:w-[22px] md:h-[22px] text-red-500"/> 预告片
                                 </button>
                             )}
                         </div>

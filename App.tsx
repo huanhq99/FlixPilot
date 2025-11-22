@@ -240,12 +240,12 @@ export default function App() {
       )}
 
       <header className={`sticky top-0 z-40 backdrop-blur-xl border-b transition-colors duration-300 ${isDarkMode ? 'bg-black/70 border-white/5' : 'bg-white/70 border-slate-200'}`}>
-        <div className="max-w-[1400px] mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="max-w-[1400px] mx-auto px-3 md:px-6 h-14 md:h-16 flex items-center justify-between gap-2 md:gap-4">
+          <div className="flex items-center gap-2 md:gap-4 shrink-0">
             <div className="relative group cursor-pointer" onClick={clearFilters}>
                 <div className="absolute -inset-1 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 opacity-20 blur transition duration-200 group-hover:opacity-40"></div>
-                <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/20 text-white ring-1 ring-white/10">
-                  <MonitorPlay size={20} strokeWidth={2.5} />
+                <div className="relative w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/20 text-white ring-1 ring-white/10">
+                  <MonitorPlay size={18} strokeWidth={2.5} className="md:w-5 md:h-5" />
                 </div>
             </div>
             
@@ -259,15 +259,15 @@ export default function App() {
             </div>
           </div>
           
-          <div className="flex items-center gap-3 md:gap-4 flex-1 justify-end">
-            <div className="relative group max-w-md w-full sm:w-64 md:w-80 transition-all focus-within:w-full md:focus-within:w-96">
+          <div className="flex items-center gap-2 md:gap-4 flex-1 justify-end min-w-0">
+            <div className="relative group w-full max-w-[200px] sm:max-w-xs md:max-w-md transition-all focus-within:max-w-full md:focus-within:w-96">
               <Search size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`} />
               <input 
                 type="text" 
-                placeholder="搜索电影 / 剧集..." 
+                placeholder="搜索..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className={`w-full rounded-full pl-9 pr-4 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all border ${isDarkMode ? 'bg-zinc-900 border-zinc-800 text-white placeholder-zinc-600 focus:bg-zinc-800' : 'bg-slate-100 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white'}`}
+                className={`w-full rounded-full pl-9 pr-4 py-1.5 md:py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all border ${isDarkMode ? 'bg-zinc-900 border-zinc-800 text-white placeholder-zinc-600 focus:bg-zinc-800' : 'bg-slate-100 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white'}`}
               />
             </div>
             
@@ -282,15 +282,15 @@ export default function App() {
 
             <button 
               onClick={() => setIsDarkMode(!isDarkMode)}
-              className={`p-2 rounded-full transition-all hover:scale-110 active:scale-95 ${isDarkMode ? 'bg-zinc-800 text-yellow-400 hover:bg-zinc-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+              className={`p-1.5 md:p-2 rounded-full transition-all hover:scale-110 active:scale-95 shrink-0 ${isDarkMode ? 'bg-zinc-800 text-yellow-400 hover:bg-zinc-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
             >
-              {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+              {isDarkMode ? <Sun size={16} className="md:w-[18px] md:h-[18px]" /> : <Moon size={16} className="md:w-[18px] md:h-[18px]" />}
             </button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-[1400px] mx-auto px-4 md:px-6 pt-8">
+      <main className="max-w-[1400px] mx-auto px-3 md:px-6 pt-4 md:pt-8">
         <div className="space-y-6">
           <Filters 
             filters={filters} 
@@ -321,7 +321,7 @@ export default function App() {
           ) : (
             <>
               {viewMode === 'grid' ? (
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-4 sm:gap-6">
+                <div className="grid grid-cols-3 min-[450px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6 md:gap-8">
                   {mediaList.map((item) => (
                     <MediaCard 
                         key={`${item.id}-${item.mediaType}`} 

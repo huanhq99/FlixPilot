@@ -42,13 +42,13 @@ const MediaCard: React.FC<MediaCardProps> = React.memo(({ item, viewMode, onClic
         return (
             <div 
                 onClick={() => onClick(item.id, item.mediaType)} 
-                className={`group flex gap-4 border p-2 rounded-xl transition-all cursor-pointer items-center ${
+                className={`group flex gap-3 sm:gap-4 border p-2 rounded-xl transition-all cursor-pointer items-center ${
                     isDarkMode 
                     ? 'bg-zinc-900/20 hover:bg-zinc-900/50 border-white/5 hover:border-white/10' 
                     : 'bg-white hover:bg-slate-50 border-slate-200 hover:border-slate-300 shadow-sm'
                 }`}
             >
-                <div className="w-12 aspect-[2/3] shrink-0 rounded-lg overflow-hidden relative bg-gray-200 dark:bg-zinc-800">
+                <div className="w-10 sm:w-12 aspect-[2/3] shrink-0 rounded-lg overflow-hidden relative bg-gray-200 dark:bg-zinc-800">
                     {(!item.posterUrl || imgError) ? (
                          <div className={`w-full h-full flex items-center justify-center bg-gradient-to-br ${item.posterColor}`}>
                             <span className="text-white/30 font-bold text-xs">{item.posterText}</span>
@@ -62,11 +62,11 @@ const MediaCard: React.FC<MediaCardProps> = React.memo(({ item, viewMode, onClic
                         />
                     )}
                 </div>
-                <div className="flex-1 min-w-0 grid grid-cols-12 gap-4 items-center">
-                    <div className="col-span-5 md:col-span-4">
-                        <h3 className={`text-sm font-bold truncate flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                <div className="flex-1 min-w-0 grid grid-cols-12 gap-2 sm:gap-4 items-center">
+                    <div className="col-span-7 sm:col-span-5 md:col-span-4">
+                        <h3 className={`text-xs sm:text-sm font-bold truncate flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                             {item.title}
-                            <span className={`text-xs font-normal ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`}>
+                            <span className={`text-[10px] sm:text-xs font-normal ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`}>
                                 ({item.year})
                             </span>
                         </h3>
@@ -78,17 +78,17 @@ const MediaCard: React.FC<MediaCardProps> = React.memo(({ item, viewMode, onClic
                             <div className={`mt-0.5 font-bold ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>{tvUpdateBadge}</div>
                         )}
                     </div>
-                    <div className="col-span-3 md:col-span-2">
-                        <span className={`text-[10px] font-bold px-2 py-1 rounded-full border ${
+                    <div className="col-span-3 sm:col-span-3 md:col-span-2">
+                        <span className={`text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full border ${
                            item.badgeColorClass ? item.badgeColorClass + ' border-opacity-20' : statusClass
                         } max-w-full truncate block text-center`}>
                             {item.badgeLabel}
                         </span>
                     </div>
-                    <div className="col-span-4 text-right flex justify-end gap-2 items-center">
+                    <div className="col-span-2 sm:col-span-4 text-right flex justify-end gap-2 items-center">
                         {item.voteAverage > 0 && (
                             <span className="text-[10px] font-bold text-amber-400 flex items-center gap-0.5">
-                                <Star size={12} fill="currentColor"/> {item.voteAverage.toFixed(1)}
+                                <Star size={10} className="sm:w-3 sm:h-3" fill="currentColor"/> {item.voteAverage.toFixed(1)}
                             </span>
                         )}
                     </div>
@@ -162,14 +162,14 @@ const MediaCard: React.FC<MediaCardProps> = React.memo(({ item, viewMode, onClic
             </div>
 
             {/* Text Info */}
-            <div className="space-y-0.5 px-1 flex-1 flex flex-col">
-                <h3 className={`text-xs font-bold truncate transition-colors w-full ${isDarkMode ? 'text-zinc-100 group-hover:text-white' : 'text-slate-900 group-hover:text-indigo-600'}`} title={item.title}>
+            <div className="space-y-1 px-1 flex-1 flex flex-col mt-2">
+                <h3 className={`text-xs md:text-sm font-bold truncate transition-colors w-full ${isDarkMode ? 'text-zinc-100 group-hover:text-white' : 'text-slate-900 group-hover:text-indigo-600'}`} title={item.title}>
                     {item.title}
                     <span className={`ml-1.5 font-normal opacity-60 ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
                         ({item.year})
                     </span>
                 </h3>
-                <p className={`text-[10px] truncate opacity-60 ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+                <p className={`text-[10px] md:text-xs truncate opacity-60 ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
                     {item.subtitle || ' '}
                 </p>
             </div>

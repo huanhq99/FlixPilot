@@ -18,12 +18,12 @@ const Filters: React.FC<FiltersProps> = ({ filters, setFilters, debouncedSearchT
     };
 
     const FilterRow = ({ label, icon: Icon, options, current, onChange, valueKey = 'val', labelKey = 'label' }: any) => (
-        <div className="flex items-start sm:items-center gap-4 py-2">
-            <div className={`flex items-center gap-2 w-16 shrink-0 pt-1 sm:pt-0 ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 py-2">
+            <div className={`flex items-center gap-2 w-full sm:w-16 shrink-0 pt-1 sm:pt-0 ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
                 <Icon size={14} />
                 <span className="text-xs font-bold opacity-80">{label}</span>
             </div>
-            <div className="flex flex-wrap gap-2 flex-1">
+            <div className="flex flex-nowrap sm:flex-wrap gap-2 flex-1 overflow-x-auto sm:overflow-visible pb-1 sm:pb-0 scrollbar-none -mx-2 px-2 sm:mx-0 sm:px-0">
                 {options.map((opt: any) => {
                     const value = typeof opt === 'string' ? opt : opt[valueKey || 'code'];
                     const text = typeof opt === 'string' ? opt : opt[labelKey || 'label'];
@@ -33,7 +33,7 @@ const Filters: React.FC<FiltersProps> = ({ filters, setFilters, debouncedSearchT
                         <button
                             key={value}
                             onClick={() => onChange(value)}
-                            className={`px-3 py-1 rounded-full text-[11px] font-medium transition-all duration-200 border ${
+                            className={`px-3 py-1 rounded-full text-[11px] font-medium transition-all duration-200 border whitespace-nowrap ${
                                 isActive
                                     ? (isDarkMode ? 'bg-white text-black border-transparent' : 'bg-slate-900 text-white border-transparent')
                                     : (isDarkMode ? 'text-zinc-500 border-transparent hover:text-zinc-300 hover:bg-white/5' : 'text-slate-500 border-transparent hover:text-slate-900 hover:bg-slate-100')
