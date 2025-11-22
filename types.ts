@@ -53,6 +53,9 @@ export interface MediaItem {
   runtime?: number;
   cast?: { id: number; name: string; character: string; profile_path: string | null }[];
   videos?: { key: string; name: string; type: string }[];
+  collectionId?: number; // For movie collections
+  collectionName?: string;
+  
   // TV Specific
   numberOfSeasons?: number;
   numberOfEpisodes?: number;

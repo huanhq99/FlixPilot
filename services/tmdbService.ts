@@ -191,6 +191,10 @@ export const processMediaItem = (baseItem: any, detailData: any, mediaType: 'mov
         seasons: seasons,
         lastEpisodeToAir: detailData.last_episode_to_air,
         nextEpisodeToAir: detailData.next_episode_to_air,
+        
+        // Collection Info
+        collectionId: detailData.belongs_to_collection?.id,
+        collectionName: detailData.belongs_to_collection?.name,
     };
 };
 
@@ -199,6 +203,31 @@ export const fetchDetails = async (id: number, mediaType: 'movie' | 'tv') => {
         `${TMDB_BASE_URL}/${mediaType}/${id}?api_key=${TMDB_API_KEY}&language=zh-CN&append_to_response=credits,videos,release_dates`
     );
     return response.json();
+};
+
+export const fetchCollectionDetails = async (collectionId: number) => {
+    try {
+        const response = await fetch(
+            `${TMDB_BASE_URL}/collection/${collectionId}?api_key=${TMDB_API_KEY}&language=zh-CN`
+        );
+        return response.json();
+    } catch (e) {
+        console.error("Failed to fetch collection", e);
+        return null;
+    }
+};
+
+export const fetchRecommendations = async (id: number, mediaType: 'movie' | 'tv') => {
+    try {
+        const response = await fetch(
+            `${TMDB_BASE_URL}/${mediaType}/${id}/recommendations?api_key=${TMDB_API_KEY}&language=zh-CN&page=1`
+        );
+        const data = await response.json();
+        return data.results || [];
+    } catch (e) {
+        console.error("Failed to fetch recommendations", e);
+        return [];
+    }
 };
 
 export const fetchSeasonDetails = async (tvId: number, seasonNumber: number) => {

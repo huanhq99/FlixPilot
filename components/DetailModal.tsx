@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { 
-    ArrowLeft, Star, Clock, CheckCircle2, Film, PlayCircle, Youtube, User, Terminal, HelpCircle, Calendar, X, Tv, Layers, LayoutList, Disc, MonitorPlay, Globe, Languages
+    ArrowLeft, Star, Clock, CheckCircle2, Film, PlayCircle, Youtube, User, Terminal, HelpCircle, Calendar, X, Tv, Layers, LayoutList, Disc, MonitorPlay, Globe, Languages, Library
 } from 'lucide-react';
 import { MediaItem, Episode } from '../types';
 import { IMAGE_BASE_URL, PROFILE_BASE_URL } from '../constants';
-import { fetchSeasonDetails } from '../services/tmdbService';
+import { fetchSeasonDetails, fetchCollectionDetails, fetchRecommendations, processMediaItem } from '../services/tmdbService';
 
 interface DetailModalProps {
     selectedMedia: MediaItem;
@@ -22,6 +22,10 @@ const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDar
     );
     const [episodes, setEpisodes] = useState<Episode[]>([]);
     const [episodesLoading, setEpisodesLoading] = useState(false);
+    
+    const [collectionItems, setCollectionItems] = useState<MediaItem[]>([]);
+    const [recommendations, setRecommendations] = useState<MediaItem[]>([]);
+    const [relatedLoading, setRelatedLoading] = useState(false);
 
     let statusText = selectedMedia.badgeLabel;
     let statusIcon = <Clock size={14}/>;
@@ -64,6 +68,57 @@ const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDar
             loadEpisodes();
         }
     }, [selectedMedia.id, selectedSeason, isTV]);
+
+    // Fetch Collection & Recommendations
+    useEffect(() => {
+        const loadRelated = async () => {
+            setRelatedLoading(true);
+            setCollectionItems([]);
+            setRecommendations([]);
+
+            // 1. Fetch Collection (if exists)
+            if (selectedMedia.collectionId) {
+                const colData = await fetchCollectionDetails(selectedMedia.collectionId);
+                if (colData && colData.parts) {
+                    // Process parts into MediaItems
+                    const parts = colData.parts
+                        .filter((p: any) => p.id !== selectedMedia.id) // Exclude current
+                        .map((p: any) => processMediaItem(p, {}, 'movie'))
+                        .sort((a: MediaItem, b: MediaItem) => (a.releaseDate > b.releaseDate ? 1 : -1));
+                    setCollectionItems(parts);
+                }
+            }
+
+            // 2. Fetch Recommendations (Always)
+            const recData = await fetchRecommendations(selectedMedia.id, selectedMedia.mediaType);
+            if (recData) {
+                const recs = recData
+                    .slice(0, 10)
+                    .map((r: any) => processMediaItem(r, {}, r.media_type || selectedMedia.mediaType));
+                setRecommendations(recs);
+            }
+            
+            setRelatedLoading(false);
+        };
+        loadRelated();
+    }, [selectedMedia.id, selectedMedia.collectionId, selectedMedia.mediaType]);
+
+    const RelatedCard = ({ item }: { item: MediaItem }) => (
+        <div className={`flex-shrink-0 w-32 md:w-40 snap-start`}>
+            <div className="aspect-[2/3] rounded-lg overflow-hidden mb-2 relative group cursor-pointer">
+                {item.posterUrl ? (
+                    <img src={item.posterUrl} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" alt={item.title} />
+                ) : (
+                    <div className={`w-full h-full bg-gradient-to-br ${item.posterColor} flex items-center justify-center`}>
+                        <span className="text-white/30 font-bold text-xs">{item.posterText}</span>
+                    </div>
+                )}
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+            </div>
+            <h4 className={`text-xs font-bold truncate ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{item.title}</h4>
+            <p className={`text-[10px] ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>{item.year}</p>
+        </div>
+    );
 
     return (
         <div className={`fixed inset-0 z-50 overflow-y-auto ${isDarkMode ? 'bg-[#09090b]' : 'bg-slate-50'}`}>
@@ -335,6 +390,34 @@ const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDar
                             </div>
                         </div>
                     </div>
+
+                    {/* Collection Section */}
+                    {collectionItems.length > 0 && (
+                        <div className="mt-10">
+                            <h3 className={`text-xl font-bold mb-4 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                                <Library size={20} className="text-indigo-500"/> {selectedMedia.collectionName || '系列合集'}
+                            </h3>
+                            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-none snap-x">
+                                {collectionItems.map(item => (
+                                    <RelatedCard key={item.id} item={item} />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Recommendations Section */}
+                    {recommendations.length > 0 && (
+                        <div className="mt-10">
+                            <h3 className={`text-xl font-bold mb-4 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                                <Disc size={20} className="text-indigo-500"/> 猜你喜欢
+                            </h3>
+                            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-none snap-x">
+                                {recommendations.map(item => (
+                                    <RelatedCard key={item.id} item={item} />
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
