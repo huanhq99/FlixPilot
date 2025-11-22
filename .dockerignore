@@ -2,8 +2,6 @@ node_modules
 dist
 .git
 .gitignore
-.env
-.env.local
 Dockerfile
 nginx.conf
 README.md
