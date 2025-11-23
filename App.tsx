@@ -18,6 +18,7 @@ import { TMDB_API_KEY, TMDB_BASE_URL } from './constants';
 import { MediaItem, FilterState, EmbyConfig, AuthState } from './types';
 import { processMediaItem, fetchDetails } from './services/tmdbService';
 import { fetchEmbyLibrary } from './services/embyService';
+import { sendTelegramNotification } from './services/notificationService';
 import Filters from './components/Filters';
 import MediaCard from './components/MediaCard';
 import DetailModal from './components/DetailModal';
@@ -62,7 +63,10 @@ export default function App() {
       const saved = localStorage.getItem('embyConfig');
       return saved ? JSON.parse(saved) : { serverUrl: '', apiKey: '' };
   });
-  const [embyLibrary, setEmbyLibrary] = useState<Set<string>>(new Set());
+  const [embyLibrary, setEmbyLibrary] = useState<Set<string>>(() => {
+      const saved = localStorage.getItem('emby_library_cache');
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+  });
   const [syncingEmby, setSyncingEmby] = useState(false);
 
   const [page, setPage] = useState(1);
@@ -97,8 +101,10 @@ export default function App() {
       if (!auth.isGuest) {
           const newConfig = { serverUrl: auth.serverUrl, apiKey: auth.accessToken };
           setEmbyConfig(newConfig);
-          // Trigger sync
-          syncEmbyLibrary(newConfig);
+          // Trigger sync only if server is configured
+          if (newConfig.serverUrl) {
+              syncEmbyLibrary(newConfig);
+          }
       }
   };
 
@@ -123,22 +129,112 @@ export default function App() {
       }
   }, []); // Run once on mount if already logged in
 
-  const syncEmbyLibrary = async (config: EmbyConfig) => {
+  const checkRequestsStatus = (ids: Set<string>) => {
+      const existingRequests = JSON.parse(localStorage.getItem('requests') || '[]');
+      let requestsChanged = false;
+      const notifyConfig = JSON.parse(localStorage.getItem('streamhub_notifications') || '{}');
+
+      const updatedRequests = existingRequests.map((req: any) => {
+          if (req.status === 'pending') {
+             const key = `${req.mediaType}_${req.id}`;
+             if (ids.has(key)) {
+                 requestsChanged = true;
+                 
+                 // Send Notification for Completed Request
+                 if (notifyConfig.telegramBotToken && notifyConfig.telegramChatId) {
+                     sendTelegramNotification(notifyConfig, req, req.requestedBy, undefined, 'completed')
+                        .catch(e => console.error('Failed to notify completion', e));
+                 }
+                 
+                 return { ...req, status: 'completed', completedAt: new Date().toISOString() };
+             }
+          }
+          return req;
+      });
+
+      if (requestsChanged) {
+          localStorage.setItem('requests', JSON.stringify(updatedRequests));
+      }
+  };
+
+  const syncEmbyLibrary = async (config: EmbyConfig, isAutoScan = false) => {
       setSyncingEmby(true);
-      const ids = await fetchEmbyLibrary(config);
+      const { ids, items } = await fetchEmbyLibrary(config);
+      
+      if (isAutoScan && embyLibrary.size > 0) {
+          // Detect changes
+          const newItems = items.filter(item => {
+              if (!item.ProviderIds?.Tmdb) return false;
+              const type = item.Type === 'Series' ? 'tv' : 'movie';
+              const key = `${type}_${item.ProviderIds.Tmdb}`;
+              return !embyLibrary.has(key);
+          });
+          
+          // Send notifications for newItems
+          if (newItems.length > 0) {
+              const notifyConfig = JSON.parse(localStorage.getItem('streamhub_notifications') || '{}');
+              if (notifyConfig.telegramBotToken && notifyConfig.telegramChatId) {
+                  for (const item of newItems) {
+                      try {
+                          const type = item.Type === 'Series' ? 'tv' : 'movie';
+                          const tmdbId = parseInt(item.ProviderIds?.Tmdb || '0');
+                          if (!tmdbId) continue;
+
+                          // Fetch details to get poster and nice info
+                          const detailData = await fetchDetails(tmdbId, type);
+                          const mediaItem: MediaItem = processMediaItem({
+                              id: tmdbId,
+                              media_type: type,
+                              title: item.Name,
+                              // ... minimal fields
+                          } as any, detailData, type);
+
+                          await sendTelegramNotification(notifyConfig, mediaItem, 'System', undefined, 'auto_scan');
+                      } catch (e) {
+                          console.error('Failed to notify for new item', item.Name, e);
+                      }
+                  }
+              }
+          }
+      }
+
+      checkRequestsStatus(ids);
+      
       setEmbyLibrary(ids);
+      localStorage.setItem('emby_library_cache', JSON.stringify(Array.from(ids)));
       setSyncingEmby(false);
   };
 
+  // Auto Scan Interval (Every 15 minutes)
+  useEffect(() => {
+      if (!authState.isAuthenticated || !embyConfig.serverUrl) return;
+      
+      const interval = setInterval(() => {
+          syncEmbyLibrary(embyConfig, true);
+      }, 15 * 60 * 1000); 
+
+      return () => clearInterval(interval);
+  }, [authState.isAuthenticated, embyConfig]);
+
   const handleSaveSettings = (newConfig: EmbyConfig, library?: Set<string>) => {
       setEmbyConfig(newConfig);
-      // Only update localStorage config if we want to persist it separately, 
-      // but here we rely on auth state mostly. 
-      // However, for "Global Sync" settings that might be different from user token, 
-      // we might want to keep it. But for now, let's assume user token is used.
       localStorage.setItem('embyConfig', JSON.stringify(newConfig));
+
+      // Update Auth State as well to keep them in sync
+      if (authState.isAuthenticated) {
+          const newAuth = {
+              ...authState,
+              serverUrl: newConfig.serverUrl,
+              accessToken: newConfig.apiKey
+          };
+          setAuthState(newAuth);
+          localStorage.setItem('streamhub_auth', JSON.stringify(newAuth));
+      }
+
       if (library) {
           setEmbyLibrary(library);
+          localStorage.setItem('emby_library_cache', JSON.stringify(Array.from(library)));
+          checkRequestsStatus(library);
       } else {
           syncEmbyLibrary(newConfig);
       }
@@ -163,6 +259,14 @@ export default function App() {
       
       const updatedRequests = [...existingRequests, newRequest];
       localStorage.setItem('requests', JSON.stringify(updatedRequests));
+
+      // Send Notification
+      const notifyConfig = JSON.parse(localStorage.getItem('streamhub_notifications') || '{}');
+      if (notifyConfig.telegramBotToken && notifyConfig.telegramChatId) {
+          sendTelegramNotification(notifyConfig, item, authState.user?.Name || 'Guest')
+            .catch(err => console.error('Failed to send notification', err));
+      }
+
       alert('请求已提交！管理员审核后将自动下载。');
   };
 
@@ -171,15 +275,18 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  if (!authState.isAuthenticated) {
-      return <Login onLogin={handleLogin} isDarkMode={isDarkMode} />;
-  }
+  // Moved authentication check to render phase to avoid Hook errors
+  // if (!authState.isAuthenticated) {
+  //    return <Login onLogin={handleLogin} isDarkMode={isDarkMode} />;
+  // }
 
   useEffect(() => {
-    setPage(1);
-    fetchData(1, true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [debouncedSearchTerm, filters]);
+    if (authState.isAuthenticated) {
+        setPage(1);
+        fetchData(1, true);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [authState.isAuthenticated, debouncedSearchTerm, filters]);
 
   useEffect(() => {
       if (loading || loadingMore || page >= totalPages) return;
@@ -364,6 +471,10 @@ export default function App() {
           </div>
       </div>
   );
+
+  if (!authState.isAuthenticated) {
+      return <Login onLogin={handleLogin} isDarkMode={isDarkMode} />;
+  }
 
   return (
     <div className="min-h-screen font-sans selection:bg-indigo-500/30 pb-20">

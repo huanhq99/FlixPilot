@@ -56,19 +56,20 @@ export const getEmbyUsers = async (config: EmbyConfig): Promise<EmbyUser[]> => {
 export const fetchEmbyLibrary = async (
     config: EmbyConfig, 
     onProgress?: (current: number, total: number, status: string) => void
-): Promise<Set<string>> => {
+): Promise<{ ids: Set<string>, items: EmbyItem[] }> => {
     try {
         const baseUrl = config.serverUrl.replace(/\/$/, '');
         // Remove UserId param to ensure global sync
         
         // 1. Get Total Count first
         if (onProgress) onProgress(0, 0, '正在连接服务器...');
-        const countUrl = `${baseUrl}/Items?Recursive=true&IncludeItemTypes=Movie,Series,Episode&Limit=0&api_key=${config.apiKey}`;
+        // Add IsMissing=false to exclude missing episodes/movies
+        const countUrl = `${baseUrl}/Items?Recursive=true&IncludeItemTypes=Movie,Series,Episode&IsMissing=false&Limit=0&api_key=${config.apiKey}`;
         const countRes = await fetch(countUrl);
         if (!countRes.ok) throw new Error('Failed to fetch count');
         const totalCount = (await countRes.json()).TotalRecordCount;
 
-        if (totalCount === 0) return new Set();
+        if (totalCount === 0) return { ids: new Set(), items: [] };
 
         // 2. Fetch in batches
         const BATCH_SIZE = 2000;
@@ -81,7 +82,7 @@ export const fetchEmbyLibrary = async (
         while (fetchedCount < totalCount) {
             if (onProgress) onProgress(fetchedCount, totalCount, `正在同步媒体库索引 (${fetchedCount}/${totalCount})...`);
             
-            const url = `${baseUrl}/Items?Recursive=true&IncludeItemTypes=Movie,Series,Episode&Fields=ProviderIds,SeriesId,ParentIndexNumber,IndexNumber&StartIndex=${fetchedCount}&Limit=${BATCH_SIZE}&api_key=${config.apiKey}`;
+            const url = `${baseUrl}/Items?Recursive=true&IncludeItemTypes=Movie,Series,Episode&IsMissing=false&Fields=ProviderIds,SeriesId,ParentIndexNumber,IndexNumber&StartIndex=${fetchedCount}&Limit=${BATCH_SIZE}&api_key=${config.apiKey}`;
             const response = await fetch(url);
             if (!response.ok) throw new Error('Failed to fetch batch');
             
@@ -95,6 +96,13 @@ export const fetchEmbyLibrary = async (
         }
 
         if (onProgress) onProgress(totalCount, totalCount, '正在构建索引...');
+
+        // Debug: Log breakdown
+        const breakdown = allItems.reduce((acc, item) => {
+            acc[item.Type] = (acc[item.Type] || 0) + 1;
+            return acc;
+        }, {} as Record<string, number>);
+        console.log('Emby Library Breakdown:', breakdown);
 
         // Process Data
         // First pass: Movies and Series
@@ -120,11 +128,11 @@ export const fetchEmbyLibrary = async (
         });
         
         if (onProgress) onProgress(totalCount, totalCount, '完成');
-        return librarySet;
+        return { ids: librarySet, items: allItems };
 
     } catch (e) {
         console.error("Failed to fetch Emby library", e);
         if (onProgress) onProgress(0, 0, '同步失败');
-        return new Set();
+        return { ids: new Set(), items: [] };
     }
 };

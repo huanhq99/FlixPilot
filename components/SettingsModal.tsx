@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Save, Server, CheckCircle2, AlertCircle, Loader2, User, ShieldCheck, Database, List, Trash2, Bell, Send, MessageSquare, LayoutDashboard, Users, Mail, Check, XCircle } from 'lucide-react';
 import { EmbyConfig, EmbyUser, NotificationConfig } from '../types';
 import { validateEmbyConnection, getEmbyUsers, fetchEmbyLibrary } from '../services/embyService';
-import { sendTelegramTest } from '../services/notificationService';
+import { sendTelegramTest, sendTelegramNotification } from '../services/notificationService';
 
 interface SettingsModalProps {
     isOpen: boolean;
@@ -47,6 +47,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
         }
     }, [isOpen, currentConfig]);
 
+    // Refresh requests when tab changes to 'requests'
+    useEffect(() => {
+        if (activeTab === 'requests') {
+            const savedReqs = localStorage.getItem('requests');
+            if (savedReqs) setRequests(JSON.parse(savedReqs));
+        }
+    }, [activeTab]);
+
     const handleConnect = async () => {
         if (!url || !apiKey) return;
         setStatus('testing');
@@ -60,9 +68,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
         
         const newConfig = { serverUrl: url, apiKey };
         
-        let librarySet: Set<string> | undefined;
-
-        librarySet = await fetchEmbyLibrary(newConfig, (current, total, text) => {
+        const { ids } = await fetchEmbyLibrary(newConfig, (current, total, text) => {
             setSyncStatusText(text);
             if (total > 0) {
                 setSyncProgress(Math.round((current / total) * 100));
@@ -70,7 +76,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
         });
         
         setIsSyncing(false);
-        onSave(newConfig, librarySet);
+        onSave(newConfig, ids);
     };
 
     const handleSaveNotifications = () => {

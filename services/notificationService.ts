@@ -38,7 +38,8 @@ export const sendTelegramNotification = async (
     config: NotificationConfig, 
     item: MediaItem, 
     requestedBy: string,
-    overridePosterUrl?: string
+    overridePosterUrl?: string,
+    notificationType: 'request' | 'completed' | 'auto_scan' = 'request'
 ) => {
     if (!config.telegramBotToken || !config.telegramChatId) return;
 
@@ -46,12 +47,23 @@ export const sendTelegramNotification = async (
     const tmdbUrl = `https://www.themoviedb.org/${item.mediaType}/${item.id}`;
     const posterUrl = overridePosterUrl || (item.posterUrl ? `https://image.tmdb.org/t/p/w500${item.posterUrl}` : null);
     
+    let titleLine = `用户: ${requestedBy} 给您发来一条求片信息`;
+    let tagLine = `🏷️ 标签: #用户提交求片`;
+
+    if (notificationType === 'completed') {
+        titleLine = `✅ 求片已完成！(用户: ${requestedBy})`;
+        tagLine = `🏷️ 标签: #求片完成`;
+    } else if (notificationType === 'auto_scan') {
+        titleLine = `🆕 系统检测到新片入库`;
+        tagLine = `🏷️ 标签: #新片入库`;
+    }
+
     const caption = `
 名称: ${item.title} (${item.year})
 
-用户: ${requestedBy} 给您发来一条求片信息
+${titleLine}
 
-🏷️ 标签: #用户提交求片
+${tagLine}
 🗂️ 类型: ${typeTag}
 
 简介: ${item.overview ? item.overview.substring(0, 100) + (item.overview.length > 100 ? '...' : '') : '暂无简介'}
