@@ -1,8 +1,37 @@
-import { EmbyConfig, EmbyItem } from '../types';
+import { EmbyConfig, EmbyItem, EmbyUser } from '../types';
+
+export const loginEmby = async (serverUrl: string, username: string, password?: string): Promise<{ user: EmbyUser, accessToken: string } | null> => {
+    try {
+        const baseUrl = serverUrl.replace(/\/$/, '');
+        const body = {
+            Username: username,
+            Pw: password || '',
+        };
+        
+        const response = await fetch(`${baseUrl}/Users/AuthenticateByName`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Emby-Authorization': 'MediaBrowser Client="StreamHub", Device="Web", DeviceId="StreamHubWeb", Version="1.0.0"'
+            },
+            body: JSON.stringify(body)
+        });
+
+        if (!response.ok) throw new Error('Login failed');
+        
+        const data = await response.json();
+        return {
+            user: data.User,
+            accessToken: data.AccessToken
+        };
+    } catch (e) {
+        console.error("Emby login failed", e);
+        return null;
+    }
+};
 
 export const validateEmbyConnection = async (config: EmbyConfig): Promise<boolean> => {
     try {
-        // Clean URL
         const baseUrl = config.serverUrl.replace(/\/$/, '');
         const response = await fetch(`${baseUrl}/System/Info?api_key=${config.apiKey}`);
         return response.ok;
@@ -12,25 +41,64 @@ export const validateEmbyConnection = async (config: EmbyConfig): Promise<boolea
     }
 };
 
-export const fetchEmbyLibrary = async (config: EmbyConfig): Promise<Set<string>> => {
+export const getEmbyUsers = async (config: EmbyConfig): Promise<EmbyUser[]> => {
     try {
         const baseUrl = config.serverUrl.replace(/\/$/, '');
-        // Fetch Movies, Series, and Episodes
-        // Fields=ProviderIds is crucial for matching
-        // Fields=SeriesId,ParentIndexNumber,IndexNumber needed for Episodes
-        const url = `${baseUrl}/Items?Recursive=true&IncludeItemTypes=Movie,Series,Episode&Fields=ProviderIds,SeriesId,ParentIndexNumber,IndexNumber&api_key=${config.apiKey}`;
+        const response = await fetch(`${baseUrl}/Users?api_key=${config.apiKey}`);
+        if (!response.ok) return [];
+        return await response.json();
+    } catch (e) {
+        console.error("Failed to fetch Emby users", e);
+        return [];
+    }
+};
+
+export const fetchEmbyLibrary = async (
+    config: EmbyConfig, 
+    onProgress?: (current: number, total: number, status: string) => void
+): Promise<Set<string>> => {
+    try {
+        const baseUrl = config.serverUrl.replace(/\/$/, '');
+        // Remove UserId param to ensure global sync
         
-        const response = await fetch(url);
-        if (!response.ok) throw new Error('Failed to fetch Emby library');
-        
-        const data = await response.json();
-        const items: EmbyItem[] = data.Items || [];
-        
+        // 1. Get Total Count first
+        if (onProgress) onProgress(0, 0, '正在连接服务器...');
+        const countUrl = `${baseUrl}/Items?Recursive=true&IncludeItemTypes=Movie,Series,Episode&Limit=0&api_key=${config.apiKey}`;
+        const countRes = await fetch(countUrl);
+        if (!countRes.ok) throw new Error('Failed to fetch count');
+        const totalCount = (await countRes.json()).TotalRecordCount;
+
+        if (totalCount === 0) return new Set();
+
+        // 2. Fetch in batches
+        const BATCH_SIZE = 2000;
         const librarySet = new Set<string>();
-        const seriesMap = new Map<string, string>(); // EmbySeriesId -> TmdbId
+        const seriesMap = new Map<string, string>();
+        let fetchedCount = 0;
         
-        // First pass: Process Movies and Series
-        items.forEach(item => {
+        const allItems: EmbyItem[] = [];
+
+        while (fetchedCount < totalCount) {
+            if (onProgress) onProgress(fetchedCount, totalCount, `正在同步媒体库索引 (${fetchedCount}/${totalCount})...`);
+            
+            const url = `${baseUrl}/Items?Recursive=true&IncludeItemTypes=Movie,Series,Episode&Fields=ProviderIds,SeriesId,ParentIndexNumber,IndexNumber&StartIndex=${fetchedCount}&Limit=${BATCH_SIZE}&api_key=${config.apiKey}`;
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Failed to fetch batch');
+            
+            const data = await response.json();
+            const items: EmbyItem[] = data.Items || [];
+            
+            if (items.length === 0) break;
+            
+            allItems.push(...items);
+            fetchedCount += items.length;
+        }
+
+        if (onProgress) onProgress(totalCount, totalCount, '正在构建索引...');
+
+        // Process Data
+        // First pass: Movies and Series
+        allItems.forEach(item => {
             if (item.Type === 'Movie' && item.ProviderIds?.Tmdb) {
                 librarySet.add(`movie_${item.ProviderIds.Tmdb}`);
             } else if (item.Type === 'Series' && item.ProviderIds?.Tmdb) {
@@ -39,27 +107,24 @@ export const fetchEmbyLibrary = async (config: EmbyConfig): Promise<Set<string>>
             }
         });
 
-        // Second pass: Process Episodes
-        items.forEach(item => {
+        // Second pass: Episodes
+        allItems.forEach(item => {
             if (item.Type === 'Episode' && item.SeriesId && item.IndexNumber !== undefined) {
                 const tmdbSeriesId = seriesMap.get(item.SeriesId);
-                // Default to Season 1 if ParentIndexNumber is missing? No, usually 0 or present.
-                // If ParentIndexNumber is undefined, it might be a flat structure, but standard TV shows have seasons.
-                // We'll use 1 as fallback or 0? Let's use item.ParentIndexNumber ?? 1? 
-                // Actually, for Specials it is 0. If undefined, maybe it's not properly organized.
-                // But let's trust Emby returns it.
                 const seasonNumber = item.ParentIndexNumber ?? 1; 
                 
                 if (tmdbSeriesId) {
-                    // Key format: tv_{tmdbId}_s{season}_e{episode}
                     librarySet.add(`tv_${tmdbSeriesId}_s${seasonNumber}_e${item.IndexNumber}`);
                 }
             }
         });
         
+        if (onProgress) onProgress(totalCount, totalCount, '完成');
         return librarySet;
+
     } catch (e) {
         console.error("Failed to fetch Emby library", e);
+        if (onProgress) onProgress(0, 0, '同步失败');
         return new Set();
     }
 };

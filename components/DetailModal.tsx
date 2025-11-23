@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
     ArrowLeft, Star, Clock, CheckCircle2, Film, PlayCircle, Youtube, User, Terminal, HelpCircle, Calendar, X, Tv, Layers, LayoutList, Disc, MonitorPlay, Globe, Languages, Library
 } from 'lucide-react';
-import { MediaItem, Episode } from '../types';
+import { MediaItem, Episode, AuthState } from '../types';
 import { IMAGE_BASE_URL, PROFILE_BASE_URL } from '../constants';
 import { fetchSeasonDetails, fetchCollectionDetails, fetchRecommendations, processMediaItem } from '../services/tmdbService';
 
@@ -11,9 +11,11 @@ interface DetailModalProps {
     onClose: () => void;
     isDarkMode: boolean;
     embyLibrary?: Set<string>;
+    authState?: AuthState;
+    onRequest?: (item: MediaItem) => void;
 }
 
-const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDarkMode, embyLibrary }) => {
+const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDarkMode, embyLibrary, authState, onRequest }) => {
     const isStreaming = selectedMedia.status === 'streaming';
     const isReleased = selectedMedia.status === 'released';
     const isTV = selectedMedia.mediaType === 'tv';
@@ -121,65 +123,122 @@ const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDar
         </div>
     );
 
+    const isInLibrary = embyLibrary?.has(`${selectedMedia.mediaType}_${selectedMedia.id}`);
+
     return (
-        <div className={`fixed inset-0 z-50 overflow-y-auto ${isDarkMode ? 'bg-[#09090b]' : 'bg-slate-50'}`}>
-            {/* Hero Section */}
-            <div className="relative h-[40vh] sm:h-[45vh] md:h-[55vh] w-full">
-                {selectedMedia.backdropUrl ? (
-                    <img src={selectedMedia.backdropUrl} className="w-full h-full object-cover" alt="backdrop" />
-                ) : (
-                    <div className={`w-full h-full bg-gradient-to-br ${selectedMedia.posterColor}`}></div>
-                )}
-                <div className={`absolute inset-0 bg-gradient-to-t ${isDarkMode ? 'from-[#09090b]' : 'from-slate-50'} via-transparent to-transparent`}></div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200">
+            <div 
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                onClick={onClose}
+            ></div>
+            <div className={`relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl flex flex-col overflow-hidden ${isDarkMode ? 'bg-[#18181b] text-white' : 'bg-white text-slate-900'}`}>
                 
-                <div className="absolute top-4 left-4 z-20">
-                    <button 
-                        onClick={onClose} 
-                        className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full bg-black/40 backdrop-blur-md text-white hover:bg-black/60 transition-all border border-white/10"
-                    >
-                        <ArrowLeft size={16} className="md:w-[18px] md:h-[18px]" /> <span className="text-xs md:text-sm font-medium">返回</span>
-                    </button>
-                </div>
+                {/* Close Button */}
+                <button 
+                    onClick={onClose}
+                    className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black/20 hover:bg-black/40 text-white backdrop-blur-md transition-all"
+                >
+                    <X size={20} />
+                </button>
 
-                <div className="absolute bottom-0 left-0 w-full p-4 md:p-10 bg-gradient-to-t from-black/90 via-black/50 to-transparent">
-                    <div className="max-w-7xl mx-auto">
-                        <h1 className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-bold text-white mb-2 md:mb-4 drop-shadow-lg leading-tight">
-                            {selectedMedia.title}
-                        </h1>
-                        <div className="flex flex-wrap items-center gap-2 md:gap-4 text-xs md:text-sm text-white/90">
-                            <span className={`px-2 py-0.5 md:px-2.5 md:py-1 rounded border font-bold flex items-center gap-1 backdrop-blur-md ${statusBg} ${statusColor} ${selectedMedia.badgeColorClass ? 'border-white/20' : ''}`}>
-                                {statusIcon}
-                                {statusText}
-                            </span>
-                            <span className="flex items-center gap-1 text-amber-400 font-bold bg-black/30 px-2 py-0.5 md:py-1 rounded backdrop-blur-md">
-                                <Star size={12} className="md:w-[14px] md:h-[14px]" fill="currentColor" /> {selectedMedia.voteAverage.toFixed(1)}
-                            </span>
-                            
-                            {/* TV Episode Badge in Hero */}
-                            {tvUpdateBadge && (
-                                <span className="bg-indigo-600 text-white px-2.5 py-1 rounded font-bold backdrop-blur-md shadow-lg shadow-indigo-500/30">
-                                    {tvUpdateBadge}
-                                </span>
+                {/* Backdrop Section */}
+                <div className="w-full relative aspect-video md:aspect-[21/9] shrink-0">
+                    <div className="absolute inset-0">
+                        {selectedMedia.backdropUrl ? (
+                            <img 
+                                src={IMAGE_BASE_URL + selectedMedia.backdropUrl} 
+                                alt={selectedMedia.title}
+                                className="w-full h-full object-cover"
+                            />
+                        ) : selectedMedia.posterUrl ? (
+                            <img 
+                                src={IMAGE_BASE_URL + selectedMedia.posterUrl} 
+                                alt={selectedMedia.title}
+                                className="w-full h-full object-cover blur-sm scale-110"
+                            />
+                        ) : (
+                            <div className={`w-full h-full flex items-center justify-center ${isDarkMode ? 'bg-zinc-800' : 'bg-slate-200'}`}>
+                                <Film size={48} className="opacity-20" />
+                            </div>
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#18181b] via-transparent to-transparent"></div>
+                    </div>
+                    
+                    {/* Title Overlay */}
+                    <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8 flex items-end gap-6">
+                        {/* Small Poster */}
+                        <div className="w-24 md:w-32 aspect-[2/3] rounded-lg shadow-2xl overflow-hidden border-2 border-white/20 hidden md:block shrink-0">
+                             {selectedMedia.posterUrl && (
+                                <img 
+                                    src={IMAGE_BASE_URL + selectedMedia.posterUrl} 
+                                    alt={selectedMedia.title}
+                                    className="w-full h-full object-cover"
+                                />
                             )}
+                        </div>
 
-                            <span className="bg-white/10 px-2 py-1 rounded backdrop-blur-md">{selectedMedia.year}</span>
-                            
-                            {selectedMedia.runtime && (
-                                <span className="bg-white/10 px-2 py-1 rounded backdrop-blur-md">{selectedMedia.runtime} 分钟</span>
-                            )}
-                            {selectedMedia.genres?.slice(0, 3).map(g => (
-                                <span key={g.id} className="px-2 py-1 rounded-full text-xs border border-white/20 bg-white/5 backdrop-blur-md">
-                                    {g.name}
+                        <div className="flex-1 min-w-0 mb-2 text-white shadow-black drop-shadow-md">
+                             <div className="flex flex-wrap items-center gap-2 mb-2">
+                                <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border flex items-center gap-1.5 bg-white/20 border-white/10 text-white backdrop-blur-md`}>
+                                    {statusIcon}
+                                    {statusText}
                                 </span>
-                            ))}
+                                {isInLibrary && (
+                                    <span className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border flex items-center gap-1.5 bg-emerald-500/80 border-emerald-500/20 text-white backdrop-blur-md">
+                                        <Library size={12} />
+                                        已入库
+                                    </span>
+                                )}
+                                {selectedMedia.voteAverage > 0 && (
+                                    <span className="px-2.5 py-1 rounded-md text-[10px] font-bold flex items-center gap-1 bg-yellow-500/80 text-white border border-yellow-500/20 backdrop-blur-md">
+                                        <Star size={12} fill="currentColor" />
+                                        {selectedMedia.voteAverage.toFixed(1)}
+                                    </span>
+                                )}
+                            </div>
+                            <h2 className="text-3xl md:text-4xl font-bold leading-tight mb-1 truncate">
+                                {selectedMedia.title}
+                            </h2>
+                            {selectedMedia.subtitle && (
+                                <p className="text-lg font-medium opacity-80 truncate">
+                                    {selectedMedia.subtitle}
+                                </p>
+                            )}
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8 relative z-10">
-                <div className="space-y-6 md:space-y-10">
+                {/* Content Section */}
+                <div className="flex-1 p-6 md:p-8 flex flex-col gap-6 overflow-y-auto">
                     
+                    {/* Action Buttons */}
+                    <div className="flex flex-wrap gap-3">
+                        {isInLibrary ? (
+                            <button className="px-6 py-2.5 rounded-xl bg-emerald-500 text-white font-bold shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 active:scale-95 transition-all flex items-center gap-2">
+                                <PlayCircle size={20} />
+                                立即播放
+                            </button>
+                        ) : (
+                            <button 
+                                onClick={() => onRequest && onRequest(selectedMedia)}
+                                disabled={!authState?.isAuthenticated}
+                                className={`px-6 py-2.5 rounded-xl font-bold shadow-lg transition-all flex items-center gap-2 ${
+                                    authState?.isAuthenticated 
+                                    ? 'bg-indigo-600 text-white shadow-indigo-500/20 hover:bg-indigo-700 active:scale-95' 
+                                    : 'bg-gray-400 text-white cursor-not-allowed opacity-50'
+                                }`}
+                            >
+                                <MonitorPlay size={20} />
+                                {authState?.isAuthenticated ? '求片 / 点播' : '登录后求片'}
+                            </button>
+                        )}
+                        
+                        <button className={`px-4 py-2.5 rounded-xl font-bold border transition-all flex items-center gap-2 ${isDarkMode ? 'border-zinc-700 hover:bg-zinc-800 text-zinc-300' : 'border-slate-200 hover:bg-slate-50 text-slate-600'}`}>
+                            <Youtube size={20} />
+                            预告片
+                        </button>
+                    </div>
+
                     {/* Action Buttons & Info Grid */}
                     <div className="space-y-6 md:space-y-8">
                         <div className="flex flex-col sm:flex-row gap-3 md:gap-4">

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   MonitorPlay, 
@@ -11,16 +10,19 @@ import {
   Film,
   RefreshCw,
   ArrowUp,
-  Settings
+  Settings,
+  LogOut,
+  User as UserIcon
 } from 'lucide-react';
 import { TMDB_API_KEY, TMDB_BASE_URL } from './constants';
-import { MediaItem, FilterState, EmbyConfig } from './types';
+import { MediaItem, FilterState, EmbyConfig, AuthState } from './types';
 import { processMediaItem, fetchDetails } from './services/tmdbService';
 import { fetchEmbyLibrary } from './services/embyService';
 import Filters from './components/Filters';
 import MediaCard from './components/MediaCard';
 import DetailModal from './components/DetailModal';
 import SettingsModal from './components/SettingsModal';
+import Login from './components/Login';
 
 export default function App() {
   const [mediaList, setMediaList] = useState<MediaItem[]>([]);
@@ -34,9 +36,29 @@ export default function App() {
     return saved ? JSON.parse(saved) : false;
   });
 
+  // Auth State
+  const [authState, setAuthState] = useState<AuthState>(() => {
+      const saved = localStorage.getItem('streamhub_auth');
+      return saved ? JSON.parse(saved) : {
+          isAuthenticated: false,
+          user: null,
+          serverUrl: '',
+          accessToken: '',
+          isAdmin: false,
+          isGuest: false
+      };
+  });
+
   // Emby State
   const [showSettings, setShowSettings] = useState(false);
   const [embyConfig, setEmbyConfig] = useState<EmbyConfig>(() => {
+      // If authenticated, use the auth session
+      const savedAuth = localStorage.getItem('streamhub_auth');
+      if (savedAuth) {
+          const auth = JSON.parse(savedAuth);
+          return { serverUrl: auth.serverUrl, apiKey: auth.accessToken };
+      }
+      // Fallback to legacy config or empty
       const saved = localStorage.getItem('embyConfig');
       return saved ? JSON.parse(saved) : { serverUrl: '', apiKey: '' };
   });
@@ -67,12 +89,39 @@ export default function App() {
     else document.documentElement.classList.remove('dark');
   }, [isDarkMode]);
 
+  // Handle Login
+  const handleLogin = (auth: AuthState) => {
+      setAuthState(auth);
+      localStorage.setItem('streamhub_auth', JSON.stringify(auth));
+      
+      if (!auth.isGuest) {
+          const newConfig = { serverUrl: auth.serverUrl, apiKey: auth.accessToken };
+          setEmbyConfig(newConfig);
+          // Trigger sync
+          syncEmbyLibrary(newConfig);
+      }
+  };
+
+  const handleLogout = () => {
+      const emptyAuth = {
+          isAuthenticated: false,
+          user: null,
+          serverUrl: '',
+          accessToken: '',
+          isAdmin: false,
+          isGuest: false
+      };
+      setAuthState(emptyAuth);
+      localStorage.removeItem('streamhub_auth');
+      setEmbyLibrary(new Set());
+  };
+
   // Initial Emby Sync
   useEffect(() => {
-      if (embyConfig.serverUrl && embyConfig.apiKey) {
+      if (authState.isAuthenticated && embyConfig.serverUrl && embyConfig.apiKey) {
           syncEmbyLibrary(embyConfig);
       }
-  }, []);
+  }, []); // Run once on mount if already logged in
 
   const syncEmbyLibrary = async (config: EmbyConfig) => {
       setSyncingEmby(true);
@@ -81,16 +130,50 @@ export default function App() {
       setSyncingEmby(false);
   };
 
-  const handleSaveSettings = (newConfig: EmbyConfig) => {
+  const handleSaveSettings = (newConfig: EmbyConfig, library?: Set<string>) => {
       setEmbyConfig(newConfig);
+      // Only update localStorage config if we want to persist it separately, 
+      // but here we rely on auth state mostly. 
+      // However, for "Global Sync" settings that might be different from user token, 
+      // we might want to keep it. But for now, let's assume user token is used.
       localStorage.setItem('embyConfig', JSON.stringify(newConfig));
-      syncEmbyLibrary(newConfig);
+      if (library) {
+          setEmbyLibrary(library);
+      } else {
+          syncEmbyLibrary(newConfig);
+      }
+  };
+
+  const handleRequest = (item: MediaItem) => {
+      // Simple request logic for now
+      const existingRequests = JSON.parse(localStorage.getItem('requests') || '[]');
+      const isRequested = existingRequests.some((r: any) => r.id === item.id && r.mediaType === item.mediaType);
+      
+      if (isRequested) {
+          alert('您已经提交过此请求');
+          return;
+      }
+
+      const newRequest = {
+          ...item,
+          requestDate: new Date().toISOString(),
+          requestedBy: authState.user?.Name || 'Unknown',
+          status: 'pending'
+      };
+      
+      const updatedRequests = [...existingRequests, newRequest];
+      localStorage.setItem('requests', JSON.stringify(updatedRequests));
+      alert('请求已提交！管理员审核后将自动下载。');
   };
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearchTerm(searchTerm), 800);
     return () => clearTimeout(timer);
   }, [searchTerm]);
+
+  if (!authState.isAuthenticated) {
+      return <Login onLogin={handleLogin} isDarkMode={isDarkMode} />;
+  }
 
   useEffect(() => {
     setPage(1);
@@ -290,6 +373,8 @@ export default function App() {
             onClose={() => setSelectedMedia(null)} 
             isDarkMode={isDarkMode}
             embyLibrary={embyLibrary}
+            authState={authState}
+            onRequest={handleRequest}
           />
       )}
 
@@ -342,16 +427,36 @@ export default function App() {
               </button>
             </div>
 
-            <button 
-              onClick={() => setShowSettings(true)}
-              className={`p-1.5 md:p-2 rounded-full transition-all hover:scale-110 active:scale-95 shrink-0 relative ${isDarkMode ? 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-              title="Emby 设置"
-            >
-              <Settings size={16} className={`md:w-[18px] md:h-[18px] ${syncingEmby ? 'animate-spin' : ''}`} />
-              {embyLibrary.size > 0 && (
-                  <span className="absolute top-0 right-0 w-2 h-2 bg-emerald-500 rounded-full ring-2 ring-white dark:ring-zinc-900"></span>
-              )}
-            </button>
+            {authState.isAdmin && (
+                <button 
+                onClick={() => setShowSettings(true)}
+                className={`p-1.5 md:p-2 rounded-full transition-all hover:scale-110 active:scale-95 shrink-0 relative flex items-center gap-2 ${isDarkMode ? 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                title="Emby 设置"
+                >
+                <Settings size={16} className={`md:w-[18px] md:h-[18px] ${syncingEmby ? 'animate-spin' : ''}`} />
+                {embyLibrary.size > 0 && (
+                    <span className="absolute top-0 right-0 w-2 h-2 bg-emerald-500 rounded-full ring-2 ring-white dark:ring-zinc-900"></span>
+                )}
+                </button>
+            )}
+
+            <div className="flex items-center gap-2 pl-2 border-l border-gray-200 dark:border-white/10">
+                <div className="hidden md:flex flex-col items-end mr-1">
+                    <span className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                        {authState.user?.Name || 'Guest'}
+                    </span>
+                    <span className={`text-[10px] uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
+                        {authState.isAdmin ? 'ADMIN' : authState.isGuest ? 'GUEST' : 'USER'}
+                    </span>
+                </div>
+                <button 
+                    onClick={handleLogout}
+                    className={`p-1.5 md:p-2 rounded-full transition-all hover:scale-110 active:scale-95 shrink-0 ${isDarkMode ? 'bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white' : 'bg-red-50 text-red-500 hover:bg-red-100'}`}
+                    title="退出登录"
+                >
+                    <LogOut size={16} className="md:w-[18px] md:h-[18px]" />
+                </button>
+            </div>
 
             <button 
               onClick={() => setIsDarkMode(!isDarkMode)}

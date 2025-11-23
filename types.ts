@@ -80,7 +80,37 @@ export interface FilterState {
 export interface EmbyConfig {
   serverUrl: string;
   apiKey: string;
-  userId?: string; // Optional, if we want to check watch status later, but for library presence, admin key is usually enough or just recursive query
+  userId?: string;
+}
+
+export interface NotificationConfig {
+  telegramBotToken?: string;
+  telegramChatId?: string;
+  emailEnabled?: boolean;
+  emailSmtpServer?: string;
+  emailSmtpPort?: number;
+  emailSender?: string;
+  emailPassword?: string;
+  emailRecipient?: string;
+}
+
+export interface EmbyUser {
+  Id: string;
+  Name: string;
+  HasPassword?: boolean;
+  PrimaryImageTag?: string;
+  Policy?: {
+    IsAdministrator: boolean;
+  };
+}
+
+export interface AuthState {
+  isAuthenticated: boolean;
+  user: EmbyUser | null;
+  serverUrl: string;
+  accessToken: string;
+  isAdmin: boolean;
+  isGuest: boolean;
 }
 
 export interface EmbyItem {
