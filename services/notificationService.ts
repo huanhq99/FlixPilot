@@ -140,20 +140,23 @@ export const testMoviePilotConnection = async (config: NotificationConfig): Prom
     
     // Try common endpoints - 优先使用 /api/v1/* 路径（反代通常配置了这个路径）
     // 注意：从错误日志看，/v2/* 和 /v1/* 路径（没有 /api/ 前缀）会被 CORS 阻止
+    // 但是从错误看，/api/v1/plugin/plugin_list 能到达服务器，说明路径是对的
     const endpoints = [
+        '/api/v1/user/info', // 用户信息（可能更常用）
         '/api/v1/user/me', // Best for token validation - 优先尝试
+        '/api/v1/system/info', // 系统信息
         '/api/v1/system/version', // 通常不需要特殊权限
         '/api/v1/system/status', // 系统状态
-        '/api/v1/site/site_list', // Check sites list - 可能需要权限
     ];
 
     const authMethods = [
-        { name: 'Bearer Token', header: 'Authorization', value: `Bearer ${config.moviePilotToken}` },
-        { name: 'Authorization (raw)', header: 'Authorization', value: config.moviePilotToken },
+        // MoviePilot 可能使用的认证方式（根据常见 API 模式）
+        { name: 'Authorization (raw)', header: 'Authorization', value: config.moviePilotToken }, // 直接使用 Token，不加 Bearer
+        { name: 'X-Api-Key', header: 'X-Api-Key', value: config.moviePilotToken }, // 注意大小写
         { name: 'X-API-Key', header: 'X-API-Key', value: config.moviePilotToken },
+        { name: 'Bearer Token', header: 'Authorization', value: `Bearer ${config.moviePilotToken}` },
         { name: 'token Header', header: 'token', value: config.moviePilotToken },
         { name: 'apikey Header', header: 'apikey', value: config.moviePilotToken },
-        { name: 'api_key Header', header: 'api_key', value: config.moviePilotToken },
     ];
 
     // Clean token - remove any whitespace
@@ -183,8 +186,19 @@ export const testMoviePilotConnection = async (config: NotificationConfig): Prom
             try {
                 const headers: Record<string, string> = {
                     'Content-Type': 'application/json',
-                    [authMethod.header]: authMethod.value.replace(config.moviePilotToken, cleanToken)
+                    'Accept': 'application/json',
                 };
+                
+                // 根据认证方式设置 Header
+                if (authMethod.header === 'Authorization') {
+                    if (authMethod.name === 'Bearer Token') {
+                        headers[authMethod.header] = `Bearer ${cleanToken}`;
+                    } else {
+                        headers[authMethod.header] = cleanToken; // 直接使用 Token，不加 Bearer
+                    }
+                } else {
+                    headers[authMethod.header] = cleanToken;
+                }
 
                 console.log(`Testing MP connection: ${baseUrl}${endpoint} with ${authMethod.name}`);
 
