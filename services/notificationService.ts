@@ -240,7 +240,10 @@ export const testMoviePilotConnection = async (config: NotificationConfig): Prom
             } catch (e: any) {
                 console.error(`MP Test failed for ${endpoint} ${authMethod.name}`, e);
                 if (e.name === 'TypeError' && e.message.includes('Failed to fetch')) {
-                    connectionError = '无法连接到服务器。可能是跨域(CORS)限制、地址错误或网络不通。请尝试在 MoviePilot 设置中允许跨域，或使用反向代理。';
+                    // 这通常是 CORS 或网络问题
+                    connectionError = `无法连接到服务器。\n\n可能原因：\n1. 跨域(CORS)限制：浏览器阻止了请求\n2. 网络连接问题\n3. 反代配置问题\n\n解决方案：\n- 检查浏览器控制台 (F12) 查看 CORS 错误\n- 确认反代服务器允许跨域请求\n- 或在 MoviePilot 配置中允许 StreamHub 的域名`;
+                } else if (e.name === 'AbortError') {
+                    connectionError = '请求超时。请检查网络连接或服务响应速度。';
                 } else {
                     connectionError = `请求出错: ${e.message}`;
                 }
@@ -279,10 +282,15 @@ export const testMoviePilotConnection = async (config: NotificationConfig): Prom
     // 如果所有尝试都失败，给出详细诊断信息
     let diagnosticMessage = '';
     
-    if (serviceReachable) {
-        // 服务可达，但 API 认证或路径有问题
-        if (lastStatusCode === 401 || lastStatusCode === 403) {
-            diagnosticMessage = `服务在线，但认证失败。\n\n${connectionError || '所有认证方式均失败'}\n\n反代场景特别提示：\n1. 确认反代服务器（Nginx/Caddy）已正确转发 /api 路径\n2. 确认反代配置包含必要的 Header 转发（Authorization, X-API-Key 等）\n3. 尝试重新生成 MoviePilot API Token\n4. 查看反代服务器日志，确认 API 请求是否正确转发`;
+    // 检查是否是 CORS 错误（从错误消息判断）
+    const isCorsError = connectionError.includes('跨域') || connectionError.includes('CORS') || connectionError.includes('Failed to fetch');
+    
+    if (serviceReachable || isCorsError) {
+        // 服务可达或可能是 CORS 问题
+        if (isCorsError || (!lastStatusCode && connectionError.includes('Failed to fetch'))) {
+            diagnosticMessage = `⚠️ 跨域(CORS)限制问题\n\n从浏览器直接访问 MoviePilot 会被跨域策略阻止。\n\n解决方案：\n1. 在 MoviePilot 的反代配置中添加 CORS 头：\n   add_header 'Access-Control-Allow-Origin' '*' always;\n   add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;\n   add_header 'Access-Control-Allow-Headers' 'Authorization, X-API-Key, Content-Type' always;\n\n2. 或者在 MoviePilot 设置中配置允许跨域的域名\n\n3. 或者通过后端代理访问（需要后端支持）\n\n💡 提示：按 F12 打开浏览器控制台，查看 Network 标签的具体错误信息`;
+        } else if (lastStatusCode === 401 || lastStatusCode === 403) {
+            diagnosticMessage = `服务在线，但认证失败 (${lastStatusCode})。\n\n${connectionError || '所有认证方式均失败'}\n\n反代场景特别提示：\n1. 确认反代服务器（Nginx/Caddy）已正确转发 /api 路径\n2. 确认反代配置包含必要的 Header 转发（Authorization, X-API-Key 等）\n3. 尝试重新生成 MoviePilot API Token\n4. 查看反代服务器日志，确认 API 请求是否正确转发`;
         } else if (lastStatusCode === 404) {
             diagnosticMessage = `服务在线，但 API 路径未找到 (404)。\n\n可能原因：\n1. 反代配置中 API 路径未正确配置\n2. MoviePilot 的 API 路径可能与预期不同\n3. 建议检查反代服务器配置，确保 /api/* 路径正确转发到 MoviePilot 服务\n\n尝试的路径: ${lastErrorUrl || '未知'}`;
         } else {
@@ -290,7 +298,7 @@ export const testMoviePilotConnection = async (config: NotificationConfig): Prom
         }
     } else {
         // 服务不可达
-        diagnosticMessage = `无法连接到服务器。\n\n请检查：\n1. 地址是否正确 (${baseUrl})\n2. 服务是否正常运行\n3. 网络是否畅通\n4. 如果是反代，确认反代服务正常运行`;
+        diagnosticMessage = `无法连接到服务器。\n\n请检查：\n1. 地址是否正确 (${baseUrl})\n2. 服务是否正常运行\n3. 网络是否畅通\n4. 如果是反代，确认反代服务正常运行\n\n💡 提示：虽然你能在浏览器中访问 ${baseUrl}，但从代码中 fetch 可能被阻止。\n按 F12 打开浏览器控制台，查看 Network 标签的具体错误。`;
     }
 
     return { 
