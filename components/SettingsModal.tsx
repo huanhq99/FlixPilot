@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { X, Save, Server, CheckCircle2, AlertCircle, Loader2, User, ShieldCheck, Database, List, Trash2, Bell, Send, MessageSquare, LayoutDashboard, Users, Mail, Check, XCircle, Clock, Filter, Download, AlertOctagon, MonitorPlay, Film } from 'lucide-react';
 import { EmbyConfig, EmbyUser, NotificationConfig, RequestItem } from '../types';
 import { validateEmbyConnection, getEmbyUsers, fetchEmbyLibrary, fetchEmbyLibraries } from '../services/embyService';
-import { sendTelegramTest, sendTelegramNotification } from '../services/notificationService';
+import { sendTelegramTest, sendTelegramNotification, testMoviePilotConnection } from '../services/notificationService';
 import { storage, STORAGE_KEYS } from '../utils/storage';
 import { useToast } from './Toast';
+import { APP_VERSION } from '../constants';
 
 interface SettingsModalProps {
     isOpen: boolean;
@@ -159,6 +160,27 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
             toast.showToast('测试消息已发送，请检查您的 Telegram', 'success');
         } catch (e: any) {
             toast.showToast('发送失败: ' + e.message, 'error');
+        }
+    };
+
+    const [testingMP, setTestingMP] = useState(false);
+    const handleTestMoviePilot = async () => {
+        if (!notifyConfig.moviePilotUrl || !notifyConfig.moviePilotToken) {
+            toast.showToast('请先填写 MoviePilot 地址和 Token', 'warning');
+            return;
+        }
+        setTestingMP(true);
+        try {
+            const result = await testMoviePilotConnection(notifyConfig);
+            if (result.success) {
+                toast.showToast(result.message, 'success');
+            } else {
+                toast.showToast(result.message, 'error');
+            }
+        } catch (e: any) {
+            toast.showToast('测试失败: ' + e.message, 'error');
+        } finally {
+            setTestingMP(false);
         }
     };
 
@@ -341,6 +363,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
                     </div>
 
                     <div className={`mt-auto pt-6 border-t ${isDarkMode ? 'border-white/5' : 'border-slate-200'}`}>
+                        <div className={`text-center mb-3 text-xs ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`}>
+                            <span className="font-mono">v{APP_VERSION}</span>
+                        </div>
                         <button onClick={onClose} className={`w-full py-2 rounded-lg text-sm font-medium transition-colors ${isDarkMode ? 'hover:bg-white/5 text-zinc-500' : 'hover:bg-slate-100 text-slate-500'}`}>
                             关闭面板
                         </button>
@@ -580,6 +605,71 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
 
                                     <div className="space-y-4 pt-6 border-t border-dashed border-gray-200 dark:border-white/10">
                                         <h4 className={`font-bold flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                                            <Download size={18} className="text-emerald-500" /> MoviePilot 自动化集成
+                                        </h4>
+                                        <div className="space-y-2">
+                                            <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>MoviePilot 地址 (带端口)</label>
+                                            <input 
+                                                type="text" 
+                                                value={notifyConfig.moviePilotUrl || ''}
+                                                onChange={(e) => setNotifyConfig({...notifyConfig, moviePilotUrl: e.target.value})}
+                                                placeholder="http://192.168.1.10:3000"
+                                                className={`w-full p-3 rounded-xl border outline-none transition-all font-mono text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>API Token (Authorization)</label>
+                                            <input 
+                                                type="password" 
+                                                value={notifyConfig.moviePilotToken || ''}
+                                                onChange={(e) => setNotifyConfig({...notifyConfig, moviePilotToken: e.target.value})}
+                                                placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                                                className={`w-full p-3 rounded-xl border outline-none transition-all font-mono text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
+                                            />
+                                            <p className="text-xs opacity-60">
+                                                如果你不需要自动化下载，请留空。
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4 pt-6 border-t border-dashed border-gray-200 dark:border-white/10">
+                                        <div className="flex items-center justify-between">
+                                            <h4 className={`font-bold flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                                                <Download size={18} className="text-purple-500" /> MoviePilot 对接
+                                            </h4>
+                                            <button 
+                                                onClick={handleTestMoviePilot}
+                                                disabled={testingMP || !notifyConfig.moviePilotUrl || !notifyConfig.moviePilotToken}
+                                                className="text-xs text-purple-500 hover:underline font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                                            >
+                                                {testingMP ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+                                                测试连接
+                                            </button>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>MoviePilot 地址</label>
+                                            <input 
+                                                type="text" 
+                                                value={notifyConfig.moviePilotUrl || ''}
+                                                onChange={(e) => setNotifyConfig({...notifyConfig, moviePilotUrl: e.target.value})}
+                                                placeholder="http://192.168.1.10:3000"
+                                                className={`w-full p-3 rounded-xl border outline-none transition-all font-mono text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>API Token</label>
+                                            <input 
+                                                type="password" 
+                                                value={notifyConfig.moviePilotToken || ''}
+                                                onChange={(e) => setNotifyConfig({...notifyConfig, moviePilotToken: e.target.value})}
+                                                placeholder="MoviePilot API Token"
+                                                className={`w-full p-3 rounded-xl border outline-none transition-all font-mono text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4 pt-6 border-t border-dashed border-gray-200 dark:border-white/10">
+                                        <h4 className={`font-bold flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                                             <Mail size={18} className="text-orange-500" /> 邮件通知 (SMTP)
                                         </h4>
                                         <div className="grid grid-cols-2 gap-4">
@@ -701,7 +791,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
                                                         ) : (
                                                             <div className="w-full h-full flex items-center justify-center bg-zinc-800 text-zinc-600">
                                                                 <List size={20} />
-                                                            </div>
+                                        </div>
                                                         )}
                                                     </div>
 
@@ -795,11 +885,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
                                                                 </div>
                                                             )}
                                                         </div>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        ))}
-                                    </div>
+                                            ))}
+                                        </div>
                                 )}
                             </div>
                         )}
@@ -942,6 +1032,19 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
                          {/* System Tab (added back missing from my mind) */}
                         {activeTab === 'system' && (
                              <div className="max-w-xl space-y-8">
+                                {/* Version Info */}
+                                <div className={`p-4 rounded-xl border ${isDarkMode ? 'bg-indigo-500/10 border-indigo-500/20' : 'bg-indigo-50 border-indigo-100'}`}>
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <h4 className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>StreamHub Monitor</h4>
+                                            <p className={`text-xs mt-1 ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>当前版本</p>
+                                        </div>
+                                        <div className={`text-2xl font-bold font-mono ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>
+                                            v{APP_VERSION}
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div className="space-y-6">
                                     <div className="space-y-4">
                                         <h4 className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>个性化设置</h4>

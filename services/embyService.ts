@@ -107,7 +107,7 @@ export const fetchEmbyLibrary = async (
         if (selectedLibraries && selectedLibraries.length > 0) {
             targets = selectedLibraries;
         }
-
+        
         // 1. Calculate Total Count
         let totalCount = 0;
         const counts: number[] = [];
@@ -136,11 +136,11 @@ export const fetchEmbyLibrary = async (
 
             while (fetchedForTarget < count) {
                 if (onProgress) onProgress(globalFetched, totalCount, `正在同步媒体库 (${globalFetched}/${totalCount})...`);
-
+            
                 const items = await fetchItemsForParent(baseUrl, config.apiKey, target, fetchedForTarget, BATCH_SIZE);
-                if (items.length === 0) break;
-
-                allItems.push(...items);
+            if (items.length === 0) break;
+            
+            allItems.push(...items);
                 fetchedForTarget += items.length;
                 globalFetched += items.length;
             }

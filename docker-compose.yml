@@ -6,8 +6,12 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - TMDB_API_KEY=your_tmdb_api_key_here
-      - TMDB_API_URL=https://api.themoviedb.org/3
-      - HTTP_PROXY=http://127.0.0.1:7890
-      - HTTPS_PROXY=http://127.0.0.1:7890
+      - TMDB_API_KEY=${TMDB_API_KEY}
+      - EMBY_SERVER_URL=${EMBY_SERVER_URL}
+      - EMBY_API_KEY=${EMBY_API_KEY}
+      - HTTP_PROXY=${HTTP_PROXY}
+      - HTTPS_PROXY=${HTTPS_PROXY}
+    volumes:
+      - ./config:/app/backend/config
+      - ./data:/app/backend/data
     restart: always

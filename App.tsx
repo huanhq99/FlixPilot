@@ -14,11 +14,11 @@ import {
   LogOut,
   User as UserIcon
 } from 'lucide-react';
-import { TMDB_API_KEY, TMDB_BASE_URL } from './constants';
+import { TMDB_API_KEY, TMDB_BASE_URL, APP_VERSION } from './constants';
 import { MediaItem, FilterState, EmbyConfig, AuthState, RequestItem } from './types';
 import { processMediaItem, fetchDetails, fetchPersonDetails } from './services/tmdbService';
 import { fetchEmbyLibrary } from './services/embyService';
-import { sendTelegramNotification } from './services/notificationService';
+import { sendTelegramNotification, subscribeToMoviePilot } from './services/notificationService';
 import { storage, STORAGE_KEYS } from './utils/storage';
 import { ToastProvider, useToast } from './components/Toast';
 import Filters from './components/Filters';
@@ -27,10 +27,13 @@ import DetailModal from './components/DetailModal';
 import SettingsModal from './components/SettingsModal';
 import Login from './components/Login';
 import PersonModal from './components/PersonModal';
+import PersonCard from './components/PersonCard';
 
 function AppContent() {
   const toast = useToast();
   const [mediaList, setMediaList] = useState<MediaItem[]>([]);
+  const [personList, setPersonList] = useState<any[]>([]); // New state for people results
+  const [searchType, setSearchType] = useState<'media' | 'person'>('media'); // Toggle state
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,12 +48,12 @@ function AppContent() {
   // Auth State
   const [authState, setAuthState] = useState<AuthState>(() => 
     storage.get(STORAGE_KEYS.AUTH, {
-      isAuthenticated: false,
-      user: null,
-      serverUrl: '',
-      accessToken: '',
-      isAdmin: false,
-      isGuest: false
+          isAuthenticated: false,
+          user: null,
+          serverUrl: '',
+          accessToken: '',
+          isAdmin: false,
+          isGuest: false
     })
   );
 
@@ -188,16 +191,16 @@ function AppContent() {
       try {
           // Use current selected libraries for sync
           const { ids, items } = await fetchEmbyLibrary(config, undefined, selectedLibraryIds);
-          
-          if (isAutoScan && embyLibrary.size > 0) {
+      
+      if (isAutoScan && embyLibrary.size > 0) {
               // Detect new items
-              const newItems = items.filter(item => {
-                  if (!item.ProviderIds?.Tmdb) return false;
-                  const type = item.Type === 'Series' ? 'tv' : 'movie';
-                  const key = `${type}_${item.ProviderIds.Tmdb}`;
-                  return !embyLibrary.has(key);
-              });
-              
+          const newItems = items.filter(item => {
+              if (!item.ProviderIds?.Tmdb) return false;
+              const type = item.Type === 'Series' ? 'tv' : 'movie';
+              const key = `${type}_${item.ProviderIds.Tmdb}`;
+              return !embyLibrary.has(key);
+          });
+          
               // Detect deleted items (optional)
               const deletedItems: string[] = [];
               embyLibrary.forEach(key => {
@@ -211,42 +214,42 @@ function AppContent() {
               }
               
               // Send notifications in parallel
-              if (newItems.length > 0) {
+          if (newItems.length > 0) {
                   const notifyConfig = storage.get<any>(STORAGE_KEYS.NOTIFICATIONS, {});
-                  if (notifyConfig.telegramBotToken && notifyConfig.telegramChatId) {
+              if (notifyConfig.telegramBotToken && notifyConfig.telegramChatId) {
                       const notificationPromises = newItems.map(async (item) => {
-                          try {
-                              const type = item.Type === 'Series' ? 'tv' : 'movie';
-                              const tmdbId = parseInt(item.ProviderIds?.Tmdb || '0');
+                      try {
+                          const type = item.Type === 'Series' ? 'tv' : 'movie';
+                          const tmdbId = parseInt(item.ProviderIds?.Tmdb || '0');
                               if (!tmdbId) return;
 
-                              const detailData = await fetchDetails(tmdbId, type);
-                              const mediaItem: MediaItem = processMediaItem({
-                                  id: tmdbId,
-                                  media_type: type,
-                                  title: item.Name,
-                              } as any, detailData, type);
+                          const detailData = await fetchDetails(tmdbId, type);
+                          const mediaItem: MediaItem = processMediaItem({
+                              id: tmdbId,
+                              media_type: type,
+                              title: item.Name,
+                          } as any, detailData, type);
 
-                              await sendTelegramNotification(notifyConfig, mediaItem, 'System', undefined, 'auto_scan');
-                          } catch (e) {
-                              console.error('Failed to notify for new item', item.Name, e);
-                          }
+                          await sendTelegramNotification(notifyConfig, mediaItem, 'System', undefined, 'auto_scan');
+                      } catch (e) {
+                          console.error('Failed to notify for new item', item.Name, e);
+                      }
                       });
                       
                       // Wait for all notifications (with timeout)
                       await Promise.allSettled(notificationPromises);
-                  }
               }
           }
+      }
 
-          checkRequestsStatus(ids);
-          
-          setEmbyLibrary(ids);
+      checkRequestsStatus(ids);
+      
+      setEmbyLibrary(ids);
           storage.set(STORAGE_KEYS.EMBY_LIBRARY, Array.from(ids));
       } catch (error) {
           console.error('Sync failed:', error);
       } finally {
-          setSyncingEmby(false);
+      setSyncingEmby(false);
       }
   }, [embyLibrary, checkRequestsStatus]);
 
@@ -333,7 +336,21 @@ function AppContent() {
             .catch(err => console.error('Failed to send notification', err));
       }
 
-      toast.showToast('请求已提交！管理员审核后将自动下载', 'success');
+      // MoviePilot Subscription
+      if (notifyConfig.moviePilotUrl && notifyConfig.moviePilotToken) {
+          subscribeToMoviePilot(notifyConfig, item)
+            .then(res => {
+                if (res.success) {
+                    toast.showToast(res.message, 'success');
+                } else {
+                    toast.showToast(res.message, 'warning');
+                }
+            })
+            .catch(e => console.error('MoviePilot failed', e));
+      } else {
+          toast.showToast('请求已提交！管理员审核后将自动下载', 'success');
+      }
+
       return 'success';
   }, [authState.user, toast, systemSettings.requestLimit]);
 
@@ -381,9 +398,12 @@ function AppContent() {
         let params = `&page=${pageNum}&language=zh-CN&include_adult=false`;
 
         if (debouncedSearchTerm) {
+            // Updated Search Logic to handle mixed results or separated
+            // Using multi-search to get everything, then filtering client-side for better UX or server-side
             endpoint = '/search/multi';
             params += `&query=${encodeURIComponent(debouncedSearchTerm)}`;
         } else {
+            // ... existing trending/discover logic ...
             const isDefaultTrending = filters.type === 'all' && filters.region === '' && filters.platform === '' && filters.year === '全部' && filters.sort === 'popularity.desc';
             if (isDefaultTrending) {
                 endpoint = '/trending/all/week';
@@ -404,15 +424,15 @@ function AppContent() {
                     if (filters.platform === '447') { // Youku
                         if (targetType === 'tv') params += `&with_networks=48460`; 
                         else params += `&with_companies=48460`;
-                    }
+                        }
                     else if (filters.platform === '446') { // iQIYI
                          if (targetType === 'tv') params += `&with_networks=172414`; 
                         else params += `&with_companies=172414`;
-                    }
+                        }
                     else if (filters.platform === '336') { // Tencent
                         if (targetType === 'tv') params += `&with_networks=74457|84946`; 
                         else params += `&with_companies=74457|84946`;
-                    }
+                        }
                     else {
                         params += `&with_watch_providers=${filters.platform}`;
                         params += `&watch_region=US`;
@@ -435,8 +455,16 @@ function AppContent() {
         const data = await response.json();
         setTotalPages(Math.min(data.total_pages, 500));
 
-        const detailedPromises = data.results.map(async (item: any) => {
-            if (item.media_type === 'person') return null;
+        // Separate People and Media
+        const rawResults = data.results || [];
+        
+        // 1. Handle People
+        const people = rawResults.filter((item: any) => item.media_type === 'person');
+        
+        // 2. Handle Media (Movies/TV)
+        const mediaItems = rawResults.filter((item: any) => item.media_type !== 'person');
+
+        const detailedPromises = mediaItems.map(async (item: any) => {
             const type = item.media_type || (item.title ? 'movie' : 'tv');
             try {
                 const detailRes = await fetch(
@@ -453,8 +481,10 @@ function AppContent() {
 
         if (isReset) {
             setMediaList(detailedResults);
+            setPersonList(people); // Set people results
         } else {
             setMediaList(prev => [...prev, ...detailedResults]);
+            setPersonList(prev => [...prev, ...people]); // Append people
         }
 
     } catch (err) {
@@ -474,9 +504,26 @@ function AppContent() {
   };
 
   const openModal = async (id: number, type: 'movie' | 'tv') => {
-      const existing = mediaList.find(m => m.id === id);
-      if (!existing) return;
-      setSelectedMedia(existing);
+      let mediaItem = mediaList.find(m => m.id === id && m.mediaType === type);
+      
+      if (!mediaItem) {
+          try {
+              // If not in list, fetch basic details to show modal immediately
+              const detailData = await fetchDetails(id, type);
+              mediaItem = processMediaItem(
+                  { id, media_type: type, ...detailData }, // Simulate base item from detail data
+                  detailData, 
+                  type
+              );
+          } catch (e) {
+              console.error("Failed to fetch item for modal", e);
+              return;
+          }
+      }
+
+      setSelectedMedia(mediaItem);
+      
+      // Fetch full details (refresh)
       try {
           const detailData = await fetchDetails(id, type);
           setSelectedMedia(prev => prev ? ({
@@ -580,9 +627,14 @@ function AppContent() {
               <h1 className={`font-bold tracking-tight leading-none text-lg ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                 Stream<span className="text-indigo-500">Hub</span>
               </h1>
-              <span className={`text-[9px] font-bold tracking-[0.2em] uppercase ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`}>
-                全球媒体监控
-              </span>
+              <div className="flex items-center gap-2">
+                <span className={`text-[9px] font-bold tracking-[0.2em] uppercase ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`}>
+                  全球媒体监控
+                </span>
+                <span className={`text-[8px] font-mono px-1.5 py-0.5 rounded ${isDarkMode ? 'bg-indigo-500/20 text-indigo-400' : 'bg-indigo-100 text-indigo-600'}`}>
+                  v{APP_VERSION}
+                </span>
+              </div>
             </div>
           </div>
           
@@ -671,39 +723,65 @@ function AppContent() {
                 <p className="text-sm opacity-60 max-w-xs">{error}</p>
                 <button onClick={() => fetchData(1, true)} className="mt-4 px-6 py-2 bg-indigo-600 text-white rounded-full text-sm font-medium hover:bg-indigo-700">重试</button>
             </div>
-          ) : mediaList.length === 0 ? (
+          ) : (mediaList.length === 0 && personList.length === 0) ? (
             <div className={`flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-2xl ${isDarkMode ? 'border-zinc-800 text-zinc-600' : 'border-slate-200 text-slate-400'}`}>
               <Film size={48} className="mb-4 opacity-50" />
               <p className="text-sm font-medium">没有找到相关内容</p>
             </div>
           ) : (
             <>
-              {viewMode === 'grid' ? (
-                <div className="grid grid-cols-3 min-[450px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6 md:gap-8">
-                  {mediaList.map((item) => (
-                    <MediaCard 
-                        key={`${item.id}-${item.mediaType}`} 
-                        item={item} 
-                        viewMode="grid" 
-                        onClick={openModal} 
-                        isDarkMode={isDarkMode}
-                        isInLibrary={embyLibrary.has(`${item.mediaType}_${item.id}`)}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col gap-3">
-                  {mediaList.map((item) => (
-                    <MediaCard 
-                        key={`${item.id}-${item.mediaType}`} 
-                        item={item} 
-                        viewMode="list" 
-                        onClick={openModal} 
-                        isDarkMode={isDarkMode}
-                        isInLibrary={embyLibrary.has(`${item.mediaType}_${item.id}`)}
-                    />
-                  ))}
-                </div>
+              {/* Person Results Section */}
+              {debouncedSearchTerm && personList.length > 0 && (
+                  <div className="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                      <h2 className={`text-lg font-bold mb-4 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                          <UserIcon className="text-indigo-500" size={20} />
+                          <span>相关人物</span>
+                      </h2>
+                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-4">
+                          {personList.map((person) => (
+                              <PersonCard 
+                                  key={person.id}
+                                  person={person}
+                                  onClick={openPersonModal}
+                                  isDarkMode={isDarkMode}
+                              />
+                          ))}
+                      </div>
+                      <div className={`my-8 border-b ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}></div>
+                  </div>
+              )}
+
+              {/* Media Results Section */}
+              {mediaList.length > 0 && (
+                  <>
+                    {viewMode === 'grid' ? (
+                        <div className="grid grid-cols-3 min-[450px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6 md:gap-8">
+                        {mediaList.map((item) => (
+                            <MediaCard 
+                                key={`${item.id}-${item.mediaType}`} 
+                                item={item} 
+                                viewMode="grid" 
+                                onClick={openModal} 
+                                isDarkMode={isDarkMode}
+                                isInLibrary={embyLibrary.has(`${item.mediaType}_${item.id}`)}
+                            />
+                        ))}
+                        </div>
+                    ) : (
+                        <div className="flex flex-col gap-3">
+                        {mediaList.map((item) => (
+                            <MediaCard 
+                                key={`${item.id}-${item.mediaType}`} 
+                                item={item} 
+                                viewMode="list" 
+                                onClick={openModal} 
+                                isDarkMode={isDarkMode}
+                                isInLibrary={embyLibrary.has(`${item.mediaType}_${item.id}`)}
+                            />
+                        ))}
+                        </div>
+                    )}
+                  </>
               )}
 
               <div ref={loadMoreRef} className="h-20 flex items-center justify-center w-full mt-8">

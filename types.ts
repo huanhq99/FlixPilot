@@ -92,6 +92,9 @@ export interface NotificationConfig {
   emailSender?: string;
   emailPassword?: string;
   emailRecipient?: string;
+  // MoviePilot Config
+  moviePilotUrl?: string;
+  moviePilotToken?: string;
 }
 
 export interface EmbyUser {
