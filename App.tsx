@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { TMDB_API_KEY, TMDB_BASE_URL } from './constants';
 import { MediaItem, FilterState, EmbyConfig, AuthState, RequestItem } from './types';
-import { processMediaItem, fetchDetails } from './services/tmdbService';
+import { processMediaItem, fetchDetails, fetchPersonDetails } from './services/tmdbService';
 import { fetchEmbyLibrary } from './services/embyService';
 import { sendTelegramNotification } from './services/notificationService';
 import { storage, STORAGE_KEYS } from './utils/storage';
@@ -26,6 +26,7 @@ import MediaCard from './components/MediaCard';
 import DetailModal from './components/DetailModal';
 import SettingsModal from './components/SettingsModal';
 import Login from './components/Login';
+import PersonModal from './components/PersonModal';
 
 function AppContent() {
   const toast = useToast();
@@ -36,6 +37,10 @@ function AppContent() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   
   const [isDarkMode, setIsDarkMode] = useState(() => storage.get(STORAGE_KEYS.DARK_MODE, false));
+
+  // Person Modal State
+  const [selectedPerson, setSelectedPerson] = useState<any | null>(null);
+  const [personCredits, setPersonCredits] = useState<any[]>([]);
 
   // Auth State
   const [authState, setAuthState] = useState<AuthState>(() => 
@@ -75,6 +80,16 @@ function AppContent() {
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [showScrollTop, setShowScrollTop] = useState(false);
 
+  // System Settings
+  const [systemSettings, setSystemSettings] = useState(() => {
+      try {
+          const saved = localStorage.getItem('streamhub_settings');
+          return saved ? JSON.parse(saved) : { scanInterval: 15, websiteTitle: 'StreamHub - Global Media Monitor', faviconUrl: '' };
+      } catch (e) {
+          return { scanInterval: 15, websiteTitle: 'StreamHub - Global Media Monitor', faviconUrl: '' };
+      }
+  });
+
   const [filters, setFilters] = useState<FilterState>({
       type: 'all',
       region: '',
@@ -91,6 +106,17 @@ function AppContent() {
     if (isDarkMode) document.documentElement.classList.add('dark');
     else document.documentElement.classList.remove('dark');
   }, [isDarkMode]);
+
+  useEffect(() => {
+      document.title = systemSettings.websiteTitle || 'StreamHub - Global Media Monitor';
+      let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+      if (!link) {
+          link = document.createElement('link');
+          link.rel = 'icon';
+          document.getElementsByTagName('head')[0].appendChild(link);
+      }
+      link.href = systemSettings.faviconUrl || '/favicon.svg';
+  }, [systemSettings.websiteTitle, systemSettings.faviconUrl]);
 
   // Handle Login
   const handleLogin = useCallback((auth: AuthState) => {
@@ -126,7 +152,7 @@ function AppContent() {
       if (authState.isAuthenticated && embyConfig.serverUrl && embyConfig.apiKey) {
           syncEmbyLibrary(embyConfig);
       }
-  }, []); // Run once on mount if already logged in
+  }, []); 
 
   const checkRequestsStatus = (ids: Set<string>) => {
       const existingRequests = JSON.parse(localStorage.getItem('requests') || '[]');
@@ -270,8 +296,16 @@ function AppContent() {
       }
   }, [authState, checkRequestsStatus, syncEmbyLibrary]);
 
-  const handleRequest = useCallback((item: MediaItem) => {
+  const handleRequest = useCallback((item: MediaItem, options?: { resolution: string; note: string }) => {
       const existingRequests = storage.get<RequestItem[]>(STORAGE_KEYS.REQUESTS, []);
+      
+      // Check limit
+      const userRequests = existingRequests.filter(r => r.requestedBy === authState.user?.Name);
+      if (!authState.isAdmin && systemSettings.requestLimit > 0 && userRequests.length >= systemSettings.requestLimit) {
+          toast.showToast(`求片数量已达上限 (${systemSettings.requestLimit})`, 'error');
+          return 'limit_reached';
+      }
+
       const isRequested = existingRequests.some((r) => r.id === item.id && r.mediaType === item.mediaType);
       
       if (isRequested) {
@@ -284,7 +318,9 @@ function AppContent() {
           backdropUrl: item.backdropUrl,
           requestDate: new Date().toISOString(),
           requestedBy: authState.user?.Name || 'Unknown',
-          status: 'pending'
+          status: 'pending',
+          resolutionPreference: options?.resolution as any,
+          notes: options?.note
       };
       
       const updatedRequests = [...existingRequests, newRequest];
@@ -293,24 +329,20 @@ function AppContent() {
       // Send Notification
       const notifyConfig = storage.get<any>(STORAGE_KEYS.NOTIFICATIONS, {});
       if (notifyConfig.telegramBotToken && notifyConfig.telegramChatId) {
-          sendTelegramNotification(notifyConfig, item, authState.user?.Name || 'Guest')
+          sendTelegramNotification(notifyConfig, item, authState.user?.Name || 'Guest', options?.note)
             .catch(err => console.error('Failed to send notification', err));
       }
 
       toast.showToast('请求已提交！管理员审核后将自动下载', 'success');
       return 'success';
-  }, [authState.user, toast]);
+  }, [authState.user, toast, systemSettings.requestLimit]);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearchTerm(searchTerm), 800);
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Moved authentication check to render phase to avoid Hook errors
-  // if (!authState.isAuthenticated) {
-  //    return <Login onLogin={handleLogin} isDarkMode={isDarkMode} />;
-  // }
-
+  // Data Loading Logic
   useEffect(() => {
     if (authState.isAuthenticated) {
         setPage(1);
@@ -369,38 +401,18 @@ function AppContent() {
 
                 // Platform Logic
                 if (filters.platform) {
-                    // Special handling for Chinese platforms which often lack provider data in TMDB
-                    // We fallback to searching by Production Company / Network ID if provider search is likely to fail
-                    
-                    // Youku (Provider 447 -> Company 48460)
-                    if (filters.platform === '447') {
-                        if (targetType === 'tv') {
-                            params += `&with_networks=48460`; // Youku Network
-                        } else {
-                            params += `&with_companies=48460`; // Youku Company
-                        }
-                        // Remove region constraint for company search to get broader results
+                    if (filters.platform === '447') { // Youku
+                        if (targetType === 'tv') params += `&with_networks=48460`; 
+                        else params += `&with_companies=48460`;
                     }
-                    // iQIYI (Provider 446 -> Company 172414)
-                    else if (filters.platform === '446') {
-                         // Try provider first in TW, but if we want to be safe, maybe mix?
-                         // Let's stick to provider for iQIYI as it works okay in TW, but fallback to company if needed?
-                         // Actually, user complained about "no results", so let's use the more robust method: Company/Network
-                         if (targetType === 'tv') {
-                            params += `&with_networks=172414`; 
-                        } else {
-                            params += `&with_companies=172414`;
-                        }
+                    else if (filters.platform === '446') { // iQIYI
+                         if (targetType === 'tv') params += `&with_networks=172414`; 
+                        else params += `&with_companies=172414`;
                     }
-                    // Tencent/WeTV (Provider 336 -> Company 74457 Tencent Video / 84946 Penguin Pictures)
-                    else if (filters.platform === '336') {
-                        if (targetType === 'tv') {
-                            params += `&with_networks=74457|84946`; 
-                        } else {
-                            params += `&with_companies=74457|84946`;
-                        }
+                    else if (filters.platform === '336') { // Tencent
+                        if (targetType === 'tv') params += `&with_networks=74457|84946`; 
+                        else params += `&with_companies=74457|84946`;
                     }
-                    // Standard International Platforms
                     else {
                         params += `&with_watch_providers=${filters.platform}`;
                         params += `&watch_region=US`;
@@ -475,11 +487,21 @@ function AppContent() {
               videos: detailData.videos?.results || [],
               numberOfEpisodes: detailData.number_of_episodes || prev.numberOfEpisodes,
               numberOfSeasons: detailData.number_of_seasons || prev.numberOfSeasons,
-              // Re-process dates if detailed fetch gives more accuracy? 
-              // Usually initial list fetch is enough, but for specific deep dives we could enhance here.
           }) : null);
       } catch (e) {
           console.error("Failed to fetch full details", e);
+      }
+  };
+
+  const openPersonModal = async (personId: number) => {
+      try {
+          const data = await fetchPersonDetails(personId);
+          if (data) {
+              setSelectedPerson(data);
+              setPersonCredits(data.combined_credits?.cast || []);
+          }
+      } catch (e) {
+          console.error("Failed to open person details", e);
       }
   };
 
@@ -517,6 +539,20 @@ function AppContent() {
             embyLibrary={embyLibrary}
             authState={authState}
             onRequest={handleRequest}
+            onPersonClick={openPersonModal}
+          />
+      )}
+
+      {selectedPerson && (
+          <PersonModal
+            person={selectedPerson}
+            credits={personCredits}
+            onClose={() => setSelectedPerson(null)}
+            onMediaClick={(id, type) => {
+                setSelectedPerson(null);
+                openModal(id, type);
+            }}
+            isDarkMode={isDarkMode}
           />
       )}
 
@@ -524,6 +560,7 @@ function AppContent() {
         isOpen={showSettings} 
         onClose={() => setShowSettings(false)} 
         onSave={handleSaveSettings}
+        onSystemSettingsChange={setSystemSettings}
         currentConfig={embyConfig}
         isDarkMode={isDarkMode}
         initialSelectedLibraries={selectedLibraryIds}

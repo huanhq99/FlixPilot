@@ -1,4 +1,3 @@
-
 import { TMDB_API_KEY, TMDB_BASE_URL, IMAGE_BASE_URL, BACKDROP_BASE_URL, PROVIDER_MAP, POSTER_COLORS, PLATFORM_BADGE_STYLES } from '../constants';
 import { MediaItem, Episode, Season } from '../types';
 
@@ -180,8 +179,8 @@ export const processMediaItem = (baseItem: any, detailData: any, mediaType: 'mov
         year: yearStr, // Use the correctly extracted year
         region: getRegionName(baseItem.original_language),
         voteAverage: baseItem.vote_average || 0,
-        posterUrl: baseItem.poster_path ? `${IMAGE_BASE_URL}${baseItem.poster_path}` : null,
-        backdropUrl: baseItem.backdrop_path ? `${BACKDROP_BASE_URL}${baseItem.backdrop_path}` : null,
+        posterUrl: (baseItem.poster_path || detailData.poster_path) ? `${IMAGE_BASE_URL}${baseItem.poster_path || detailData.poster_path}` : null,
+        backdropUrl: (baseItem.backdrop_path || detailData.backdrop_path) ? `${BACKDROP_BASE_URL}${baseItem.backdrop_path || detailData.backdrop_path}` : null,
         posterColor: POSTER_COLORS[Math.floor(Math.random() * POSTER_COLORS.length)],
         posterText: (title || 'N/A').substring(0, 2).toUpperCase(),
         
@@ -240,5 +239,51 @@ export const fetchSeasonDetails = async (tvId: number, seasonNumber: number) => 
     } catch (e) {
         console.error("Failed to fetch season details", e);
         return [];
+    }
+};
+
+// --- NEW FUNCTIONS FOR DASHBOARD ---
+
+export const fetchTrending = async (mediaType: 'all' | 'movie' | 'tv' = 'all', timeWindow: 'day' | 'week' = 'week') => {
+    try {
+        const response = await fetch(
+            `${TMDB_BASE_URL}/trending/${mediaType}/${timeWindow}?api_key=${TMDB_API_KEY}&language=zh-CN`
+        );
+        const data = await response.json();
+        const processed = data.results.map((item: any) => {
+            const type = item.media_type || (item.title ? 'movie' : 'tv');
+            return processMediaItem(item, {}, type);
+        });
+        return processed;
+    } catch (e) {
+        return [];
+    }
+};
+
+export const fetchDiscover = async (mediaType: 'movie' | 'tv', sortBy: string = 'popularity.desc', year?: string) => {
+    try {
+        let url = `${TMDB_BASE_URL}/discover/${mediaType}?api_key=${TMDB_API_KEY}&language=zh-CN&sort_by=${sortBy}&page=1`;
+        if (year) {
+            if (mediaType === 'movie') url += `&primary_release_year=${year}`;
+            else url += `&first_air_date_year=${year}`;
+        }
+        const response = await fetch(url);
+        const data = await response.json();
+        return data.results.map((item: any) => processMediaItem(item, {}, mediaType));
+    } catch (e) {
+        return [];
+    }
+};
+
+// --- PERSON DETAILS ---
+
+export const fetchPersonDetails = async (personId: number) => {
+    try {
+        const response = await fetch(
+            `${TMDB_BASE_URL}/person/${personId}?api_key=${TMDB_API_KEY}&language=zh-CN&append_to_response=combined_credits`
+        );
+        return await response.json();
+    } catch (e) {
+        return null;
     }
 };
