@@ -1,50 +1,54 @@
-# StreamHub - Global Media Monitor
+# StreamHub - Global Media Monitor 📺
 
-StreamHub 是一个现代化的影视媒体发现与追踪仪表盘，基于 React 和 Tailwind CSS 构建。它聚合了全球主流流媒体平台（Netflix, Disney+, Apple TV+ 等）的热门内容，提供优雅的浏览体验。
+StreamHub 是一个优雅、现代化的影视媒体发现与追踪平台。它不仅仅是一个海报墙，更是一个连接 Emby 媒体库与全球热门影视的桥梁。
 
-## ✨ 功能特性
+![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
+![React](https://img.shields.io/badge/React-19-61DAFB.svg)
+![Vite](https://img.shields.io/badge/Vite-5.0-646CFF.svg)
 
-- 🎬 **海量影视库**：基于 TMDB API，覆盖全球电影和剧集。
-- 🔍 **多维筛选**：支持按地区（华语、欧美、日韩等）、流媒体平台、类型、年份筛选。
-- 📱 **响应式设计**：完美适配桌面端、平板和移动端设备。
-- 🌗 **深色模式**：自动适配系统主题，支持手动切换。
-- 🚀 **Docker 部署**：提供 Docker 镜像和 Compose 文件，一键部署。
-- ⚡ **高性能**：基于 Vite 构建，秒级加载。
+## ✨ 核心亮点
 
-## 🛠️ 技术栈
+*   **🔥 全球热门聚合**: 实时同步 Netflix, Disney+, Apple TV+ 等主流平台的最新热门电影与剧集。
+*   **🔗 Emby 深度集成**: 
+    *   **智能比对**: 自动扫描您的 Emby 媒体库，在海报上标记 "已入库"，避免重复下载。
+    *   **一键跳转**: 已有的影片可直接跳转 Emby 客户端播放。
+*   **🙋‍♂️ 求片管理系统**: 
+    *   **用户点播**: 用户可浏览并提交 "求片" 请求。
+    *   **管理员审核**: 完善的后台管理面板，支持审核、拒绝、标记完成。
+    *   **即时通知**: 支持 Telegram Bot 推送，新请求和入库通知秒级触达。
+*   **🎨 极致 UI/UX**:
+    *   **类原生体验**: 丝滑的动画、骨架屏加载、响应式布局。
+    *   **个性化定制**: 支持深色模式、自定义网站标题与 Logo。
+    *   **系列与推荐**: 详情页自动聚合 "系列合集" 和 "猜你喜欢"。
+*   **🛡️ 安全与稳定**:
+    *   **纯前端架构**: 无需数据库，数据存储于本地 (LocalStorage)，安全隐私。
+    *   **数据备份**: 支持一键导出/导入所有配置数据。
+    *   **错误拦截**: 全局 Error Boundary 保护，杜绝白屏。
 
-- **前端框架**: React 19
-- **构建工具**: Vite
-- **语言**: TypeScript
-- **样式**: Tailwind CSS
-- **图标**: Lucide React
-- **数据源**: The Movie Database (TMDB)
+## 🚀 快速部署
 
-## ☁️ Cloudflare Pages 一键部署 (小白推荐)
+### 方式一：Cloudflare Pages (小白推荐 ☁️)
 
-无需服务器，免费部署，自动解决国内访问 TMDB API 的网络问题。
+无需服务器，零成本，自动解决 API 网络问题。
 
-1. **Fork 本项目**：点击右上角的 `Fork` 按钮，将项目复制到你的 GitHub 账号。
-2. **登录 Cloudflare**：进入 [Cloudflare Dashboard](https://dash.cloudflare.com/)，选择 `Workers & Pages` -> `Create Application` -> `Pages` -> `Connect to Git`。
-3. **选择仓库**：选择你刚才 Fork 的 `StreamHub` 仓库。
-4. **配置构建设置**：
-   - **Framework preset**: 选择 `Vite`
+1. **Fork** 本项目到你的 GitHub。
+2. 登录 [Cloudflare Pages](https://dash.cloudflare.com/) -> `Create Application` -> `Connect to Git`。
+3. 选择仓库，配置如下：
+   - **Framework preset**: `Vite`
    - **Build command**: `npm run build`
    - **Build output directory**: `dist`
-5. **设置环境变量** (Environment variables)：
-   - `VITE_TMDB_API_KEY`: 你的 TMDB API Key
-   - `VITE_TMDB_API_URL`: `/api` (设置为 `/api` 以启用 Cloudflare 代理功能)
-6. **点击部署** (Save and Deploy)。
+   - **Environment variables**:
+     - `VITE_TMDB_API_KEY`: 您的 TMDB API Key
+     - `VITE_TMDB_API_URL`: `/api` (启用 CF 代理)
+4. 点击 **Deploy**，即可获得免费域名访问。
 
-部署完成后，Cloudflare 会自动为你分配一个 `*.pages.dev` 的域名，即可直接访问！
+### 方式二：Docker 部署 (VPS 🐳)
 
-## 🐳 Docker 部署 (VPS)
-
-使用 Docker Compose 可以快速启动服务。
-
-1. 创建 `docker-compose.yml` 文件：
+适合有自己服务器的进阶用户。
 
 ```yaml
+version: '3'
 services:
   streamhub:
     image: ghcr.io/huanhq99/streamhub:latest
@@ -52,59 +56,31 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - TMDB_API_KEY=your_tmdb_api_key_here
-      - TMDB_API_URL=https://api.themoviedb.org/3
-      # 如果需要代理，取消注释以下行
-      # - HTTP_PROXY=http://proxy:7890
-      # - HTTPS_PROXY=http://proxy:7890
-    restart: always
+      - VITE_TMDB_API_KEY=your_key_here
+    restart: unless-stopped
 ```
 
-2. 启动服务：
+## 🛠️ 管理员指南
 
-```bash
-docker-compose up -d
-```
+### 首次设置
+1. 首次访问会自动跳转初始化页面，设置管理员账号。
+2. 进入设置面板 (`Settings`) -> `系统设置`，配置您的 Emby 地址和 API Key。
+3. (可选) 配置 Telegram Bot 以获取通知。
 
-访问 `http://localhost:3000` 即可使用。
+### 功能清单
+- [x] 瀑布流/列表视图切换
+- [x] 多维度筛选 (平台/年份/地区)
+- [x] 搜索与联想
+- [x] 详情页 (预告片/演员/推荐)
+- [x] Emby 库同步
+- [x] 求片系统
+- [x] 用户管理 (多用户支持)
+- [x] 数据备份与恢复
 
-## 💻 本地开发
+## 🤝 贡献与反馈
 
-1. 克隆项目：
-
-```bash
-git clone https://github.com/huanhq99/StreamHub.git
-cd StreamHub
-```
-
-2. 安装依赖：
-
-```bash
-npm install
-```
-
-3. 配置环境变量：
-
-复制 `.env.local` 示例并填入您的 TMDB API Key。
-
-```bash
-echo "VITE_TMDB_API_KEY=your_key_here" > .env.local
-```
-
-4. 启动开发服务器：
-
-```bash
-npm run dev
-```
-
-## ⚙️ 环境变量配置
-
-| 变量名 | 描述 | 默认值 |
-| :--- | :--- | :--- |
-| `TMDB_API_KEY` | TMDB API 密钥 (必填) | - |
-| `TMDB_API_URL` | TMDB API 地址 (可用于反代) | `https://api.themoviedb.org/3` |
-| `TMDB_IMAGE_URL` | 图片 CDN 地址 (可选) | `https://image.tmdb.org/t/p` |
+欢迎提交 Issue 或 Pull Request。如果您觉得本项目对您有帮助，请给一个 ⭐️ Star！
 
 ## 📄 许可证
 
-MIT License
+MIT License © 2024 StreamHub
