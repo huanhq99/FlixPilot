@@ -275,23 +275,27 @@ export const testMoviePilotConnection = async (config: NotificationConfig): Prom
                 headers: { 'Content-Type': 'application/json' }
             });
 
+            console.log(`Testing with query param: ${baseUrl}${endpoint}?token=...`);
+            
             if (response.ok) {
+                console.log(`✅ Success with query parameter on ${endpoint}`);
                 return { 
                     success: true, 
-                    message: `连接成功！\n端点: ${endpoint}\n认证方式: Query Parameter`,
+                    message: `连接成功！\n端点: ${endpoint}\n认证方式: Query Parameter (token=...)`,
                     method: 'Query Parameter'
                 };
-            } else if (response.status === 401 || response.status === 403) {
+            } else {
+                console.log(`Query param failed for ${endpoint}: ${response.status}`);
                 // 记录认证错误详情
-                try {
-                    const errorData = await response.json();
-                    const detail = errorData.detail || errorData.message || errorData.msg || 'Token 无效';
-                    if (!connectionError || !connectionError.includes('认证失败')) {
-                        connectionError = `认证失败 (${response.status}): ${detail}`;
-                    }
-                } catch {
-                    if (!connectionError || !connectionError.includes('认证失败')) {
-                        connectionError = `认证失败 (${response.status}): Token 无效或已过期`;
+                if (response.status === 401 || response.status === 403) {
+                    try {
+                        const errorData = await response.json();
+                        const detail = errorData.detail || errorData.message || errorData.msg || 'Token 无效';
+                        if (!connectionError || (!connectionError.includes('认证失败') && !connectionError.includes('Query Parameter'))) {
+                            connectionError = `认证失败 (${response.status}): ${detail}`;
+                        }
+                    } catch {
+                        // 继续
                     }
                 }
             }
