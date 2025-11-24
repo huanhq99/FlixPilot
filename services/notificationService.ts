@@ -138,23 +138,13 @@ export const testMoviePilotConnection = async (config: NotificationConfig): Prom
 
     const baseUrl = config.moviePilotUrl.replace(/\/$/, '');
     
-    // Try common endpoints (try both v1 and v2, and different path patterns for reverse proxy)
-    // 针对反代场景，尝试多种路径模式
+    // Try common endpoints - 优先使用 /api/v1/* 路径（反代通常配置了这个路径）
+    // 注意：从错误日志看，/v2/* 和 /v1/* 路径（没有 /api/ 前缀）会被 CORS 阻止
     const endpoints = [
-        '/api/v1/user/me', // Best for token validation
-        '/api/v2/user/me', // v2 version
-        '/api/v1/site/site_list', // Check sites list
-        '/api/v2/site/site_list', // v2 version
-        '/api/v1/system/status',
-        '/api/v2/system/status',
-        '/api/v1/system/version',
-        '/api/v2/system/version',
-        // 针对反代，可能 API 路径不同
-        '/v1/user/me',
-        '/v2/user/me',
-        '/v1/system/status',
-        '/v2/system/status',
-        '/api/v1/plugin/plugin_list',
+        '/api/v1/user/me', // Best for token validation - 优先尝试
+        '/api/v1/system/version', // 通常不需要特殊权限
+        '/api/v1/system/status', // 系统状态
+        '/api/v1/site/site_list', // Check sites list - 可能需要权限
     ];
 
     const authMethods = [
@@ -225,9 +215,11 @@ export const testMoviePilotConnection = async (config: NotificationConfig): Prom
                     }
                     
                     if (response.status === 401 || response.status === 403) {
-                        if (!connectionError || connectionError.includes('所有尝试均失败')) {
-                            connectionError = `认证失败 (${response.status})${errorDetail ? ': ' + errorDetail : ''}`;
+                        // 记录详细的认证错误信息
+                        if (!connectionError || connectionError.includes('所有尝试均失败') || !connectionError.includes('认证失败')) {
+                            connectionError = `认证失败 (${response.status})${errorDetail ? ': ' + errorDetail : ''}\n\n使用的 Token: ${cleanToken.substring(0, 10)}...\n\n请检查：\n1. Token 是否完整（复制时不要遗漏）\n2. Token 是否已过期或失效\n3. 在 MoviePilot 中重新生成 Token`;
                         }
+                        console.log(`认证失败 - 端点: ${endpoint}, 方式: ${authMethod.name}, 状态: ${response.status}, 详情: ${errorDetail}`);
                     } else if (response.status === 404) {
                         // 404 可能是路径不对，继续尝试其他路径
                         console.log(`Path not found (404): ${endpoint}`);
@@ -251,8 +243,10 @@ export const testMoviePilotConnection = async (config: NotificationConfig): Prom
         }
     }
 
-    // If all failed, try with query parameter
+    // If all failed, try with query parameter (only for /api/v1/* paths to avoid CORS)
     for (const endpoint of endpoints) {
+        if (!endpoint.startsWith('/api/v1/')) continue; // 只尝试 /api/v1/* 路径，避免 CORS
+        
         try {
             const response = await fetch(`${baseUrl}${endpoint}?token=${cleanToken}`, {
                 method: 'GET',
@@ -266,16 +260,21 @@ export const testMoviePilotConnection = async (config: NotificationConfig): Prom
                     method: 'Query Parameter'
                 };
             } else if (response.status === 401 || response.status === 403) {
-                // 记录认证错误
+                // 记录认证错误详情
                 try {
                     const errorData = await response.json();
-                    connectionError = `认证失败 (${response.status}): ${errorData.detail || errorData.message || 'Token 无效'}`;
+                    const detail = errorData.detail || errorData.message || errorData.msg || 'Token 无效';
+                    if (!connectionError || !connectionError.includes('认证失败')) {
+                        connectionError = `认证失败 (${response.status}): ${detail}`;
+                    }
                 } catch {
-                    connectionError = `认证失败 (${response.status}): Token 无效`;
+                    if (!connectionError || !connectionError.includes('认证失败')) {
+                        connectionError = `认证失败 (${response.status}): Token 无效或已过期`;
+                    }
                 }
             }
         } catch (e) {
-            // Continue
+            // Continue - 可能是 CORS 或其他网络错误
         }
     }
 
@@ -290,7 +289,8 @@ export const testMoviePilotConnection = async (config: NotificationConfig): Prom
         if (isCorsError || (!lastStatusCode && connectionError.includes('Failed to fetch'))) {
             diagnosticMessage = `⚠️ 跨域(CORS)限制问题\n\n从浏览器直接访问 MoviePilot 会被跨域策略阻止。\n\n解决方案：\n1. 在 MoviePilot 的反代配置中添加 CORS 头：\n   add_header 'Access-Control-Allow-Origin' '*' always;\n   add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;\n   add_header 'Access-Control-Allow-Headers' 'Authorization, X-API-Key, Content-Type' always;\n\n2. 或者在 MoviePilot 设置中配置允许跨域的域名\n\n3. 或者通过后端代理访问（需要后端支持）\n\n💡 提示：按 F12 打开浏览器控制台，查看 Network 标签的具体错误信息`;
         } else if (lastStatusCode === 401 || lastStatusCode === 403) {
-            diagnosticMessage = `服务在线，但认证失败 (${lastStatusCode})。\n\n${connectionError || '所有认证方式均失败'}\n\n反代场景特别提示：\n1. 确认反代服务器（Nginx/Caddy）已正确转发 /api 路径\n2. 确认反代配置包含必要的 Header 转发（Authorization, X-API-Key 等）\n3. 尝试重新生成 MoviePilot API Token\n4. 查看反代服务器日志，确认 API 请求是否正确转发`;
+            // 能返回 401/403，说明请求能到达服务器，CORS 没问题，但 Token 认证失败
+            diagnosticMessage = `🔐 Token 认证失败 (${lastStatusCode})\n\n${connectionError || '所有认证方式均失败'}\n\n📝 诊断：\n请求能到达 MoviePilot 服务器，但 Token 验证失败。\n\n✅ 解决步骤：\n1. 登录 MoviePilot (${baseUrl})\n2. 进入"设置" → "API密钥"或"安全设置"\n3. 重新生成 API Token\n4. 完整复制新 Token（不要有空格）\n5. 粘贴到 StreamHub 设置中\n\n🔍 如果重新生成 Token 后还是失败：\n- 检查反代配置是否正确转发 Authorization Header\n- 查看 MoviePilot 日志确认 API 请求详情\n- 确认 Token 权限是否足够`;
         } else if (lastStatusCode === 404) {
             diagnosticMessage = `服务在线，但 API 路径未找到 (404)。\n\n可能原因：\n1. 反代配置中 API 路径未正确配置\n2. MoviePilot 的 API 路径可能与预期不同\n3. 建议检查反代服务器配置，确保 /api/* 路径正确转发到 MoviePilot 服务\n\n尝试的路径: ${lastErrorUrl || '未知'}`;
         } else {
