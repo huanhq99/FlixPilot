@@ -5,9 +5,6 @@ import {
 import { MediaItem, Episode, AuthState } from '../types';
 import { IMAGE_BASE_URL, PROFILE_BASE_URL } from '../constants';
 import { fetchSeasonDetails, fetchCollectionDetails, fetchRecommendations, processMediaItem } from '../services/tmdbService';
-import { subscribeToMoviePilot } from '../services/notificationService';
-import { storage, STORAGE_KEYS } from '../utils/storage';
-import { useToast } from './Toast';
 
 interface DetailModalProps {
     selectedMedia: MediaItem;
@@ -20,7 +17,6 @@ interface DetailModalProps {
 }
 
 const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDarkMode, embyLibrary, authState, onRequest, onPersonClick }) => {
-    const toast = useToast();
     const isStreaming = selectedMedia.status === 'streaming';
     const isReleased = selectedMedia.status === 'released';
     const isTV = selectedMedia.mediaType === 'tv';

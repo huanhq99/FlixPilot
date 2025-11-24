@@ -22,6 +22,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
     
     // Library State
     const [url, setUrl] = useState(currentConfig.serverUrl);
+    const [urlInternal, setUrlInternal] = useState(currentConfig.serverUrlInternal || '');
+    const [urlExternal, setUrlExternal] = useState(currentConfig.serverUrlExternal || '');
     const [apiKey, setApiKey] = useState(currentConfig.apiKey);
     const [status, setStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
     const [syncProgress, setSyncProgress] = useState(0);
@@ -53,8 +55,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
 
     useEffect(() => {
         if (isOpen) {
-            setUrl(currentConfig.serverUrl);
-            setApiKey(currentConfig.apiKey);
+            setUrl(currentConfig.serverUrl || '');
+            setUrlInternal(currentConfig.serverUrlInternal || '');
+            setUrlExternal(currentConfig.serverUrlExternal || '');
+            setApiKey(currentConfig.apiKey || '');
             setStatus('idle');
             setSyncProgress(0);
             setSyncStatusText('');
@@ -111,14 +115,30 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
     }, [activeTab]);
 
     const handleConnect = async () => {
-        if (!url || !apiKey) return;
-        setStatus('testing');
-        const config = { serverUrl: url, apiKey };
-        const isValid = await validateEmbyConnection(config);
-        setStatus(isValid ? 'success' : 'error');
+        if (!apiKey) return;
+        // 至少需要一个地址
+        if (!url && !urlInternal && !urlExternal) {
+            toast.showToast('请至少填写一个服务器地址', 'warning');
+            return;
+        }
         
-        if (isValid) {
+        setStatus('testing');
+        const config: EmbyConfig = { 
+            serverUrl: url || urlInternal || urlExternal || '', // 向后兼容
+            serverUrlInternal: urlInternal || undefined,
+            serverUrlExternal: urlExternal || undefined,
+            apiKey 
+        };
+        const result = await validateEmbyConnection(config);
+        setStatus(result.success ? 'success' : 'error');
+        
+        if (result.success) {
             loadLibraries(config);
+            if (result.url) {
+                toast.showToast(`连接成功！使用地址: ${result.url}`, 'success');
+            }
+        } else {
+            toast.showToast(result.error || '连接失败', 'error');
         }
     };
 
@@ -136,7 +156,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
         setIsSyncing(true);
         setSyncProgress(0);
         
-        const newConfig = { serverUrl: url, apiKey };
+        const newConfig: EmbyConfig = { 
+            serverUrl: url || urlInternal || urlExternal || '',
+            serverUrlInternal: urlInternal || undefined,
+            serverUrlExternal: urlExternal || undefined,
+            apiKey 
+        };
         
         const { ids } = await fetchEmbyLibrary(newConfig, (current, total, text) => {
             setSyncStatusText(text);
@@ -396,7 +421,35 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
                             <div className="max-w-xl space-y-8">
                                 <div className="space-y-4">
                                     <div className="space-y-2">
-                                        <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>服务器地址</label>
+                                        <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
+                                            内网地址（优先）
+                                        </label>
+                                        <input 
+                                            type="text" 
+                                            value={urlInternal}
+                                            onChange={(e) => setUrlInternal(e.target.value)}
+                                            placeholder="http://192.168.1.10:8096"
+                                            className={`w-full p-3 rounded-xl border outline-none transition-all font-mono text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
+                                        />
+                                        <p className="text-xs opacity-60">同一局域网内访问，速度更快（可选）</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
+                                            外网地址
+                                        </label>
+                                        <input 
+                                            type="text" 
+                                            value={urlExternal}
+                                            onChange={(e) => setUrlExternal(e.target.value)}
+                                            placeholder="https://emby.example.com"
+                                            className={`w-full p-3 rounded-xl border outline-none transition-all font-mono text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
+                                        />
+                                        <p className="text-xs opacity-60">公网访问地址（可选）</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
+                                            默认地址（向后兼容）
+                                        </label>
                                         <input 
                                             type="text" 
                                             value={url}
@@ -404,6 +457,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
                                             placeholder="http://192.168.1.10:8096"
                                             className={`w-full p-3 rounded-xl border outline-none transition-all font-mono text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
                                         />
+                                        <p className="text-xs opacity-60">如果没有填写内网/外网地址，将使用此地址</p>
                                     </div>
                                     <div className="space-y-2">
                                         <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>API 密钥 (API Key)</label>
@@ -438,7 +492,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
                                     <div className="flex gap-3">
                                         <button 
                                             onClick={handleConnect}
-                                            disabled={status === 'testing' || !url || !apiKey}
+                                            disabled={status === 'testing' || !apiKey || (!url && !urlInternal && !urlExternal)}
                                             className={`px-6 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 transition-all ${
                                                 status === 'success' 
                                                 ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' 

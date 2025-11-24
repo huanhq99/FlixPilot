@@ -1,5 +1,51 @@
 import { EmbyConfig, EmbyItem, EmbyUser } from '../types';
 
+// 获取有效的服务器地址列表（按优先级排序）
+const getServerUrls = (config: EmbyConfig): string[] => {
+    const urls: string[] = [];
+    
+    // 优先尝试内网地址（通常更快）
+    if (config.serverUrlInternal) {
+        urls.push(config.serverUrlInternal);
+    }
+    
+    // 然后尝试主地址（向后兼容）
+    if (config.serverUrl) {
+        urls.push(config.serverUrl);
+    }
+    
+    // 最后尝试外网地址
+    if (config.serverUrlExternal) {
+        urls.push(config.serverUrlExternal);
+    }
+    
+    // 去重并清理
+    return [...new Set(urls.map(url => url.replace(/\/$/, '')))];
+};
+
+// 尝试连接多个地址，返回第一个成功的
+const tryMultipleUrls = async <T>(
+    urls: string[],
+    requestFn: (url: string) => Promise<T>
+): Promise<{ success: true, data: T, url: string } | { success: false, error: string }> => {
+    const errors: string[] = [];
+    
+    for (const url of urls) {
+        try {
+            const data = await requestFn(url);
+            return { success: true, data, url };
+        } catch (e: any) {
+            errors.push(`${url}: ${e.message}`);
+            console.warn(`Failed to connect to ${url}:`, e.message);
+        }
+    }
+    
+    return { 
+        success: false, 
+        error: `所有地址均无法连接：\n${errors.join('\n')}` 
+    };
+};
+
 export const loginEmby = async (serverUrl: string, username: string, password?: string): Promise<{ user: EmbyUser, accessToken: string } | null> => {
     try {
         const baseUrl = serverUrl.replace(/\/$/, '');
@@ -30,23 +76,44 @@ export const loginEmby = async (serverUrl: string, username: string, password?: 
     }
 };
 
-export const validateEmbyConnection = async (config: EmbyConfig): Promise<boolean> => {
-    try {
-        const baseUrl = config.serverUrl.replace(/\/$/, '');
-        const response = await fetch(`${baseUrl}/System/Info?api_key=${config.apiKey}`);
-        return response.ok;
-    } catch (e) {
-        console.error("Emby connection failed", e);
-        return false;
+export const validateEmbyConnection = async (config: EmbyConfig): Promise<{ success: boolean, url?: string, error?: string }> => {
+    const urls = getServerUrls(config);
+    
+    if (urls.length === 0) {
+        return { success: false, error: '未配置服务器地址' };
+    }
+    
+    const result = await tryMultipleUrls(urls, async (baseUrl) => {
+        const response = await fetch(`${baseUrl}/System/Info?api_key=${config.apiKey}`, {
+            method: 'GET',
+            signal: AbortSignal.timeout(5000) // 5秒超时
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response;
+    });
+    
+    if (result.success) {
+        console.log(`Emby 连接成功，使用地址: ${result.url}`);
+        return { success: true, url: result.url };
+    } else {
+        console.error("Emby connection failed:", result.error);
+        return { success: false, error: result.error };
     }
 };
 
 export const getEmbyUsers = async (config: EmbyConfig): Promise<EmbyUser[]> => {
     try {
-        const baseUrl = config.serverUrl.replace(/\/$/, '');
-        const response = await fetch(`${baseUrl}/Users?api_key=${config.apiKey}`);
-        if (!response.ok) return [];
-        return await response.json();
+        const urls = getServerUrls(config);
+        const result = await tryMultipleUrls(urls, async (baseUrl) => {
+            const response = await fetch(`${baseUrl}/Users?api_key=${config.apiKey}`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return await response.json();
+        });
+        
+        if (result.success) {
+            return result.data;
+        }
+        return [];
     } catch (e) {
         console.error("Failed to fetch Emby users", e);
         return [];
@@ -55,10 +122,17 @@ export const getEmbyUsers = async (config: EmbyConfig): Promise<EmbyUser[]> => {
 
 export const fetchEmbyLibraries = async (config: EmbyConfig): Promise<any[]> => {
     try {
-        const baseUrl = config.serverUrl.replace(/\/$/, '');
-        const response = await fetch(`${baseUrl}/Library/VirtualFolders?api_key=${config.apiKey}`);
-        if (!response.ok) throw new Error('Failed to fetch libraries');
-        return await response.json();
+        const urls = getServerUrls(config);
+        const result = await tryMultipleUrls(urls, async (baseUrl) => {
+            const response = await fetch(`${baseUrl}/Library/VirtualFolders?api_key=${config.apiKey}`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return await response.json();
+        });
+        
+        if (result.success) {
+            return result.data;
+        }
+        throw new Error('Failed to fetch libraries');
     } catch (e) {
         console.error("Failed to fetch Emby libraries", e);
         return [];
@@ -94,7 +168,24 @@ export const fetchEmbyLibrary = async (
     selectedLibraries?: string[]
 ): Promise<{ ids: Set<string>, items: EmbyItem[] }> => {
     try {
-        const baseUrl = config.serverUrl.replace(/\/$/, '');
+        const urls = getServerUrls(config);
+        if (urls.length === 0) {
+            throw new Error('未配置服务器地址');
+        }
+        
+        // 先尝试连接，找到可用的地址
+        if (onProgress) onProgress(0, 0, '正在尝试连接服务器...');
+        
+        let baseUrl = '';
+        const connectionResult = await validateEmbyConnection(config);
+        if (connectionResult.success && connectionResult.url) {
+            baseUrl = connectionResult.url;
+        } else {
+            // 如果验证失败，尝试直接使用第一个地址
+            baseUrl = urls[0];
+        }
+        
+        console.log(`使用 Emby 地址: ${baseUrl}`);
         
         // Determine which parents to query
         // If selectedLibraries is empty or undefined, we query "all" (parentId = null)

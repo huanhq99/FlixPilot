@@ -28,11 +28,13 @@ const Login: React.FC<LoginProps> = ({ onLogin, isDarkMode }) => {
     // Check if system is initialized
     useEffect(() => {
         try {
-            const users = storage.get(STORAGE_KEYS.USERS, null);
-            if (!users) {
-                setMode('setup');
-            } else {
+            const users = storage.get(STORAGE_KEYS.USERS, []);
+            // 如果有用户，默认显示登录界面；否则显示创建界面
+            // 但用户可以在两种模式间切换
+            if (users && users.length > 0) {
                 setMode('login');
+            } else {
+                setMode('setup');
             }
         } catch (e) {
             setMode('setup');
@@ -286,28 +288,42 @@ const Login: React.FC<LoginProps> = ({ onLogin, isDarkMode }) => {
                         {mode === 'setup' ? '创建管理员账户' : '登录'}
                     </button>
 
-                    {mode === 'login' && (
-                        <div className="relative my-6">
-                            <div className="absolute inset-0 flex items-center">
-                                <div className={`w-full border-t ${isDarkMode ? 'border-zinc-800' : 'border-slate-200'}`}></div>
-                            </div>
-                            <div className="relative flex justify-center text-xs uppercase">
-                                <span className={`px-2 ${isDarkMode ? 'bg-[#18181b] text-zinc-500' : 'bg-white text-slate-500'}`}>
-                                    或者
-                                </span>
-                            </div>
-                        </div>
-                    )}
-
-                    {mode === 'login' && (
+                    {/* Mode Switcher */}
+                    <div className="text-center">
                         <button
                             type="button"
-                            onClick={handleGuestLogin}
-                            className={`w-full py-3 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 ${isDarkMode ? 'bg-zinc-800 hover:bg-zinc-700 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-900'}`}
+                            onClick={() => {
+                                setMode(mode === 'login' ? 'setup' : 'login');
+                                setError('');
+                            }}
+                            className={`text-xs ${isDarkMode ? 'text-zinc-400 hover:text-indigo-400' : 'text-slate-500 hover:text-indigo-600'} transition-colors`}
                         >
-                            <Ghost size={20} />
-                            游客访问
+                            {mode === 'login' ? '还没有账户？创建账户' : '已有账户？去登录'}
                         </button>
+                    </div>
+
+                    {mode === 'login' && (
+                        <>
+                            <div className="relative my-6">
+                                <div className="absolute inset-0 flex items-center">
+                                    <div className={`w-full border-t ${isDarkMode ? 'border-zinc-800' : 'border-slate-200'}`}></div>
+                                </div>
+                                <div className="relative flex justify-center text-xs uppercase">
+                                    <span className={`px-2 ${isDarkMode ? 'bg-[#18181b] text-zinc-500' : 'bg-white text-slate-500'}`}>
+                                        或者
+                                    </span>
+                                </div>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={handleGuestLogin}
+                                className={`w-full py-3 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 ${isDarkMode ? 'bg-zinc-800 hover:bg-zinc-700 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-900'}`}
+                            >
+                                <Ghost size={20} />
+                                游客访问
+                            </button>
+                        </>
                     )}
                 </form>
             </div>

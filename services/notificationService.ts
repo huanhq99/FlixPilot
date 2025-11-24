@@ -140,26 +140,41 @@ export const testMoviePilotConnection = async (config: NotificationConfig): Prom
     
     // Try common endpoints
     const endpoints = [
-        '/api/v1/system/info',
-        '/api/v1/system/version',
-        '/api/system/info',
-        '/api/system/version',
-        '/system/info',
+        '/api/v1/user/me', // Best for token validation
+        '/api/v1/site/site_list', // Check sites list
+        '/api/v1/system/status',
+        '/api/v1/plugin/plugin_list',
     ];
 
     const authMethods = [
         { name: 'Bearer Token', header: 'Authorization', value: `Bearer ${config.moviePilotToken}` },
-        { name: 'X-API-Key', header: 'X-API-Key', value: config.moviePilotToken },
-        { name: 'Authorization (no Bearer)', header: 'Authorization', value: config.moviePilotToken },
+        { name: 'Authorization (raw)', header: 'Authorization', value: config.moviePilotToken },
+        { name: 'token Header', header: 'token', value: config.moviePilotToken },
     ];
+
+    // Clean token - remove any whitespace
+    const cleanToken = config.moviePilotToken.trim();
+
+    // 0. Basic Connectivity Check (No Auth)
+    try {
+        console.log(`Testing connectivity to: ${baseUrl}`);
+        await fetch(`${baseUrl}/api/v1/system/status`, { method: 'GET' }).catch(() => {});
+        // We don't care about the result, just warming up / checking DNS
+    } catch (e) {
+        console.warn('Basic connectivity check failed:', e);
+    }
+
+    let connectionError = '';
 
     for (const endpoint of endpoints) {
         for (const authMethod of authMethods) {
             try {
                 const headers: Record<string, string> = {
                     'Content-Type': 'application/json',
-                    [authMethod.header]: authMethod.value
+                    [authMethod.header]: authMethod.value.replace(config.moviePilotToken, cleanToken)
                 };
+
+                console.log(`Testing MP connection: ${baseUrl}${endpoint} with ${authMethod.name}`);
 
                 const response = await fetch(`${baseUrl}${endpoint}`, {
                     method: 'GET',
@@ -169,12 +184,23 @@ export const testMoviePilotConnection = async (config: NotificationConfig): Prom
                 if (response.ok) {
                     return { 
                         success: true, 
-                        message: `连接成功！使用端点: ${endpoint}，认证方式: ${authMethod.name}`,
+                        message: `连接成功！\n端点: ${endpoint}\n认证方式: ${authMethod.name}`,
                         method: authMethod.name
                     };
+                } else {
+                    if (response.status === 401 || response.status === 403) {
+                        connectionError = `认证失败 (${response.status})。请检查 Token 是否正确。`;
+                    } else {
+                        connectionError = `服务器返回错误: ${response.status} ${response.statusText}`;
+                    }
                 }
-            } catch (e) {
-                // Continue to next method
+            } catch (e: any) {
+                console.error(`MP Test failed for ${endpoint} ${authMethod.name}`, e);
+                if (e.name === 'TypeError' && e.message.includes('Failed to fetch')) {
+                    connectionError = '无法连接到服务器。可能是跨域(CORS)限制、地址错误或网络不通。请尝试在 MoviePilot 设置中允许跨域，或使用反向代理。';
+                } else {
+                    connectionError = `请求出错: ${e.message}`;
+                }
             }
         }
     }
@@ -182,7 +208,7 @@ export const testMoviePilotConnection = async (config: NotificationConfig): Prom
     // If all failed, try with query parameter
     for (const endpoint of endpoints) {
         try {
-            const response = await fetch(`${baseUrl}${endpoint}?token=${config.moviePilotToken}`, {
+            const response = await fetch(`${baseUrl}${endpoint}?token=${cleanToken}`, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -190,7 +216,7 @@ export const testMoviePilotConnection = async (config: NotificationConfig): Prom
             if (response.ok) {
                 return { 
                     success: true, 
-                    message: `连接成功！使用端点: ${endpoint}，认证方式: Query Parameter`,
+                    message: `连接成功！\n端点: ${endpoint}\n认证方式: Query Parameter`,
                     method: 'Query Parameter'
                 };
             }
@@ -201,7 +227,7 @@ export const testMoviePilotConnection = async (config: NotificationConfig): Prom
 
     return { 
         success: false, 
-        message: '无法连接到 MoviePilot，请检查：\n1. 地址是否正确（如 http://192.168.1.10:3000）\n2. Token 是否正确\n3. MoviePilot 服务是否运行中' 
+        message: `连接失败: ${connectionError || '所有尝试均失败'}\n\n请检查：\n1. Token 是否正确 (尝试重新生成)\n2. 地址是否包含 /api (不应包含)\n3. 是否存在跨域问题 (CORS)` 
     };
 };
 
@@ -211,78 +237,79 @@ export const subscribeToMoviePilot = async (config: NotificationConfig, item: Me
     }
 
     const baseUrl = config.moviePilotUrl.replace(/\/$/, '');
-    const endpoint = '/api/v1/subscribe'; // Adjust based on actual MoviePilot API
+    // Determine endpoint based on type
+    const endpoint = item.mediaType === 'movie' 
+        ? '/api/v1/subscribe/movie' 
+        : '/api/v1/subscribe/tv';
     
+    const cleanToken = config.moviePilotToken.trim();
+
     // MoviePilot Payload Structure
     const payload = {
         name: item.title,
         year: item.year,
-        type: item.mediaType === 'movie' ? '电影' : '电视剧',
         tmdbid: item.id,
-        doubanid: '', // Optional
-        season: item.mediaType === 'tv' ? 1 : undefined, // Default to Season 1 for new TV requests
+        season: item.mediaType === 'tv' ? 1 : undefined, // Default to Season 1
     };
 
+    console.log('Subscribing to MP:', `${baseUrl}${endpoint}`, payload);
+
     try {
-        // Try multiple authentication methods
-        // Method 1: Bearer token (most common)
-        let headers: Record<string, string> = {
-            'Content-Type': 'application/json',
-        };
+        // Try multiple authentication methods in sequence
+        // This is a bit brute-force but ensures compatibility
         
-        // Try Bearer first, if fails, try X-API-Key
-        headers['Authorization'] = `Bearer ${config.moviePilotToken}`;
-        
-        let response = await fetch(`${baseUrl}${endpoint}`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(payload)
-        });
+        const methods = [
+            { headers: { 'Authorization': `Bearer ${cleanToken}` } },
+            { headers: { 'Authorization': cleanToken } },
+            { headers: { 'token': cleanToken } },
+            { param: `token=${cleanToken}` } // Fallback to query param
+        ];
 
-        // If 403, try X-API-Key header instead
-        if (response.status === 403) {
-            headers = {
-                'Content-Type': 'application/json',
-                'X-API-Key': config.moviePilotToken
-            };
-            response = await fetch(`${baseUrl}${endpoint}`, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify(payload)
-            });
-        }
+        let lastError = 'Unknown error';
 
-        // If still 403, try query parameter
-        if (response.status === 403) {
-            headers = {
-                'Content-Type': 'application/json'
-            };
-            response = await fetch(`${baseUrl}${endpoint}?token=${config.moviePilotToken}`, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify(payload)
-            });
-        }
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            let errorMsg = errorText;
+        for (const method of methods) {
             try {
-                const errorJson = JSON.parse(errorText);
-                errorMsg = errorJson.detail || errorJson.message || errorText;
-            } catch {
-                // Keep original error text
+                let url = `${baseUrl}${endpoint}`;
+                let options: RequestInit = {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(method.headers || {})
+                    },
+                    body: JSON.stringify(payload)
+                };
+
+                if (method.param) {
+                    url += `?${method.param}`;
+                }
+
+                const response = await fetch(url, options);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success || data.code === 0) {
+                        return { success: true, message: '已成功添加到 MoviePilot 订阅' };
+                    } else {
+                        return { success: false, message: data.message || data.detail || 'MoviePilot 返回错误' };
+                    }
+                } else {
+                    const text = await response.text();
+                    try {
+                        const json = JSON.parse(text);
+                        lastError = json.detail || json.message || `HTTP ${response.status}`;
+                    } catch {
+                        lastError = `HTTP ${response.status}: ${text.substring(0, 50)}`;
+                    }
+                    // Don't throw, try next method
+                    console.warn(`MP Subscribe failed with method ${JSON.stringify(method)}: ${lastError}`);
+                }
+            } catch (e: any) {
+                lastError = e.message;
+                console.error(`MP Subscribe network error with method ${JSON.stringify(method)}:`, e);
             }
-            throw new Error(`HTTP ${response.status}: ${errorMsg}`);
         }
 
-        const data = await response.json();
-        
-        if (data.success || data.code === 0 || response.status === 200) {
-             return { success: true, message: '已成功推送到 MoviePilot 订阅' };
-        } else {
-             return { success: false, message: data.message || data.detail || 'MoviePilot 返回未知错误' };
-        }
+        return { success: false, message: `订阅失败: ${lastError}` };
 
     } catch (e: any) {
         console.error('MoviePilot Subscription Failed:', e);

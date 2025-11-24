@@ -78,7 +78,9 @@ export interface FilterState {
 }
 
 export interface EmbyConfig {
-  serverUrl: string;
+  serverUrl: string; // 保留向后兼容，默认使用第一个地址
+  serverUrlInternal?: string; // 内网地址，如 http://192.168.1.10:8096
+  serverUrlExternal?: string; // 外网地址，如 https://emby.example.com
   apiKey: string;
   userId?: string;
 }
