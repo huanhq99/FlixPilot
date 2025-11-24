@@ -14,11 +14,13 @@ import {
   LogOut,
   User as UserIcon
 } from 'lucide-react';
+import { Toaster, toast } from 'sonner';
 import { TMDB_API_KEY, TMDB_BASE_URL } from './constants';
 import { MediaItem, FilterState, EmbyConfig, AuthState } from './types';
 import { processMediaItem, fetchDetails } from './services/tmdbService';
 import { fetchEmbyLibrary } from './services/embyService';
 import { sendTelegramNotification } from './services/notificationService';
+import { useAuth } from './hooks/useAuth';
 import Filters from './components/Filters';
 import MediaCard from './components/MediaCard';
 import DetailModal from './components/DetailModal';
@@ -38,36 +40,45 @@ export default function App() {
   });
 
   // Auth State
-  const [authState, setAuthState] = useState<AuthState>(() => {
-      const saved = localStorage.getItem('streamhub_auth');
-      return saved ? JSON.parse(saved) : {
-          isAuthenticated: false,
-          user: null,
-          serverUrl: '',
-          accessToken: '',
-          isAdmin: false,
-          isGuest: false
-      };
-  });
+  const { authState, login, logout, setAuthState } = useAuth();
 
   // Emby State
   const [showSettings, setShowSettings] = useState(false);
   const [embyConfig, setEmbyConfig] = useState<EmbyConfig>(() => {
-      // If authenticated, use the auth session
-      const savedAuth = localStorage.getItem('streamhub_auth');
-      if (savedAuth) {
-          const auth = JSON.parse(savedAuth);
-          return { serverUrl: auth.serverUrl, apiKey: auth.accessToken };
+      try {
+          // If authenticated, use the auth session
+          const savedAuth = localStorage.getItem('streamhub_auth');
+          if (savedAuth) {
+              const auth = JSON.parse(savedAuth);
+              return { serverUrl: auth.serverUrl || '', apiKey: auth.accessToken || '' };
+          }
+          // Fallback to legacy config or empty
+          const saved = localStorage.getItem('embyConfig');
+          return saved ? JSON.parse(saved) : { serverUrl: '', apiKey: '' };
+      } catch (e) {
+          console.error('Failed to parse emby config', e);
+          return { serverUrl: '', apiKey: '' };
       }
-      // Fallback to legacy config or empty
-      const saved = localStorage.getItem('embyConfig');
-      return saved ? JSON.parse(saved) : { serverUrl: '', apiKey: '' };
   });
   const [embyLibrary, setEmbyLibrary] = useState<Set<string>>(() => {
-      const saved = localStorage.getItem('emby_library_cache');
-      return saved ? new Set(JSON.parse(saved)) : new Set();
+      try {
+          const saved = localStorage.getItem('emby_library_cache');
+          return saved ? new Set(JSON.parse(saved)) : new Set();
+      } catch (e) {
+          return new Set();
+      }
   });
   const [syncingEmby, setSyncingEmby] = useState(false);
+
+  // System Settings State
+  const [systemSettings, setSystemSettings] = useState(() => {
+      try {
+          const saved = localStorage.getItem('streamhub_settings');
+          return saved ? JSON.parse(saved) : { scanInterval: 15 };
+      } catch (e) {
+          return { scanInterval: 15 };
+      }
+  });
 
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -95,8 +106,7 @@ export default function App() {
 
   // Handle Login
   const handleLogin = (auth: AuthState) => {
-      setAuthState(auth);
-      localStorage.setItem('streamhub_auth', JSON.stringify(auth));
+      login(auth);
       
       if (!auth.isGuest) {
           const newConfig = { serverUrl: auth.serverUrl, apiKey: auth.accessToken };
@@ -109,16 +119,7 @@ export default function App() {
   };
 
   const handleLogout = () => {
-      const emptyAuth = {
-          isAuthenticated: false,
-          user: null,
-          serverUrl: '',
-          accessToken: '',
-          isAdmin: false,
-          isGuest: false
-      };
-      setAuthState(emptyAuth);
-      localStorage.removeItem('streamhub_auth');
+      logout();
       setEmbyLibrary(new Set());
   };
 
@@ -130,9 +131,18 @@ export default function App() {
   }, []); // Run once on mount if already logged in
 
   const checkRequestsStatus = (ids: Set<string>) => {
-      const existingRequests = JSON.parse(localStorage.getItem('requests') || '[]');
+      let existingRequests = [];
+      try {
+          existingRequests = JSON.parse(localStorage.getItem('requests') || '[]');
+      } catch (e) {
+          existingRequests = [];
+      }
+
       let requestsChanged = false;
-      const notifyConfig = JSON.parse(localStorage.getItem('streamhub_notifications') || '{}');
+      let notifyConfig: any = {};
+      try {
+          notifyConfig = JSON.parse(localStorage.getItem('streamhub_notifications') || '{}');
+      } catch (e) { /* ignore */ }
 
       const updatedRequests = existingRequests.map((req: any) => {
           if (req.status === 'pending') {
@@ -172,7 +182,11 @@ export default function App() {
           
           // Send notifications for newItems
           if (newItems.length > 0) {
-              const notifyConfig = JSON.parse(localStorage.getItem('streamhub_notifications') || '{}');
+              let notifyConfig: any = {};
+              try {
+                  notifyConfig = JSON.parse(localStorage.getItem('streamhub_notifications') || '{}');
+              } catch (e) { /* ignore */ }
+
               if (notifyConfig.telegramBotToken && notifyConfig.telegramChatId) {
                   for (const item of newItems) {
                       try {
@@ -205,16 +219,19 @@ export default function App() {
       setSyncingEmby(false);
   };
 
-  // Auto Scan Interval (Every 15 minutes)
+  // Auto Scan Interval
   useEffect(() => {
       if (!authState.isAuthenticated || !embyConfig.serverUrl) return;
       
+      // Minimum 1 minute, default 15
+      const intervalMinutes = Math.max(1, systemSettings.scanInterval || 15);
+      
       const interval = setInterval(() => {
           syncEmbyLibrary(embyConfig, true);
-      }, 15 * 60 * 1000); 
+      }, intervalMinutes * 60 * 1000); 
 
       return () => clearInterval(interval);
-  }, [authState.isAuthenticated, embyConfig]);
+  }, [authState.isAuthenticated, embyConfig, systemSettings.scanInterval]);
 
   const handleSaveSettings = (newConfig: EmbyConfig, library?: Set<string>) => {
       setEmbyConfig(newConfig);
@@ -227,8 +244,7 @@ export default function App() {
               serverUrl: newConfig.serverUrl,
               accessToken: newConfig.apiKey
           };
-          setAuthState(newAuth);
-          localStorage.setItem('streamhub_auth', JSON.stringify(newAuth));
+          login(newAuth);
       }
 
       if (library) {
@@ -242,11 +258,16 @@ export default function App() {
 
   const handleRequest = (item: MediaItem) => {
       // Simple request logic for now
-      const existingRequests = JSON.parse(localStorage.getItem('requests') || '[]');
+      let existingRequests = [];
+      try {
+          existingRequests = JSON.parse(localStorage.getItem('requests') || '[]');
+      } catch (e) {
+           existingRequests = [];
+      }
       const isRequested = existingRequests.some((r: any) => r.id === item.id && r.mediaType === item.mediaType);
       
       if (isRequested) {
-          alert('您已经提交过此请求');
+          toast.error('您已经提交过此请求');
           return;
       }
 
@@ -261,13 +282,17 @@ export default function App() {
       localStorage.setItem('requests', JSON.stringify(updatedRequests));
 
       // Send Notification
-      const notifyConfig = JSON.parse(localStorage.getItem('streamhub_notifications') || '{}');
+      let notifyConfig: any = {};
+      try {
+          notifyConfig = JSON.parse(localStorage.getItem('streamhub_notifications') || '{}');
+      } catch (e) { /* ignore */ }
+      
       if (notifyConfig.telegramBotToken && notifyConfig.telegramChatId) {
           sendTelegramNotification(notifyConfig, item, authState.user?.Name || 'Guest')
             .catch(err => console.error('Failed to send notification', err));
       }
 
-      alert('请求已提交！管理员审核后将自动下载。');
+      toast.success('请求已提交！管理员审核后将自动下载。');
   };
 
   useEffect(() => {
@@ -478,8 +503,9 @@ export default function App() {
 
   return (
     <div className="min-h-screen font-sans selection:bg-indigo-500/30 pb-20">
+      <Toaster richColors position="top-center" theme={isDarkMode ? 'dark' : 'light'} />
       {selectedMedia && (
-          <DetailModal 
+          <DetailModal  
             selectedMedia={selectedMedia} 
             onClose={() => setSelectedMedia(null)} 
             isDarkMode={isDarkMode}
@@ -493,6 +519,7 @@ export default function App() {
         isOpen={showSettings} 
         onClose={() => setShowSettings(false)} 
         onSave={handleSaveSettings}
+        onSystemSettingsChange={setSystemSettings}
         currentConfig={embyConfig}
         isDarkMode={isDarkMode}
       />

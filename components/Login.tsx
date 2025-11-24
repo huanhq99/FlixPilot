@@ -26,11 +26,15 @@ const Login: React.FC<LoginProps> = ({ onLogin, isDarkMode }) => {
 
     // Check if system is initialized
     useEffect(() => {
-        const users = localStorage.getItem('streamhub_users');
-        if (!users) {
+        try {
+            const users = localStorage.getItem('streamhub_users');
+            if (!users) {
+                setMode('setup');
+            } else {
+                setMode('login');
+            }
+        } catch (e) {
             setMode('setup');
-        } else {
-            setMode('login');
         }
     }, []);
 
@@ -117,8 +121,14 @@ const Login: React.FC<LoginProps> = ({ onLogin, isDarkMode }) => {
 
         try {
             // 1. Check Local Users
-            const usersStr = localStorage.getItem('streamhub_users');
-            const users = usersStr ? JSON.parse(usersStr) : [];
+            let users: any[] = [];
+            try {
+                const usersStr = localStorage.getItem('streamhub_users');
+                users = usersStr ? JSON.parse(usersStr) : [];
+            } catch (e) {
+                users = [];
+            }
+            
             const localUser = users.find((u: any) => u.username === username && u.password === password);
 
             if (localUser) {

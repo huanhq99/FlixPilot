@@ -79,29 +79,33 @@ const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDar
             setCollectionItems([]);
             setRecommendations([]);
 
-            // 1. Fetch Collection (if exists)
-            if (selectedMedia.collectionId) {
-                const colData = await fetchCollectionDetails(selectedMedia.collectionId);
-                if (colData && colData.parts) {
-                    // Process parts into MediaItems
-                    const parts = colData.parts
-                        .filter((p: any) => p.id !== selectedMedia.id) // Exclude current
-                        .map((p: any) => processMediaItem(p, {}, 'movie'))
-                        .sort((a: MediaItem, b: MediaItem) => (a.releaseDate > b.releaseDate ? 1 : -1));
-                    setCollectionItems(parts);
+            try {
+                // 1. Fetch Collection (if exists)
+                if (selectedMedia.collectionId) {
+                    const colData = await fetchCollectionDetails(selectedMedia.collectionId);
+                    if (colData && colData.parts) {
+                        // Process parts into MediaItems
+                        const parts = colData.parts
+                            .filter((p: any) => p.id !== selectedMedia.id) // Exclude current
+                            .map((p: any) => processMediaItem(p, {}, 'movie'))
+                            .sort((a: MediaItem, b: MediaItem) => (a.releaseDate > b.releaseDate ? 1 : -1));
+                        setCollectionItems(parts);
+                    }
                 }
-            }
 
-            // 2. Fetch Recommendations (Always)
-            const recData = await fetchRecommendations(selectedMedia.id, selectedMedia.mediaType);
-            if (recData) {
-                const recs = recData
-                    .slice(0, 10)
-                    .map((r: any) => processMediaItem(r, {}, r.media_type || selectedMedia.mediaType));
-                setRecommendations(recs);
+                // 2. Fetch Recommendations (Always)
+                const recData = await fetchRecommendations(selectedMedia.id, selectedMedia.mediaType);
+                if (recData) {
+                    const recs = recData
+                        .slice(0, 10)
+                        .map((r: any) => processMediaItem(r, {}, r.media_type || selectedMedia.mediaType));
+                    setRecommendations(recs);
+                }
+            } catch (error) {
+                console.error("Error fetching related content:", error);
+            } finally {
+                setRelatedLoading(false);
             }
-            
-            setRelatedLoading(false);
         };
         loadRelated();
     }, [selectedMedia.id, selectedMedia.collectionId, selectedMedia.mediaType]);
