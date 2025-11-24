@@ -208,12 +208,20 @@ export const testMoviePilotConnection = async (config: NotificationConfig): Prom
                 credentials: 'omit'
             });
             
-            console.log(`📡 [查询参数方式] 响应状态: ${response.status} ${response.statusText}`);
+                console.log(`📡 [查询参数方式] 响应状态: ${response.status} ${response.statusText}`);
+                
+                // 尝试读取响应详情（无论成功或失败）
+                let responseData: any = null;
+                try {
+                    responseData = await response.json();
+                    console.log(`📡 [查询参数方式] 响应数据:`, responseData);
+                } catch {
+                    const text = await response.text().catch(() => '');
+                    console.log(`📡 [查询参数方式] 响应文本:`, text);
+                }
             
             if (response.ok) {
-                const data = await response.json().catch(() => ({}));
                 console.log(`✅✅✅ 连接成功！使用查询参数方式，端点: ${endpoint}`);
-                console.log(`✅ 响应数据:`, data);
                 return { 
                     success: true, 
                     message: `连接成功！\n端点: ${endpoint}\n认证方式: 查询参数 (?token=...)`,
@@ -224,24 +232,30 @@ export const testMoviePilotConnection = async (config: NotificationConfig): Prom
                 
                 // 尝试读取错误详情
                 let errorDetail = '';
-                try {
-                    const errorData = await response.json();
-                    errorDetail = errorData.detail || errorData.message || errorData.msg || '';
-                    console.log(`❌ 错误详情:`, errorData);
-                } catch {
-                    const text = await response.text().catch(() => '');
-                    errorDetail = text;
-                    console.log(`❌ 错误详情 (文本):`, text);
+                if (responseData) {
+                    // 如果 detail 是数组，提取第一个元素
+                    if (Array.isArray(responseData.detail)) {
+                        errorDetail = responseData.detail[0]?.msg || responseData.detail[0] || JSON.stringify(responseData.detail);
+                    } else {
+                        errorDetail = responseData.detail || responseData.message || responseData.msg || '';
+                    }
+                    console.log(`❌ 错误详情:`, responseData);
                 }
                 
                 lastStatusCode = response.status;
                 lastErrorUrl = `${baseUrl}${endpoint}`;
                 
-                if (response.status === 401 || response.status === 403) {
-                    connectionError = `认证失败 (${response.status}): ${errorDetail || 'Token 可能无效'}`;
+                // 对于 422，可能是参数格式问题，但不一定是 Token 问题
+                if (response.status === 422) {
+                    console.log(`⚠️ 422 错误 - 可能是请求格式问题，但不一定是认证问题`);
+                    // 422 可能是端点需要特定参数，继续尝试
+                } else if (response.status === 401 || response.status === 403) {
+                    // 只有明确是认证错误时才设置错误信息
+                    if (errorDetail && (errorDetail.includes('token') || errorDetail.includes('authenticated') || errorDetail.includes('Forbidden'))) {
+                        connectionError = `认证失败 (${response.status}): ${errorDetail}`;
+                    }
                 } else if (response.status === 404) {
                     console.log(`⚠️ 端点不存在 (404)，继续尝试下一个端点`);
-                    // 404 不一定是认证问题，可能是端点不对，继续尝试
                 }
             }
         } catch (e: any) {
@@ -355,7 +369,10 @@ export const testMoviePilotConnection = async (config: NotificationConfig): Prom
             diagnosticMessage = `⚠️ 跨域(CORS)限制问题\n\n从浏览器直接访问 MoviePilot 会被跨域策略阻止。\n\n解决方案：\n1. 在 MoviePilot 的反代配置中添加 CORS 头：\n   add_header 'Access-Control-Allow-Origin' '*' always;\n   add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;\n   add_header 'Access-Control-Allow-Headers' 'Authorization, X-API-Key, Content-Type' always;\n\n2. 或者在 MoviePilot 设置中配置允许跨域的域名\n\n3. 或者通过后端代理访问（需要后端支持）\n\n💡 提示：按 F12 打开浏览器控制台，查看 Network 标签的具体错误信息`;
         } else if (lastStatusCode === 401 || lastStatusCode === 403) {
             // 能返回 401/403，说明请求能到达服务器，CORS 没问题，但 Token 认证失败
-            diagnosticMessage = `🔐 Token 认证失败 (${lastStatusCode})\n\n${connectionError || '所有认证方式均失败'}\n\n📝 诊断：\n请求能到达 MoviePilot 服务器，但 Token 验证失败。\n\n✅ 解决步骤：\n1. 登录 MoviePilot (${baseUrl})\n2. 进入"设置" → "API密钥"或"安全设置"\n3. 重新生成 API Token\n4. 完整复制新 Token（不要有空格）\n5. 粘贴到 StreamHub 设置中\n\n🔍 如果重新生成 Token 后还是失败：\n- 检查反代配置是否正确转发 Authorization Header\n- 查看 MoviePilot 日志确认 API 请求详情\n- 确认 Token 权限是否足够`;
+            const errorDetails = connectionError || '所有认证方式均失败';
+            const hasTokenError = errorDetails.includes('token') || errorDetails.includes('Token');
+            
+            diagnosticMessage = `🔐 Token 认证失败 (${lastStatusCode})\n\n${errorDetails}\n\n📝 诊断：\n✅ 请求能到达 MoviePilot 服务器（网络连接正常）\n❌ 但 Token 验证失败\n\n🔍 从错误信息看：\n${hasTokenError ? '- Token 可能无效、已过期或格式不正确\n- 或者 Token 不是用于 API 认证（可能是其他用途）' : '- 认证方式可能不正确'}\n\n✅ 解决步骤：\n1. 登录 MoviePilot (${baseUrl})\n2. 进入"设置" → "基础设置" → 查看"API令牌"字段\n3. 确认你复制的是正确的 API Token\n4. 重新生成 API Token（如果可能）\n5. 完整复制新 Token（不要有空格或换行）\n6. 粘贴到 StreamHub 设置中\n\n💡 提示：\n- MoviePilot 的 API Token 可能在"基础设置"中的"API令牌"字段\n- 如果设置中有多个 Token，确保使用正确的那个\n- 查看 MoviePilot 的 API 文档确认 Token 的正确使用方式`;
         } else if (lastStatusCode === 404) {
             diagnosticMessage = `服务在线，但 API 路径未找到 (404)。\n\n可能原因：\n1. 反代配置中 API 路径未正确配置\n2. MoviePilot 的 API 路径可能与预期不同\n3. 建议检查反代服务器配置，确保 /api/* 路径正确转发到 MoviePilot 服务\n\n尝试的路径: ${lastErrorUrl || '未知'}`;
         } else {
