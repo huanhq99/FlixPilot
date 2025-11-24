@@ -143,12 +143,12 @@ export const testMoviePilotConnection = async (config: NotificationConfig): Prom
     // 但是从错误看，/api/v1/plugin/plugin_list 能到达服务器，说明路径是对的
     // 根据 MoviePilot 实际使用的 API 端点
     // 从用户提供的日志看，MoviePilot 使用 ?token= 作为查询参数
+    // 优先使用实际存在的端点（从用户日志中看到的）
     const endpoints = [
+        '/api/v1/plugin/remotes', // 插件列表（从日志看确实使用了 ?token=，优先尝试）
         '/api/v1/system/message', // 系统消息（不需要特殊权限）
         '/api/v1/dashboard/statistic', // 仪表板统计（可能不需要特殊权限）
-        '/api/v1/plugin/remotes', // 插件列表（从日志看使用了 ?token=）
         '/api/v1/system/info', // 系统信息
-        '/api/v1/system/version', // 版本信息
     ];
 
     const authMethods = [
@@ -183,14 +183,21 @@ export const testMoviePilotConnection = async (config: NotificationConfig): Prom
     let lastStatusCode = 0;
     let lastErrorUrl = '';
 
-    // 首先尝试查询参数方式（MoviePilot 实际使用的方式）
-    console.log('🎯 优先尝试查询参数认证方式（MoviePilot 实际使用的方式）');
+    // 🎯 首先尝试查询参数方式（MoviePilot 实际使用的方式，从用户日志确认）
+    console.log('🎯 ========== 优先尝试查询参数认证方式（MoviePilot 实际使用的方式）==========');
+    console.log(`Token: ${cleanToken.substring(0, 10)}...`);
+    console.log(`Base URL: ${baseUrl}`);
+    
     for (const endpoint of endpoints) {
-        if (!endpoint.startsWith('/api/v1/')) continue;
+        if (!endpoint.startsWith('/api/v1/')) {
+            console.log(`跳过非 /api/v1/ 端点: ${endpoint}`);
+            continue;
+        }
         
         try {
             const url = `${baseUrl}${endpoint}?token=${encodeURIComponent(cleanToken)}`;
-            console.log(`Testing with query param: ${endpoint}?token=...`);
+            console.log(`\n📡 [查询参数方式] 尝试端点: ${endpoint}`);
+            console.log(`📡 [查询参数方式] 完整 URL: ${url.replace(cleanToken, '***')}`);
             
             const response = await fetch(url, {
                 method: 'GET',
@@ -201,36 +208,53 @@ export const testMoviePilotConnection = async (config: NotificationConfig): Prom
                 credentials: 'omit'
             });
             
+            console.log(`📡 [查询参数方式] 响应状态: ${response.status} ${response.statusText}`);
+            
             if (response.ok) {
                 const data = await response.json().catch(() => ({}));
-                console.log(`✅ 连接成功！使用查询参数方式，端点: ${endpoint}`);
+                console.log(`✅✅✅ 连接成功！使用查询参数方式，端点: ${endpoint}`);
+                console.log(`✅ 响应数据:`, data);
                 return { 
                     success: true, 
                     message: `连接成功！\n端点: ${endpoint}\n认证方式: 查询参数 (?token=...)`,
                     method: 'Query Parameter'
                 };
             } else {
-                console.log(`查询参数方式失败，端点: ${endpoint}, 状态: ${response.status}`);
+                console.log(`❌ [查询参数方式] 失败，端点: ${endpoint}, 状态: ${response.status}`);
+                
+                // 尝试读取错误详情
+                let errorDetail = '';
+                try {
+                    const errorData = await response.json();
+                    errorDetail = errorData.detail || errorData.message || errorData.msg || '';
+                    console.log(`❌ 错误详情:`, errorData);
+                } catch {
+                    const text = await response.text().catch(() => '');
+                    errorDetail = text;
+                    console.log(`❌ 错误详情 (文本):`, text);
+                }
+                
                 lastStatusCode = response.status;
                 lastErrorUrl = `${baseUrl}${endpoint}`;
                 
                 if (response.status === 401 || response.status === 403) {
-                    try {
-                        const errorData = await response.json();
-                        const detail = errorData.detail || errorData.message || errorData.msg || 'Token 无效';
-                        connectionError = `认证失败 (${response.status}): ${detail}`;
-                    } catch {
-                        connectionError = `认证失败 (${response.status}): Token 可能无效`;
-                    }
+                    connectionError = `认证失败 (${response.status}): ${errorDetail || 'Token 可能无效'}`;
+                } else if (response.status === 404) {
+                    console.log(`⚠️ 端点不存在 (404)，继续尝试下一个端点`);
+                    // 404 不一定是认证问题，可能是端点不对，继续尝试
                 }
             }
         } catch (e: any) {
-            console.log(`查询参数方式请求失败，端点: ${endpoint}`, e.message);
+            console.error(`❌ [查询参数方式] 请求异常，端点: ${endpoint}`, e);
+            console.error(`❌ 错误类型: ${e.name}, 消息: ${e.message}`);
             if (e.name === 'TypeError' && e.message.includes('Failed to fetch')) {
                 connectionError = '无法连接到服务器（可能是 CORS 问题）';
+                console.error(`⚠️ 可能是 CORS 问题，请求被浏览器阻止`);
             }
         }
     }
+    
+    console.log('\n🔄 ========== 查询参数方式全部失败，尝试 Header 认证方式 ==========\n');
 
     // 如果查询参数方式失败，再尝试 Header 方式
     console.log('🔄 查询参数方式失败，尝试 Header 认证方式');
