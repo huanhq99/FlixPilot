@@ -138,33 +138,55 @@ export const testMoviePilotConnection = async (config: NotificationConfig): Prom
 
     const baseUrl = config.moviePilotUrl.replace(/\/$/, '');
     
-    // Try common endpoints
+    // Try common endpoints (try both v1 and v2, and different path patterns for reverse proxy)
+    // 针对反代场景，尝试多种路径模式
     const endpoints = [
         '/api/v1/user/me', // Best for token validation
+        '/api/v2/user/me', // v2 version
         '/api/v1/site/site_list', // Check sites list
+        '/api/v2/site/site_list', // v2 version
         '/api/v1/system/status',
+        '/api/v2/system/status',
+        '/api/v1/system/version',
+        '/api/v2/system/version',
+        // 针对反代，可能 API 路径不同
+        '/v1/user/me',
+        '/v2/user/me',
+        '/v1/system/status',
+        '/v2/system/status',
         '/api/v1/plugin/plugin_list',
     ];
 
     const authMethods = [
         { name: 'Bearer Token', header: 'Authorization', value: `Bearer ${config.moviePilotToken}` },
         { name: 'Authorization (raw)', header: 'Authorization', value: config.moviePilotToken },
+        { name: 'X-API-Key', header: 'X-API-Key', value: config.moviePilotToken },
         { name: 'token Header', header: 'token', value: config.moviePilotToken },
+        { name: 'apikey Header', header: 'apikey', value: config.moviePilotToken },
+        { name: 'api_key Header', header: 'api_key', value: config.moviePilotToken },
     ];
 
     // Clean token - remove any whitespace
     const cleanToken = config.moviePilotToken.trim();
 
-    // 0. Basic Connectivity Check (No Auth)
+    // 0. Check if service is reachable (try root path, might be reverse proxy)
+    let serviceReachable = false;
     try {
-        console.log(`Testing connectivity to: ${baseUrl}`);
-        await fetch(`${baseUrl}/api/v1/system/status`, { method: 'GET' }).catch(() => {});
-        // We don't care about the result, just warming up / checking DNS
+        console.log(`Checking service connectivity: ${baseUrl}`);
+        const rootCheck = await fetch(`${baseUrl}/`, { 
+            method: 'GET',
+            signal: AbortSignal.timeout(5000)
+        });
+        // Any response means service is reachable
+        serviceReachable = true;
+        console.log(`Service is reachable (status: ${rootCheck.status})`);
     } catch (e) {
-        console.warn('Basic connectivity check failed:', e);
+        console.warn('Service connectivity check failed:', e);
     }
 
     let connectionError = '';
+    let lastStatusCode = 0;
+    let lastErrorUrl = '';
 
     for (const endpoint of endpoints) {
         for (const authMethod of authMethods) {
@@ -182,16 +204,37 @@ export const testMoviePilotConnection = async (config: NotificationConfig): Prom
                 });
 
                 if (response.ok) {
+                    const data = await response.json().catch(() => ({}));
                     return { 
                         success: true, 
                         message: `连接成功！\n端点: ${endpoint}\n认证方式: ${authMethod.name}`,
                         method: authMethod.name
                     };
                 } else {
+                    // 记录最后一次错误状态
+                    lastStatusCode = response.status;
+                    lastErrorUrl = `${baseUrl}${endpoint}`;
+                    
+                    // 尝试读取错误详情
+                    let errorDetail = '';
+                    try {
+                        const errorData = await response.json();
+                        errorDetail = errorData.detail || errorData.message || errorData.msg || errorData.error || '';
+                    } catch {
+                        errorDetail = await response.text().catch(() => '');
+                    }
+                    
                     if (response.status === 401 || response.status === 403) {
-                        connectionError = `认证失败 (${response.status})。请检查 Token 是否正确。`;
+                        if (!connectionError || connectionError.includes('所有尝试均失败')) {
+                            connectionError = `认证失败 (${response.status})${errorDetail ? ': ' + errorDetail : ''}`;
+                        }
+                    } else if (response.status === 404) {
+                        // 404 可能是路径不对，继续尝试其他路径
+                        console.log(`Path not found (404): ${endpoint}`);
                     } else {
-                        connectionError = `服务器返回错误: ${response.status} ${response.statusText}`;
+                        if (!connectionError || connectionError.includes('所有尝试均失败')) {
+                            connectionError = `服务器返回错误: ${response.status} ${response.statusText}${errorDetail ? '\n详情: ' + errorDetail : ''}`;
+                        }
                     }
                 }
             } catch (e: any) {
@@ -219,15 +262,40 @@ export const testMoviePilotConnection = async (config: NotificationConfig): Prom
                     message: `连接成功！\n端点: ${endpoint}\n认证方式: Query Parameter`,
                     method: 'Query Parameter'
                 };
+            } else if (response.status === 401 || response.status === 403) {
+                // 记录认证错误
+                try {
+                    const errorData = await response.json();
+                    connectionError = `认证失败 (${response.status}): ${errorData.detail || errorData.message || 'Token 无效'}`;
+                } catch {
+                    connectionError = `认证失败 (${response.status}): Token 无效`;
+                }
             }
         } catch (e) {
             // Continue
         }
     }
 
+    // 如果所有尝试都失败，给出详细诊断信息
+    let diagnosticMessage = '';
+    
+    if (serviceReachable) {
+        // 服务可达，但 API 认证或路径有问题
+        if (lastStatusCode === 401 || lastStatusCode === 403) {
+            diagnosticMessage = `服务在线，但认证失败。\n\n${connectionError || '所有认证方式均失败'}\n\n反代场景特别提示：\n1. 确认反代服务器（Nginx/Caddy）已正确转发 /api 路径\n2. 确认反代配置包含必要的 Header 转发（Authorization, X-API-Key 等）\n3. 尝试重新生成 MoviePilot API Token\n4. 查看反代服务器日志，确认 API 请求是否正确转发`;
+        } else if (lastStatusCode === 404) {
+            diagnosticMessage = `服务在线，但 API 路径未找到 (404)。\n\n可能原因：\n1. 反代配置中 API 路径未正确配置\n2. MoviePilot 的 API 路径可能与预期不同\n3. 建议检查反代服务器配置，确保 /api/* 路径正确转发到 MoviePilot 服务\n\n尝试的路径: ${lastErrorUrl || '未知'}`;
+        } else {
+            diagnosticMessage = `服务在线，但连接失败。\n\n${connectionError || '所有尝试均失败'}\n\n最后错误状态: ${lastStatusCode || '未知'}\n\n建议：\n1. 检查反代服务器配置\n2. 查看浏览器控制台 (F12) 的 Network 标签\n3. 确认 MoviePilot 服务正常运行`;
+        }
+    } else {
+        // 服务不可达
+        diagnosticMessage = `无法连接到服务器。\n\n请检查：\n1. 地址是否正确 (${baseUrl})\n2. 服务是否正常运行\n3. 网络是否畅通\n4. 如果是反代，确认反代服务正常运行`;
+    }
+
     return { 
         success: false, 
-        message: `连接失败: ${connectionError || '所有尝试均失败'}\n\n请检查：\n1. Token 是否正确 (尝试重新生成)\n2. 地址是否包含 /api (不应包含)\n3. 是否存在跨域问题 (CORS)` 
+        message: diagnosticMessage
     };
 };
 
