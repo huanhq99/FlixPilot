@@ -2,17 +2,25 @@
 
 StreamHub 是一个优雅、现代化的影视媒体发现与追踪平台。它不仅仅是一个海报墙，更是一个连接 Emby 媒体库与全球热门影视的桥梁。
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![React](https://img.shields.io/badge/React-19-61DAFB.svg)
-![Vite](https://img.shields.io/badge/Vite-5.0-646CFF.svg)
+![Vite](https://img.shields.io/badge/Vite-6.0-646CFF.svg)
 
 ## ✨ 核心亮点
 
 *   **🔥 全球热门聚合**: 实时同步 Netflix, Disney+, Apple TV+ 等主流平台的最新热门电影与剧集。
+*   **🔍 智能搜索**: 
+    *   **媒体搜索**: 支持电影、剧集搜索，实时联想提示。
+    *   **演员搜索**: 新增演员搜索功能，可查看演员详细信息及作品列表。
+    *   **无缝导航**: 从演员详情页可直接跳转到其作品详情，完整浏览体验。
 *   **🔗 Emby 深度集成**: 
     *   **智能比对**: 自动扫描您的 Emby 媒体库，在海报上标记 "已入库"，避免重复下载。
     *   **一键跳转**: 已有的影片可直接跳转 Emby 客户端播放。
+*   **🎬 MoviePilot 自动订阅**: 
+    *   **PT 站自动搜索**: 集成 MoviePilot API，支持自动订阅并搜索 PT 站资源。
+    *   **一键订阅**: 在详情页直接订阅到 MoviePilot，自动触发下载流程。
+    *   **灵活配置**: 支持多种认证方式（Bearer Token、API Key、Query 参数）。
 *   **🙋‍♂️ 求片管理系统**: 
     *   **用户点播**: 用户可浏览并提交 "求片" 请求。
     *   **管理员审核**: 完善的后台管理面板，支持审核、拒绝、标记完成。
@@ -21,6 +29,7 @@ StreamHub 是一个优雅、现代化的影视媒体发现与追踪平台。它�
     *   **类原生体验**: 丝滑的动画、骨架屏加载、响应式布局。
     *   **个性化定制**: 支持深色模式、自定义网站标题与 Logo。
     *   **系列与推荐**: 详情页自动聚合 "系列合集" 和 "猜你喜欢"。
+    *   **版本标识**: 设置界面和页面头部显示版本号，方便区分不同版本。
 *   **🛡️ 安全与稳定**:
     *   **纯前端架构**: 无需数据库，数据存储于本地 (LocalStorage)，安全隐私。
     *   **数据备份**: 支持一键导出/导入所有配置数据。
@@ -56,9 +65,19 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - VITE_TMDB_API_KEY=your_key_here
+      - TMDB_API_KEY=your_key_here
+      - HTTP_PROXY=http://127.0.0.1:7890  # 可选：代理设置
+      - HTTPS_PROXY=http://127.0.0.1:7890  # 可选：代理设置
+    volumes:
+      - ./config:/app/backend/config  # 配置文件持久化
+      - ./data:/app/backend/data       # 数据文件持久化
     restart: unless-stopped
 ```
+
+**注意事项**:
+- 端口固定为 `3000`，可通过 Nginx 反向代理到其他端口
+- 配置文件和数据会自动持久化到本地 `config` 和 `data` 目录
+- 支持代理环境变量，方便国内用户访问 TMDB API
 
 ## 🛠️ 管理员指南
 
@@ -66,16 +85,40 @@ services:
 1. 首次访问会自动跳转初始化页面，设置管理员账号。
 2. 进入设置面板 (`Settings`) -> `系统设置`，配置您的 Emby 地址和 API Key。
 3. (可选) 配置 Telegram Bot 以获取通知。
+4. (可选) 配置 MoviePilot：
+   - 进入 `设置` -> `通知服务` 标签页
+   - 填写 MoviePilot URL 和 API Token
+   - 支持多种认证方式，系统会自动尝试
 
 ### 功能清单
 - [x] 瀑布流/列表视图切换
 - [x] 多维度筛选 (平台/年份/地区)
-- [x] 搜索与联想
+- [x] 媒体搜索与联想
+- [x] **演员搜索** (v2.0.0 新增)
 - [x] 详情页 (预告片/演员/推荐)
 - [x] Emby 库同步
+- [x] **MoviePilot 自动订阅** (v2.0.0 新增)
 - [x] 求片系统
 - [x] 用户管理 (多用户支持)
 - [x] 数据备份与恢复
+- [x] **版本号显示** (v2.0.0 新增)
+
+## 📝 更新日志
+
+### v2.0.0 (最新)
+- ✨ 新增演员搜索功能，支持查看演员作品列表
+- ✨ 集成 MoviePilot API，支持自动订阅 PT 站资源
+- 🐛 修复演员详情页点击作品无反应的问题
+- 🎨 添加版本号显示（设置界面和页面头部）
+- 🔧 优化 Docker 配置，添加数据持久化映射
+- 🔧 更新 Nginx 配置，支持后端 API 代理
+
+### v1.0.0
+- 🎉 初始版本发布
+- 基础媒体浏览和搜索功能
+- Emby 集成
+- 求片管理系统
+- Telegram 通知
 
 ## 🤝 贡献与反馈
 
