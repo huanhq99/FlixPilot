@@ -1,20 +1,22 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { X, Save, Server, CheckCircle2, AlertCircle, Loader2, Database, List, Trash2, Bell, Send, LayoutDashboard, Mail, Check, XCircle, Settings, Download, Upload, RefreshCw, Users } from 'lucide-react';
-import { toast } from 'sonner';
-import { EmbyConfig, NotificationConfig } from '../types';
-import { validateEmbyConnection, fetchEmbyLibrary } from '../services/embyService';
-import { sendTelegramTest } from '../services/notificationService';
+import React, { useState, useEffect } from 'react';
+import { X, Save, Server, CheckCircle2, AlertCircle, Loader2, User, ShieldCheck, Database, List, Trash2, Bell, Send, MessageSquare, LayoutDashboard, Users, Mail, Check, XCircle, Clock, Filter, Download, AlertOctagon, MonitorPlay, Film } from 'lucide-react';
+import { EmbyConfig, EmbyUser, NotificationConfig, RequestItem } from '../types';
+import { validateEmbyConnection, getEmbyUsers, fetchEmbyLibrary, fetchEmbyLibraries } from '../services/embyService';
+import { sendTelegramTest, sendTelegramNotification } from '../services/notificationService';
+import { storage, STORAGE_KEYS } from '../utils/storage';
+import { useToast } from './Toast';
 
 interface SettingsModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (config: EmbyConfig, library?: Set<string>) => void;
-    onSystemSettingsChange?: (settings: any) => void;
+    onSave: (config: EmbyConfig, library?: Set<string>, syncInterval?: number, selectedLibIds?: string[]) => void;
     currentConfig: EmbyConfig;
     isDarkMode: boolean;
+    initialSelectedLibraries?: string[];
 }
 
-const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, onSystemSettingsChange, currentConfig, isDarkMode }) => {
+const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, currentConfig, isDarkMode, initialSelectedLibraries = [] }) => {
+    const toast = useToast();
     const [activeTab, setActiveTab] = useState<'library' | 'notifications' | 'requests' | 'users' | 'system'>('library');
     
     // Library State
@@ -24,19 +26,29 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
     const [syncProgress, setSyncProgress] = useState(0);
     const [syncStatusText, setSyncStatusText] = useState('');
     const [isSyncing, setIsSyncing] = useState(false);
+    const [syncInterval, setSyncInterval] = useState(() => storage.get(STORAGE_KEYS.SYNC_INTERVAL, 15));
+    
+    // Multi-Library Selection State
+    const [libraries, setLibraries] = useState<any[]>([]);
+    const [selectedLibraryIds, setSelectedLibraryIds] = useState<string[]>(initialSelectedLibraries);
+    const [loadingLibraries, setLoadingLibraries] = useState(false);
 
     // Notification State
     const [notifyConfig, setNotifyConfig] = useState<NotificationConfig>({});
 
     // Requests State
-    const [requests, setRequests] = useState<any[]>([]);
-
-    // System Settings
-    const [scanInterval, setScanInterval] = useState(15);
+    const [requests, setRequests] = useState<RequestItem[]>([]);
+    const [requestFilter, setRequestFilter] = useState<'all' | 'pending' | 'completed' | 'rejected'>('all');
 
     // Users State
     const [users, setUsers] = useState<any[]>([]);
     const [newUser, setNewUser] = useState({ username: '', password: '', isAdmin: false });
+    const [isImportingUsers, setIsImportingUsers] = useState(false);
+
+    // System Settings
+    const [websiteTitle, setWebsiteTitle] = useState('StreamHub - Global Media Monitor');
+    const [faviconUrl, setFaviconUrl] = useState('');
+    const [requestLimit, setRequestLimit] = useState(0); // 0 = Unlimited
 
     useEffect(() => {
         if (isOpen) {
@@ -45,53 +57,78 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
             setStatus('idle');
             setSyncProgress(0);
             setSyncStatusText('');
+            setSyncInterval(storage.get(STORAGE_KEYS.SYNC_INTERVAL, 15));
             
             // Load requests
-            try {
-                const savedReqs = localStorage.getItem('requests');
-                if (savedReqs) setRequests(JSON.parse(savedReqs));
-            } catch (e) { setRequests([]); }
+            setRequests(storage.get<RequestItem[]>(STORAGE_KEYS.REQUESTS, []));
 
             // Load notifications
-            try {
-                const savedNotify = localStorage.getItem('streamhub_notifications');
-                if (savedNotify) setNotifyConfig(JSON.parse(savedNotify));
-            } catch (e) { setNotifyConfig({}); }
+            setNotifyConfig(storage.get(STORAGE_KEYS.NOTIFICATIONS, {}));
+            
+            // Load users
+            setUsers(storage.get(STORAGE_KEYS.USERS, []));
 
-            // Load system settings
+             // Load system settings
             try {
                 const savedSettings = localStorage.getItem('streamhub_settings');
                 if (savedSettings) {
                     const parsed = JSON.parse(savedSettings);
-                    if (parsed.scanInterval) setScanInterval(parsed.scanInterval);
+                    if (parsed.scanInterval) setSyncInterval(parsed.scanInterval); // Legacy support?
+                    if (parsed.websiteTitle) setWebsiteTitle(parsed.websiteTitle);
+                    if (parsed.faviconUrl) setFaviconUrl(parsed.faviconUrl);
+                    if (parsed.requestLimit) setRequestLimit(parsed.requestLimit);
                 }
             } catch (e) { /* ignore */ }
 
-            // Load users
-            try {
-                const savedUsers = localStorage.getItem('streamhub_users');
-                if (savedUsers) setUsers(JSON.parse(savedUsers));
-            } catch (e) { setUsers([]); }
+            // Try fetch libraries if already configured
+            if (currentConfig.serverUrl && currentConfig.apiKey) {
+                loadLibraries(currentConfig);
+            }
         }
     }, [isOpen, currentConfig]);
+
+    const loadLibraries = async (config: EmbyConfig) => {
+        setLoadingLibraries(true);
+        try {
+            const libs = await fetchEmbyLibraries(config);
+            setLibraries(libs);
+        } catch (e) {
+            console.error("Failed to load libraries", e);
+        } finally {
+            setLoadingLibraries(false);
+        }
+    };
 
     // Refresh requests when tab changes to 'requests'
     useEffect(() => {
         if (activeTab === 'requests') {
-            try {
-                const savedReqs = localStorage.getItem('requests');
-                if (savedReqs) setRequests(JSON.parse(savedReqs));
-            } catch (e) { setRequests([]); }
+            setRequests(storage.get<RequestItem[]>(STORAGE_KEYS.REQUESTS, []));
+        }
+        if (activeTab === 'users') {
+            setUsers(storage.get(STORAGE_KEYS.USERS, []));
         }
     }, [activeTab]);
 
     const handleConnect = async () => {
         if (!url || !apiKey) return;
         setStatus('testing');
-        const isValid = await validateEmbyConnection({ serverUrl: url, apiKey });
+        const config = { serverUrl: url, apiKey };
+        const isValid = await validateEmbyConnection(config);
         setStatus(isValid ? 'success' : 'error');
-        if (isValid) toast.success('连接成功');
-        else toast.error('连接失败，请检查配置');
+        
+        if (isValid) {
+            loadLibraries(config);
+        }
+    };
+
+    const toggleLibrarySelection = (libId: string) => {
+        setSelectedLibraryIds(prev => {
+            if (prev.includes(libId)) {
+                return prev.filter(id => id !== libId);
+            } else {
+                return [...prev, libId];
+            }
+        });
     };
 
     const handleFullSync = async () => {
@@ -100,126 +137,69 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
         
         const newConfig = { serverUrl: url, apiKey };
         
-        try {
-            const { ids } = await fetchEmbyLibrary(newConfig, (current, total, text) => {
-                setSyncStatusText(text);
-                if (total > 0) {
-                    setSyncProgress(Math.round((current / total) * 100));
-                }
-            });
-            
-            onSave(newConfig, ids);
-            toast.success('媒体库同步完成');
-        } catch (e) {
-            toast.error('同步失败');
-        } finally {
-            setIsSyncing(false);
-        }
+        const { ids } = await fetchEmbyLibrary(newConfig, (current, total, text) => {
+            setSyncStatusText(text);
+            if (total > 0) {
+                setSyncProgress(Math.round((current / total) * 100));
+            }
+        }, selectedLibraryIds);
+        
+        setIsSyncing(false);
+        onSave(newConfig, ids, syncInterval, selectedLibraryIds);
     };
 
     const handleSaveNotifications = () => {
-        localStorage.setItem('streamhub_notifications', JSON.stringify(notifyConfig));
-        toast.success('通知设置已保存');
-    };
-
-    const handleSaveSystem = () => {
-        const settings = { scanInterval };
-        localStorage.setItem('streamhub_settings', JSON.stringify(settings));
-        if (onSystemSettingsChange) onSystemSettingsChange(settings);
-        toast.success('系统设置已保存');
+        storage.set(STORAGE_KEYS.NOTIFICATIONS, notifyConfig);
+        toast.showToast('通知设置已保存', 'success');
     };
 
     const handleTestTelegram = async () => {
-        const loadingToast = toast.loading('正在发送测试消息...');
         try {
             await sendTelegramTest(notifyConfig);
-            toast.dismiss(loadingToast);
-            toast.success('测试消息已发送，请检查您的 Telegram');
+            toast.showToast('测试消息已发送，请检查您的 Telegram', 'success');
         } catch (e: any) {
-            toast.dismiss(loadingToast);
-            toast.error('发送失败: ' + e.message);
+            toast.showToast('发送失败: ' + e.message, 'error');
         }
     };
 
     const updateRequestStatus = (index: number, status: 'completed' | 'rejected') => {
         const newRequests = [...requests];
         newRequests[index].status = status;
-        if (status === 'completed') newRequests[index].completedAt = new Date().toISOString();
+        if (status === 'completed') {
+            newRequests[index].completedAt = new Date().toISOString();
+        }
         setRequests(newRequests);
-        localStorage.setItem('requests', JSON.stringify(newRequests));
-        toast.success(status === 'completed' ? '已标记为完成' : '已拒绝该请求');
+        storage.set(STORAGE_KEYS.REQUESTS, newRequests);
+        toast.showToast(`请求已标记为 ${status === 'completed' ? '已完成' : '已拒绝'}`, 'success');
     };
 
-    const deleteRequest = (index: number) => {
+    const deleteRequest = (id: number) => {
         if (confirm('确定要删除这条请求吗？')) {
-            const newRequests = requests.filter((_, i) => i !== index);
+            const newRequests = requests.filter((r) => r.id !== id);
             setRequests(newRequests);
-            localStorage.setItem('requests', JSON.stringify(newRequests));
-            toast.success('请求已删除');
+            storage.set(STORAGE_KEYS.REQUESTS, newRequests);
+            toast.showToast('请求已删除', 'info');
         }
     };
 
     const clearRequests = () => {
         if (confirm('确定要清空所有请求吗？')) {
-            localStorage.removeItem('requests');
+            storage.set(STORAGE_KEYS.REQUESTS, []);
             setRequests([]);
-            toast.success('所有请求已清空');
+            toast.showToast('所有请求已清空', 'success');
         }
-    };
-
-    const exportData = () => {
-        const data = {
-            auth: localStorage.getItem('streamhub_auth'),
-            embyConfig: localStorage.getItem('embyConfig'),
-            notifications: localStorage.getItem('streamhub_notifications'),
-            settings: localStorage.getItem('streamhub_settings'),
-            requests: localStorage.getItem('requests'),
-            embyLibrary: localStorage.getItem('emby_library_cache') // Optional, might be huge
-        };
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `streamhub-backup-${new Date().toISOString().split('T')[0]}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-        toast.success('备份已下载');
-    };
-
-    const importDataInputRef = useRef<HTMLInputElement>(null);
-    const handleImportData = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const data = JSON.parse(e.target?.result as string);
-                if (data.auth) localStorage.setItem('streamhub_auth', data.auth);
-                if (data.embyConfig) localStorage.setItem('embyConfig', data.embyConfig);
-                if (data.notifications) localStorage.setItem('streamhub_notifications', data.notifications);
-                if (data.settings) localStorage.setItem('streamhub_settings', data.settings);
-                if (data.requests) localStorage.setItem('requests', data.requests);
-                if (data.users) localStorage.setItem('streamhub_users', data.users);
-                // Skip library cache import as it might be stale or huge, better to resync
-                
-                toast.success('数据恢复成功，页面即将刷新');
-                setTimeout(() => window.location.reload(), 1500);
-            } catch (err) {
-                toast.error('导入失败：文件格式错误');
-            }
-        };
-        reader.readAsText(file);
     };
 
     const handleAddUser = (e: React.FormEvent) => {
         e.preventDefault();
         if (!newUser.username || !newUser.password) {
-            toast.error('请输入用户名和密码');
+            toast.showToast('请输入用户名和密码', 'warning');
             return;
         }
-        
-        if (users.some(u => u.username === newUser.username)) {
-            toast.error('用户名已存在');
+
+        const existingUser = users.find(u => u.username === newUser.username);
+        if (existingUser) {
+            toast.showToast('用户名已存在', 'error');
             return;
         }
 
@@ -228,28 +208,102 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
             username: newUser.username,
             password: newUser.password,
             isAdmin: newUser.isAdmin,
-            createdAt: Date.now()
+            createdAt: Date.now(),
+            type: 'local'
         };
 
         const updatedUsers = [...users, user];
+        storage.set(STORAGE_KEYS.USERS, updatedUsers);
         setUsers(updatedUsers);
-        localStorage.setItem('streamhub_users', JSON.stringify(updatedUsers));
         setNewUser({ username: '', password: '', isAdmin: false });
-        toast.success('用户创建成功');
+        toast.showToast('用户添加成功', 'success');
     };
 
     const handleDeleteUser = (userId: string) => {
-        if (users.length <= 1) {
-            toast.error('无法删除最后一个用户');
+        if (confirm('确定要删除这个用户吗？')) {
+            const updatedUsers = users.filter(u => u.id !== userId);
+            storage.set(STORAGE_KEYS.USERS, updatedUsers);
+            setUsers(updatedUsers);
+            toast.showToast('用户已删除', 'info');
+        }
+    };
+
+    const handleImportEmbyUsers = async () => {
+        if (!currentConfig.serverUrl || !currentConfig.apiKey) {
+            toast.showToast('请先配置 Emby 连接', 'error');
             return;
         }
-        
-        if (confirm('确定要删除该用户吗？')) {
-            const updatedUsers = users.filter(u => u.id !== userId);
-            setUsers(updatedUsers);
-            localStorage.setItem('streamhub_users', JSON.stringify(updatedUsers));
-            toast.success('用户已删除');
+        setIsImportingUsers(true);
+        try {
+            const embyUsers = await getEmbyUsers(currentConfig);
+            if (embyUsers && embyUsers.length > 0) {
+                let addedCount = 0;
+                const updatedUsers = [...users];
+                
+                embyUsers.forEach(embyUser => {
+                    if (!updatedUsers.find(u => u.username === embyUser.Name)) {
+                        updatedUsers.push({
+                            id: 'emby-' + embyUser.Id,
+                            username: embyUser.Name,
+                            password: '', // Emby users authenticate against Emby, no local password needed really, but logic might differ
+                            isAdmin: embyUser.Policy?.IsAdministrator || false,
+                            createdAt: Date.now(),
+                            type: 'emby',
+                            embyId: embyUser.Id
+                        });
+                        addedCount++;
+                    }
+                });
+
+                if (addedCount > 0) {
+                    storage.set(STORAGE_KEYS.USERS, updatedUsers);
+                    setUsers(updatedUsers);
+                    toast.showToast(`成功导入 ${addedCount} 个 Emby 用户`, 'success');
+                } else {
+                    toast.showToast('没有发现新用户', 'info');
+                }
+            } else {
+                toast.showToast('未找到 Emby 用户', 'warning');
+            }
+        } catch (e) {
+            toast.showToast('导入失败', 'error');
+        } finally {
+            setIsImportingUsers(false);
         }
+    };
+    
+    const handleSaveSystem = () => {
+        const settings = { scanInterval: syncInterval, websiteTitle, faviconUrl, requestLimit };
+        localStorage.setItem('streamhub_settings', JSON.stringify(settings));
+        toast.showToast('系统设置已保存 (请刷新页面生效)', 'success');
+    };
+
+    const timeAgo = (dateString: string) => {
+        const date = new Date(dateString);
+        const now = new Date();
+        const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+        
+        let interval = seconds / 31536000;
+        if (interval > 1) return Math.floor(interval) + " 年前";
+        interval = seconds / 2592000;
+        if (interval > 1) return Math.floor(interval) + " 个月前";
+        interval = seconds / 86400;
+        if (interval > 1) return Math.floor(interval) + " 天前";
+        interval = seconds / 3600;
+        if (interval > 1) return Math.floor(interval) + " 小时前";
+        interval = seconds / 60;
+        if (interval > 1) return Math.floor(interval) + " 分钟前";
+        return Math.floor(seconds) + " 秒前";
+    };
+
+    const filteredRequests = requests.filter(req => {
+        if (requestFilter === 'all') return true;
+        return req.status === requestFilter;
+    });
+
+    // Helper to get user request count
+    const getUserRequestCount = (username: string) => {
+        return requests.filter(r => r.requestedBy === username).length;
     };
 
     if (!isOpen) return null;
@@ -264,29 +318,29 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
             }`}
         >
             {icon}
-            <span className="truncate">{label}</span>
+            {label}
         </button>
     );
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-            <div className={`w-full max-w-5xl h-[85vh] max-h-[800px] rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row ${isDarkMode ? 'bg-[#18181b] border border-white/10' : 'bg-white'}`}>
+            <div className={`w-full max-w-6xl h-[800px] rounded-2xl shadow-2xl overflow-hidden flex ${isDarkMode ? 'bg-[#18181b] border border-white/10' : 'bg-white'}`}>
                 
                 {/* Sidebar */}
-                <div className={`w-full md:w-64 shrink-0 p-4 md:p-6 border-b md:border-b-0 md:border-r flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-visible scrollbar-hide ${isDarkMode ? 'border-white/5 bg-black/20' : 'border-slate-100 bg-slate-50/50'}`}>
-                    <h2 className={`hidden md:flex text-xl font-bold mb-8 items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                <div className={`w-64 shrink-0 p-6 border-r flex flex-col ${isDarkMode ? 'border-white/5 bg-black/20' : 'border-slate-100 bg-slate-50/50'}`}>
+                    <h2 className={`text-xl font-bold mb-8 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                         <LayoutDashboard className="text-indigo-500" /> 管理面板
                     </h2>
                     
-                    <div className="flex md:flex-col gap-2 flex-1">
-                        <TabButton id="library" icon={<Database size={18} />} label="媒体库" />
+                    <div className="space-y-2 flex-1">
+                        <TabButton id="library" icon={<Database size={18} />} label="媒体库设置" />
                         <TabButton id="notifications" icon={<Bell size={18} />} label="通知服务" />
-                        <TabButton id="requests" icon={<List size={18} />} label="求片管理" />
-                        <TabButton id="users" icon={<Users size={18} />} label="用户管理" />
-                        <TabButton id="system" icon={<Settings size={18} />} label="系统设置" />
+                        <TabButton id="requests" icon={<List size={18} />} label="用户求片" />
+                        <TabButton id="users" icon={<Users size={18} />} label="账号管理" />
+                        <TabButton id="system" icon={<Server size={18} />} label="系统设置" />
                     </div>
 
-                    <div className={`hidden md:block mt-auto pt-6 border-t ${isDarkMode ? 'border-white/5' : 'border-slate-200'}`}>
+                    <div className={`mt-auto pt-6 border-t ${isDarkMode ? 'border-white/5' : 'border-slate-200'}`}>
                         <button onClick={onClose} className={`w-full py-2 rounded-lg text-sm font-medium transition-colors ${isDarkMode ? 'hover:bg-white/5 text-zinc-500' : 'hover:bg-slate-100 text-slate-500'}`}>
                             关闭面板
                         </button>
@@ -294,15 +348,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
                 </div>
 
                 {/* Content Area */}
-                <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+                <div className="flex-1 flex flex-col min-w-0">
                     {/* Header */}
-                    <div className={`h-14 md:h-16 px-4 md:px-8 border-b flex items-center justify-between shrink-0 ${isDarkMode ? 'border-white/5' : 'border-slate-100'}`}>
-                        <h3 className={`font-bold text-base md:text-lg truncate ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                    <div className={`h-16 px-8 border-b flex items-center justify-between ${isDarkMode ? 'border-white/5' : 'border-slate-100'}`}>
+                        <h3 className={`font-bold text-lg ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                             {activeTab === 'library' && '媒体库连接与同步'}
                             {activeTab === 'notifications' && '消息通知配置'}
                             {activeTab === 'requests' && `用户求片管理 (${requests.length})`}
                             {activeTab === 'users' && `用户账号管理 (${users.length})`}
-                            {activeTab === 'system' && '系统通用设置'}
+                            {activeTab === 'system' && '系统设置与个性化'}
                         </h3>
                         <button onClick={onClose} className={`p-2 rounded-full transition-colors ${isDarkMode ? 'hover:bg-white/10 text-zinc-400' : 'hover:bg-slate-100 text-slate-400'}`}>
                             <X size={20} />
@@ -310,7 +364,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
                     </div>
 
                     {/* Scrollable Content */}
-                    <div className="flex-1 overflow-y-auto p-4 md:p-8">
+                    <div className="flex-1 overflow-y-auto p-8">
                         
                         {/* Library Tab */}
                         {activeTab === 'library' && (
@@ -336,6 +390,25 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
                                             className={`w-full p-3 rounded-xl border outline-none transition-all font-mono text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
                                         />
                                     </div>
+
+                                    <div className="space-y-2">
+                                        <label className={`text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
+                                            <Clock size={14} />
+                                            自动扫描间隔 (分钟)
+                                        </label>
+                                        <select
+                                            value={syncInterval}
+                                            onChange={(e) => setSyncInterval(parseInt(e.target.value))}
+                                            className={`w-full p-3 rounded-xl border outline-none transition-all text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
+                                        >
+                                            <option value={5}>5 分钟</option>
+                                            <option value={10}>10 分钟</option>
+                                            <option value={15}>15 分钟（推荐）</option>
+                                            <option value={30}>30 分钟</option>
+                                            <option value={60}>60 分钟</option>
+                                        </select>
+                                        <p className="text-xs opacity-60">系统将定期检查 Emby 新增内容</p>
+                                    </div>
                                     
                                     <div className="flex gap-3">
                                         <button 
@@ -352,6 +425,48 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
                                         </button>
                                     </div>
                                 </div>
+
+                                {/* Library Selection Grid */}
+                                {(status === 'success' || libraries.length > 0) && (
+                                    <div className="space-y-3">
+                                        <h4 className={`font-bold text-sm flex items-center justify-between ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                                            <span>选择要同步的媒体库</span>
+                                            <span className="text-xs font-normal opacity-60">
+                                                {selectedLibraryIds.length} / {libraries.length} 已选
+                                            </span>
+                                        </h4>
+                                        
+                                        {loadingLibraries ? (
+                                            <div className="flex justify-center py-4">
+                                                <Loader2 size={24} className="animate-spin text-indigo-500" />
+                                            </div>
+                                        ) : (
+                                            <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-1">
+                                                {libraries.map(lib => (
+                                                    <div 
+                                                        key={lib.Id}
+                                                        onClick={() => toggleLibrarySelection(lib.Id)}
+                                                        className={`cursor-pointer p-3 rounded-xl border flex items-center justify-between transition-all ${
+                                                            selectedLibraryIds.includes(lib.Id)
+                                                            ? 'bg-indigo-500 text-white border-indigo-500 shadow-md shadow-indigo-500/20'
+                                                            : isDarkMode 
+                                                                ? 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800' 
+                                                                : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                                                        }`}
+                                                    >
+                                                        <div className="flex items-center gap-2 min-w-0">
+                                                            <span className="truncate font-medium text-sm">{lib.Name}</span>
+                                                        </div>
+                                                        {selectedLibraryIds.includes(lib.Id) && <CheckCircle2 size={16} className="shrink-0" />}
+                                                    </div>
+                                                ))}
+                                                {libraries.length === 0 && (
+                                                    <p className="col-span-2 text-center text-xs opacity-50 py-2">未找到任何媒体库</p>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
 
                                 <div className={`p-6 rounded-2xl border ${isDarkMode ? 'bg-zinc-900/50 border-zinc-800' : 'bg-slate-50 border-slate-200'}`}>
                                     <div className="flex items-center justify-between mb-4">
@@ -415,6 +530,32 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
                                             </button>
                                         </div>
 
+                                        {/* Telegram Preview Card */}
+                                        <div className="bg-[#7289da]/10 p-4 rounded-xl border border-[#7289da]/20">
+                                            <div className="max-w-[280px] mx-auto bg-white dark:bg-[#2b2d31] rounded-lg overflow-hidden shadow-sm text-sm">
+                                                <div className="aspect-video bg-gray-200 relative">
+                                                    <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-xs">
+                                                        [海报图片]
+                                                    </div>
+                                                </div>
+                                                <div className="p-3 space-y-2">
+                                                    <p className="font-bold text-[#2b2d31] dark:text-gray-100">名称: 铁血战士: 杀戮之王 (2025)</p>
+                                                    <p className="text-gray-600 dark:text-gray-300">用户: admin 给您发来一条求片信息</p>
+                                                    <div className="text-blue-500">
+                                                        🏷️ 标签: #用户提交求片<br/>
+                                                        🗂️ 类型: #剧集
+                                                    </div>
+                                                    <p className="text-gray-500 dark:text-gray-400 text-xs">
+                                                        简介: 故事跨越时空，从维京时代到幕府日本至二战时期...
+                                                    </p>
+                                                </div>
+                                                <div className="bg-[#4b5563]/10 p-2 text-center">
+                                                    <span className="text-xs font-bold text-gray-500">TMDB链接 ↗</span>
+                                                </div>
+                                            </div>
+                                            <p className="text-center text-xs mt-2 opacity-60">消息预览样式</p>
+                                        </div>
+
                                         <div className="space-y-2">
                                             <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>Bot Token</label>
                                             <input 
@@ -441,8 +582,58 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
                                         <h4 className={`font-bold flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                                             <Mail size={18} className="text-orange-500" /> 邮件通知 (SMTP)
                                         </h4>
-                                        {/* Email config omitted for brevity, but structure remains same */}
-                                        <p className={`text-sm opacity-60 ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>暂未开放邮件通知配置UI，请等待后续更新。</p>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>SMTP 服务器</label>
+                                                <input 
+                                                    type="text" 
+                                                    value={notifyConfig.emailSmtpServer || ''}
+                                                    onChange={(e) => setNotifyConfig({...notifyConfig, emailSmtpServer: e.target.value})}
+                                                    placeholder="smtp.gmail.com"
+                                                    className={`w-full p-3 rounded-xl border outline-none transition-all font-mono text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>端口</label>
+                                                <input 
+                                                    type="number" 
+                                                    value={notifyConfig.emailSmtpPort || ''}
+                                                    onChange={(e) => setNotifyConfig({...notifyConfig, emailSmtpPort: parseInt(e.target.value)})}
+                                                    placeholder="587"
+                                                    className={`w-full p-3 rounded-xl border outline-none transition-all font-mono text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>发件人邮箱</label>
+                                            <input 
+                                                type="email" 
+                                                value={notifyConfig.emailSender || ''}
+                                                onChange={(e) => setNotifyConfig({...notifyConfig, emailSender: e.target.value})}
+                                                placeholder="sender@example.com"
+                                                className={`w-full p-3 rounded-xl border outline-none transition-all font-mono text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>密码 / 应用专用密码</label>
+                                            <input 
+                                                type="password" 
+                                                value={notifyConfig.emailPassword || ''}
+                                                onChange={(e) => setNotifyConfig({...notifyConfig, emailPassword: e.target.value})}
+                                                placeholder="••••••••"
+                                                className={`w-full p-3 rounded-xl border outline-none transition-all font-mono text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>接收通知邮箱</label>
+                                            <input 
+                                                type="email" 
+                                                value={notifyConfig.emailRecipient || ''}
+                                                onChange={(e) => setNotifyConfig({...notifyConfig, emailRecipient: e.target.value})}
+                                                placeholder="admin@example.com"
+                                                className={`w-full p-3 rounded-xl border outline-none transition-all font-mono text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
+                                            />
+                                        </div>
                                     </div>
 
                                     <div className="pt-6 border-t border-dashed border-gray-200 dark:border-white/10">
@@ -460,240 +651,358 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
                         {/* Requests Tab */}
                         {activeTab === 'requests' && (
                             <div className="space-y-4">
-                                {requests.length === 0 ? (
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className={`flex p-1 rounded-lg border ${isDarkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-slate-50 border-slate-200'}`}>
+                                        {(['all', 'pending', 'completed', 'rejected'] as const).map((filter) => (
+                                            <button
+                                                key={filter}
+                                                onClick={() => setRequestFilter(filter)}
+                                                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all capitalize ${
+                                                    requestFilter === filter 
+                                                    ? (isDarkMode ? 'bg-zinc-700 text-white shadow-sm' : 'bg-white text-slate-900 shadow-sm') 
+                                                    : (isDarkMode ? 'text-zinc-500 hover:text-zinc-300' : 'text-slate-400 hover:text-slate-600')
+                                                }`}
+                                            >
+                                                {filter === 'all' ? '全部' : filter === 'pending' ? '待处理' : filter === 'completed' ? '已完成' : '已拒绝'}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {requests.length > 0 && (
+                                        <button onClick={clearRequests} className="text-xs text-red-500 flex items-center gap-1 hover:underline px-3 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                                            <Trash2 size={14} /> 清空记录
+                                        </button>
+                                    )}
+                                </div>
+
+                                {filteredRequests.length === 0 ? (
                                     <div className="text-center py-20 opacity-50">
                                         <List size={48} className="mx-auto mb-4" />
-                                        <p>暂无求片记录</p>
+                                        <p>暂无相关记录</p>
                                     </div>
                                 ) : (
-                                    <>
-                                        <div className="flex justify-end mb-4">
-                                            <button onClick={clearRequests} className="text-xs text-red-500 flex items-center gap-1 hover:underline px-3 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
-                                                <Trash2 size={14} /> 清空所有记录
-                                            </button>
-                                        </div>
-                                        <div className="grid gap-4">
-                                            {requests.map((req, idx) => (
-                                                <div key={idx} className={`p-4 rounded-xl border flex gap-4 transition-all hover:shadow-md ${isDarkMode ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-200 hover:border-indigo-200'}`}>
-                                                    <div className="w-16 aspect-[2/3] bg-gray-200 rounded-lg shrink-0 overflow-hidden shadow-sm">
-                                                        {req.posterUrl && <img src={`https://image.tmdb.org/t/p/w200${req.posterUrl}`} className="w-full h-full object-cover" />}
+                                    <div className="grid gap-4">
+                                        {filteredRequests.map((req) => (
+                                            <div key={req.id} className={`group relative rounded-xl overflow-hidden border transition-all hover:shadow-lg ${isDarkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-slate-200 hover:border-indigo-200'}`}>
+                                                
+                                                {/* Banner Background */}
+                                                {req.backdropUrl && (
+                                                    <div className="absolute inset-0 h-32 opacity-20 transition-opacity group-hover:opacity-30">
+                                                        <img src={`https://image.tmdb.org/t/p/w500${req.backdropUrl}`} className="w-full h-full object-cover" />
+                                                        <div className={`absolute inset-0 bg-gradient-to-b ${isDarkMode ? 'from-transparent to-zinc-900' : 'from-transparent to-white'}`}></div>
                                                     </div>
-                                                    <div className="flex-1 min-w-0 py-1">
+                                                )}
+
+                                                <div className="relative p-4 flex gap-4 items-start">
+                                                    {/* Poster */}
+                                                    <div className="w-16 aspect-[2/3] bg-gray-200 rounded-lg shrink-0 overflow-hidden shadow-lg ring-1 ring-black/10">
+                                                        {req.posterUrl ? (
+                                                            <img src={`https://image.tmdb.org/t/p/w200${req.posterUrl}`} className="w-full h-full object-cover" />
+                                                        ) : (
+                                                            <div className="w-full h-full flex items-center justify-center bg-zinc-800 text-zinc-600">
+                                                                <List size={20} />
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Content */}
+                                                    <div className="flex-1 min-w-0">
                                                         <div className="flex justify-between items-start">
-                                                            <h4 className={`font-bold text-lg truncate ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{req.title}</h4>
-                                                            <div className="flex items-center gap-2">
-                                                                {req.status === 'pending' ? (
+                                                            <div>
+                                                                <h4 className={`font-bold text-lg truncate pr-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                                                                    {req.title} <span className="text-sm font-normal opacity-60">({req.year})</span>
+                                                                </h4>
+                                                                
+                                                                <div className="flex flex-wrap items-center gap-2 mt-1">
+                                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                                                                        req.status === 'completed' ? 'bg-green-500/10 text-green-500 border border-green-500/20' :
+                                                                        req.status === 'rejected' ? 'bg-red-500/10 text-red-500 border border-red-500/20' :
+                                                                        'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20'
+                                                                    }`}>
+                                                                        {req.status === 'completed' ? '已完成' : req.status === 'rejected' ? '已拒绝' : '待处理'}
+                                                                    </span>
+                                                                    
+                                                                    {req.mediaType === 'tv' && (
+                                                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'bg-zinc-800 text-zinc-400' : 'bg-slate-100 text-slate-500'}`}>
+                                                                            TV Series
+                                                                        </span>
+                                                                    )}
+
+                                                                    {req.resolutionPreference && req.resolutionPreference !== 'Any' && (
+                                                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-purple-500/10 text-purple-500 border border-purple-500/20`}>
+                                                                            {req.resolutionPreference}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                {req.notes && (
+                                                                    <div className={`mt-2 text-xs p-2 rounded flex items-start gap-2 ${isDarkMode ? 'bg-white/5 text-zinc-300' : 'bg-slate-50 text-slate-600'}`}>
+                                                                        <MessageSquare size={12} className="shrink-0 mt-0.5" />
+                                                                        <span>{req.notes}</span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+
+                                                            {/* Actions */}
+                                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                {req.status === 'pending' && (
                                                                     <>
                                                                         <button 
-                                                                            onClick={() => updateRequestStatus(idx, 'completed')}
+                                                                            onClick={() => updateRequestStatus(requests.findIndex(r => r.id === req.id), 'completed')}
                                                                             className="p-1.5 rounded-lg bg-green-500/10 text-green-500 hover:bg-green-500 hover:text-white transition-colors"
                                                                             title="标记为已完成"
                                                                         >
                                                                             <Check size={16} />
                                                                         </button>
                                                                         <button 
-                                                                            onClick={() => updateRequestStatus(idx, 'rejected')}
+                                                                            onClick={() => updateRequestStatus(requests.findIndex(r => r.id === req.id), 'rejected')}
                                                                             className="p-1.5 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-colors"
                                                                             title="拒绝请求"
                                                                         >
                                                                             <XCircle size={16} />
                                                                         </button>
                                                                     </>
-                                                                ) : (
-                                                                    <span className={`text-[10px] px-2 py-1 rounded font-bold uppercase ${req.status === 'completed' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
-                                                                        {req.status === 'completed' ? '已完成' : '已拒绝'}
-                                                                    </span>
                                                                 )}
                                                                 <button 
-                                                                    onClick={() => deleteRequest(idx)}
-                                                                    className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-white/10 text-zinc-500' : 'hover:bg-slate-100 text-slate-400'}`}
+                                                                    onClick={() => deleteRequest(req.id)}
+                                                                    className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-white/10 text-zinc-500 hover:text-red-500' : 'hover:bg-slate-100 text-slate-400 hover:text-red-500'}`}
                                                                     title="删除记录"
                                                                 >
                                                                     <Trash2 size={16} />
                                                                 </button>
                                                             </div>
                                                         </div>
-                                                        <div className="flex items-center gap-2 text-xs opacity-60 mt-1 mb-3">
-                                                            <span>{req.year}</span>
-                                                            <span>•</span>
-                                                            <span>{req.mediaType === 'movie' ? '电影' : '剧集'}</span>
-                                                        </div>
-                                                        <div className="flex items-center justify-between pt-3 border-t border-dashed border-gray-200 dark:border-white/10">
+
+                                                        {/* Footer info */}
+                                                        <div className="flex items-center justify-between mt-4 pt-3 border-t border-dashed border-gray-200 dark:border-white/10">
                                                             <div className="flex items-center gap-2">
-                                                                <div className="w-5 h-5 rounded-full bg-indigo-500 text-white flex items-center justify-center text-[10px] font-bold">
+                                                                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center text-[10px] font-bold ring-2 ring-white dark:ring-[#18181b]">
                                                                     {req.requestedBy?.[0]?.toUpperCase() || 'U'}
                                                                 </div>
-                                                                <span className="text-xs font-medium opacity-80">{req.requestedBy}</span>
+                                                                <div className="flex flex-col">
+                                                                    <span className={`text-xs font-bold ${isDarkMode ? 'text-zinc-300' : 'text-slate-700'}`}>
+                                                                        {req.requestedBy}
+                                                                    </span>
+                                                                    <span className="text-[10px] opacity-50">
+                                                                        {timeAgo(req.requestDate)}
+                                                                    </span>
+                                                                </div>
                                                             </div>
-                                                            <span className="text-[10px] opacity-40 font-mono">
-                                                                {new Date(req.requestDate).toLocaleString()}
-                                                            </span>
+                                                            
+                                                            {req.completedAt && (
+                                                                <div className="text-[10px] opacity-50 flex items-center gap-1">
+                                                                    <CheckCircle2 size={10} />
+                                                                    完成于 {new Date(req.completedAt).toLocaleDateString()}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </div>
-                                            ))}
-                                        </div>
-                                    </>
+                                            </div>
+                                        ))}
+                                    </div>
                                 )}
                             </div>
                         )}
 
                         {/* Users Tab */}
                         {activeTab === 'users' && (
-                            <div className="max-w-xl space-y-8">
-                                <div className={`p-4 rounded-xl border flex items-start gap-3 ${isDarkMode ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' : 'bg-indigo-50 border-indigo-100 text-indigo-600'}`}>
-                                    <Users size={20} className="shrink-0 mt-0.5" />
-                                    <div className="text-sm">
-                                        <p className="font-bold mb-1">用户管理</p>
-                                        <p className="opacity-80">管理系统登录账号。管理员拥有所有权限，普通用户仅可浏览和提交求片。</p>
+                            <div className="max-w-4xl mx-auto space-y-8">
+                                <div className="flex items-center justify-between">
+                                    <h4 className={`font-bold text-lg ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>用户清单</h4>
+                                    <div className="flex gap-3">
+                                        <button 
+                                            onClick={() => setActiveTab('users')} // Just for refresh
+                                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${isDarkMode ? 'border-white/10 hover:bg-white/5' : 'border-slate-200 hover:bg-slate-50'}`}
+                                        >
+                                            刷新列表
+                                        </button>
+                                        <button 
+                                            onClick={handleImportEmbyUsers}
+                                            disabled={isImportingUsers}
+                                            className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 transition-colors flex items-center gap-2"
+                                        >
+                                            {isImportingUsers ? <Loader2 size={16} className="animate-spin"/> : <Download size={16} />}
+                                            导入 Emby 用户
+                                        </button>
                                     </div>
                                 </div>
 
-                                <div className="space-y-4">
-                                    <h4 className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>添加新用户</h4>
-                                    <form onSubmit={handleAddUser} className="grid gap-4 sm:grid-cols-12 bg-gray-50 dark:bg-white/5 p-4 rounded-xl">
-                                        <div className="sm:col-span-4">
+                                {/* User Table */}
+                                <div className={`rounded-2xl overflow-hidden border ${isDarkMode ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-slate-200'}`}>
+                                    <table className="w-full text-left text-sm">
+                                        <thead className={`${isDarkMode ? 'bg-white/5 text-zinc-400' : 'bg-slate-50 text-slate-500'}`}>
+                                            <tr>
+                                                <th className="p-4 font-medium">用户</th>
+                                                <th className="p-4 font-medium">请求数</th>
+                                                <th className="p-4 font-medium">类型</th>
+                                                <th className="p-4 font-medium">角色</th>
+                                                <th className="p-4 font-medium">加入时间</th>
+                                                <th className="p-4 font-medium text-right">操作</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className={`divide-y ${isDarkMode ? 'divide-white/5' : 'divide-slate-100'}`}>
+                                            {users.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={6} className="p-8 text-center opacity-50">暂无用户</td>
+                                                </tr>
+                                            ) : (
+                                                users.map((user) => (
+                                                    <tr key={user.id} className={`group transition-colors ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-slate-50'}`}>
+                                                        <td className="p-4">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${user.isAdmin ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-600'}`}>
+                                                                    {user.username[0].toUpperCase()}
+                                                                </div>
+                                                                <div>
+                                                                    <div className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{user.username}</div>
+                                                                    <div className="text-xs opacity-50">{user.type === 'emby' ? '已连接到 Emby' : '本地账户'}</div>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-4 font-mono">
+                                                            {getUserRequestCount(user.username)}
+                                                        </td>
+                                                        <td className="p-4">
+                                                            <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${
+                                                                user.type === 'emby' 
+                                                                ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' 
+                                                                : 'bg-blue-500/10 text-blue-500 border-blue-500/20'
+                                                            }`}>
+                                                                {user.type === 'emby' ? 'Emby 用户' : '本地用户'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="p-4">
+                                                            {user.isAdmin ? (
+                                                                <span className="text-indigo-500 font-bold flex items-center gap-1">
+                                                                    <ShieldCheck size={14} /> 管理员
+                                                                </span>
+                                                            ) : (
+                                                                <span className="opacity-60">访客</span>
+                                                            )}
+                                                        </td>
+                                                        <td className="p-4 text-xs opacity-60 font-mono">
+                                                            {new Date(user.createdAt).toLocaleDateString()}
+                                                        </td>
+                                                        <td className="p-4 text-right">
+                                                            <button 
+                                                                onClick={() => handleDeleteUser(user.id)}
+                                                                className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                                                                title="删除用户"
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div className="p-6 rounded-2xl border flex items-center justify-between gap-6 bg-gradient-to-r from-indigo-500/5 to-purple-500/5 border-indigo-500/10">
+                                    <div>
+                                        <h4 className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>快速添加本地用户</h4>
+                                        <p className="text-xs opacity-60 mt-1">创建不依赖 Emby 的本地账号</p>
+                                    </div>
+                                    <form onSubmit={handleAddUser} className="flex gap-3 items-center">
+                                        <input 
+                                            type="text" 
+                                            placeholder="用户名"
+                                            value={newUser.username}
+                                            onChange={e => setNewUser({...newUser, username: e.target.value})}
+                                            className={`px-3 py-2 rounded-lg border text-sm w-32 ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white' : 'bg-white border-slate-200'}`}
+                                        />
+                                        <input 
+                                            type="text" 
+                                            placeholder="密码"
+                                            value={newUser.password}
+                                            onChange={e => setNewUser({...newUser, password: e.target.value})}
+                                            className={`px-3 py-2 rounded-lg border text-sm w-32 ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white' : 'bg-white border-slate-200'}`}
+                                        />
+                                        <label className="flex items-center gap-2 text-xs cursor-pointer select-none whitespace-nowrap">
                                             <input 
-                                                type="text" 
-                                                placeholder="用户名"
-                                                value={newUser.username}
-                                                onChange={e => setNewUser({...newUser, username: e.target.value})}
-                                                className={`w-full px-3 py-2 rounded-lg border text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white' : 'bg-white border-slate-200'}`}
+                                                type="checkbox" 
+                                                checked={newUser.isAdmin}
+                                                onChange={e => setNewUser({...newUser, isAdmin: e.target.checked})}
+                                                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                                             />
-                                        </div>
-                                        <div className="sm:col-span-4">
-                                            <input 
-                                                type="text" 
-                                                placeholder="密码"
-                                                value={newUser.password}
-                                                onChange={e => setNewUser({...newUser, password: e.target.value})}
-                                                className={`w-full px-3 py-2 rounded-lg border text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white' : 'bg-white border-slate-200'}`}
-                                            />
-                                        </div>
-                                        <div className="sm:col-span-2 flex items-center">
-                                            <label className="flex items-center gap-2 text-xs cursor-pointer select-none">
-                                                <input 
-                                                    type="checkbox" 
-                                                    checked={newUser.isAdmin}
-                                                    onChange={e => setNewUser({...newUser, isAdmin: e.target.checked})}
-                                                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                                                />
-                                                <span className={isDarkMode ? 'text-zinc-300' : 'text-slate-600'}>管理员</span>
-                                            </label>
-                                        </div>
-                                        <div className="sm:col-span-2">
-                                            <button 
-                                                type="submit"
-                                                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg text-sm font-bold transition-colors"
-                                            >
-                                                添加
-                                            </button>
-                                        </div>
+                                            <span className={isDarkMode ? 'text-zinc-300' : 'text-slate-600'}>管理员</span>
+                                        </label>
+                                        <button 
+                                            type="submit"
+                                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors"
+                                        >
+                                            添加
+                                        </button>
                                     </form>
-                                </div>
-
-                                <div className="space-y-4">
-                                    <h4 className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>用户列表</h4>
-                                    <div className="space-y-2">
-                                        {users.map((user) => (
-                                            <div key={user.id} className={`flex items-center justify-between p-3 rounded-xl border ${isDarkMode ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-slate-200'}`}>
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${user.isAdmin ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-600'}`}>
-                                                        {user.username[0].toUpperCase()}
-                                                    </div>
-                                                    <div>
-                                                        <div className={`font-medium text-sm ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                                                            {user.username}
-                                                            {user.isAdmin && <span className="ml-2 text-[10px] px-1.5 py-0.5 bg-indigo-500/10 text-indigo-500 rounded font-bold">ADMIN</span>}
-                                                        </div>
-                                                        <div className={`text-[10px] opacity-50 ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
-                                                            创建于: {new Date(user.createdAt).toLocaleDateString()}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <button 
-                                                    onClick={() => handleDeleteUser(user.id)}
-                                                    className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
-                                                    title="删除用户"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
                                 </div>
                             </div>
                         )}
 
-                        {/* System Tab */}
+                         {/* System Tab (added back missing from my mind) */}
                         {activeTab === 'system' && (
-                            <div className="max-w-xl space-y-8">
+                             <div className="max-w-xl space-y-8">
                                 <div className="space-y-6">
-                                    <div className="space-y-2">
-                                        <label className={`text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
-                                            <RefreshCw size={14} /> 自动扫描间隔 (分钟)
-                                        </label>
-                                        <p className={`text-xs mb-2 ${isDarkMode ? 'text-zinc-600' : 'text-slate-400'}`}>
-                                            系统后台定期扫描 Emby 服务器新入库媒体的时间间隔。
-                                        </p>
-                                        <div className="flex gap-4">
-                                            <input 
-                                                type="number" 
-                                                min="1"
-                                                max="1440"
-                                                value={scanInterval}
-                                                onChange={(e) => setScanInterval(parseInt(e.target.value) || 15)}
-                                                className={`w-32 p-3 rounded-xl border outline-none transition-all font-mono text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
+                                    <div className="space-y-4">
+                                        <h4 className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>个性化设置</h4>
+                                        
+                                        <div className="space-y-2">
+                                            <label className={`text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
+                                                <MonitorPlay size={14} /> 网站标题
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={websiteTitle}
+                                                onChange={(e) => setWebsiteTitle(e.target.value)}
+                                                placeholder="StreamHub - Global Media Monitor"
+                                                className={`w-full p-3 rounded-xl border outline-none transition-all font-mono text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
                                             />
-                                            <button 
-                                                onClick={handleSaveSystem}
-                                                className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 transition-colors"
-                                            >
-                                                保存设置
-                                            </button>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className={`text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
+                                                <Film size={14} /> 网站图标 URL
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={faviconUrl}
+                                                onChange={(e) => setFaviconUrl(e.target.value)}
+                                                placeholder="/favicon.svg"
+                                                className={`w-full p-3 rounded-xl border outline-none transition-all font-mono text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
+                                            />
                                         </div>
                                     </div>
 
                                     <div className="pt-6 border-t border-dashed border-gray-200 dark:border-white/10 space-y-4">
                                         <h4 className={`font-bold flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                                            <Database size={18} className="text-blue-500" /> 数据备份与恢复
+                                            <AlertOctagon size={18} className="text-red-500" /> 限制策略
                                         </h4>
-                                        <p className={`text-xs ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
-                                            导出所有配置（包括密钥、通知设置、求片记录等）到本地 JSON 文件。
-                                        </p>
-                                        
-                                        <div className="flex gap-3">
-                                            <button 
-                                                onClick={exportData}
-                                                className={`flex-1 py-3 rounded-xl border border-dashed font-bold text-sm flex items-center justify-center gap-2 transition-all ${isDarkMode ? 'border-zinc-700 hover:bg-white/5' : 'border-slate-300 hover:bg-slate-50'}`}
-                                            >
-                                                <Download size={16} /> 导出备份
-                                            </button>
-                                            <button 
-                                                onClick={() => importDataInputRef.current?.click()}
-                                                className={`flex-1 py-3 rounded-xl border border-dashed font-bold text-sm flex items-center justify-center gap-2 transition-all ${isDarkMode ? 'border-zinc-700 hover:bg-white/5' : 'border-slate-300 hover:bg-slate-50'}`}
-                                            >
-                                                <Upload size={16} /> 恢复数据
-                                            </button>
-                                            <input 
-                                                type="file" 
-                                                ref={importDataInputRef} 
-                                                className="hidden" 
-                                                accept=".json" 
-                                                onChange={handleImportData}
+                                        <div className="space-y-2">
+                                            <label className={`text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
+                                                每用户最大求片数量 (0 为不限)
+                                            </label>
+                                            <input
+                                                type="number"
+                                                value={requestLimit}
+                                                onChange={(e) => setRequestLimit(parseInt(e.target.value))}
+                                                min={0}
+                                                className={`w-full p-3 rounded-xl border outline-none transition-all font-mono text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
                                             />
+                                            <p className="text-xs opacity-60">仅针对普通用户生效，管理员不受限制。</p>
                                         </div>
                                     </div>
-                                    
+
                                     <div className="pt-6 border-t border-dashed border-gray-200 dark:border-white/10">
-                                        <div className={`text-center text-xs ${isDarkMode ? 'text-zinc-600' : 'text-slate-400'}`}>
-                                            <p>StreamHub Monitor v1.0.0</p>
-                                            <p className="mt-1">Built with React, Vite & Love</p>
-                                        </div>
+                                        <button
+                                            onClick={handleSaveSystem}
+                                            className="px-6 py-3 rounded-xl bg-indigo-600 text-white font-bold shadow-lg hover:bg-indigo-700 transition-colors flex items-center gap-2"
+                                        >
+                                            <Save size={18} /> 保存所有设置
+                                        </button>
                                     </div>
                                 </div>
-                            </div>
+                             </div>
                         )}
+
                     </div>
                 </div>
             </div>

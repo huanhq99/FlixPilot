@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   MonitorPlay, 
   Search, 
@@ -14,71 +14,59 @@ import {
   LogOut,
   User as UserIcon
 } from 'lucide-react';
-import { Toaster, toast } from 'sonner';
 import { TMDB_API_KEY, TMDB_BASE_URL } from './constants';
-import { MediaItem, FilterState, EmbyConfig, AuthState } from './types';
+import { MediaItem, FilterState, EmbyConfig, AuthState, RequestItem } from './types';
 import { processMediaItem, fetchDetails } from './services/tmdbService';
 import { fetchEmbyLibrary } from './services/embyService';
 import { sendTelegramNotification } from './services/notificationService';
-import { useAuth } from './hooks/useAuth';
+import { storage, STORAGE_KEYS } from './utils/storage';
+import { ToastProvider, useToast } from './components/Toast';
 import Filters from './components/Filters';
 import MediaCard from './components/MediaCard';
 import DetailModal from './components/DetailModal';
 import SettingsModal from './components/SettingsModal';
 import Login from './components/Login';
 
-export default function App() {
+function AppContent() {
+  const toast = useToast();
   const [mediaList, setMediaList] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    const saved = localStorage.getItem('darkMode');
-    return saved ? JSON.parse(saved) : false;
-  });
+  const [isDarkMode, setIsDarkMode] = useState(() => storage.get(STORAGE_KEYS.DARK_MODE, false));
 
   // Auth State
-  const { authState, login, logout, setAuthState } = useAuth();
+  const [authState, setAuthState] = useState<AuthState>(() => 
+    storage.get(STORAGE_KEYS.AUTH, {
+      isAuthenticated: false,
+      user: null,
+      serverUrl: '',
+      accessToken: '',
+      isAdmin: false,
+      isGuest: false
+    })
+  );
 
   // Emby State
   const [showSettings, setShowSettings] = useState(false);
   const [embyConfig, setEmbyConfig] = useState<EmbyConfig>(() => {
-      try {
-          // If authenticated, use the auth session
-          const savedAuth = localStorage.getItem('streamhub_auth');
-          if (savedAuth) {
-              const auth = JSON.parse(savedAuth);
-              return { serverUrl: auth.serverUrl || '', apiKey: auth.accessToken || '' };
-          }
-          // Fallback to legacy config or empty
-          const saved = localStorage.getItem('embyConfig');
-          return saved ? JSON.parse(saved) : { serverUrl: '', apiKey: '' };
-      } catch (e) {
-          console.error('Failed to parse emby config', e);
-          return { serverUrl: '', apiKey: '' };
+      const savedAuth = storage.get<AuthState | null>(STORAGE_KEYS.AUTH, null);
+      if (savedAuth?.isAuthenticated) {
+          return { serverUrl: savedAuth.serverUrl, apiKey: savedAuth.accessToken };
       }
+      return storage.get(STORAGE_KEYS.EMBY_CONFIG, { serverUrl: '', apiKey: '' });
   });
   const [embyLibrary, setEmbyLibrary] = useState<Set<string>>(() => {
-      try {
-          const saved = localStorage.getItem('emby_library_cache');
-          return saved ? new Set(JSON.parse(saved)) : new Set();
-      } catch (e) {
-          return new Set();
-      }
+      const saved = storage.get<string[]>(STORAGE_KEYS.EMBY_LIBRARY, []);
+      return new Set(saved);
   });
+  const [selectedLibraryIds, setSelectedLibraryIds] = useState<string[]>(() => 
+      storage.get('streamhub_selected_libraries', [])
+  );
   const [syncingEmby, setSyncingEmby] = useState(false);
-
-  // System Settings State
-  const [systemSettings, setSystemSettings] = useState(() => {
-      try {
-          const saved = localStorage.getItem('streamhub_settings');
-          return saved ? JSON.parse(saved) : { scanInterval: 15 };
-      } catch (e) {
-          return { scanInterval: 15 };
-      }
-  });
+  const [syncInterval, setSyncInterval] = useState(() => storage.get(STORAGE_KEYS.SYNC_INTERVAL, 15));
 
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -99,14 +87,15 @@ export default function App() {
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
+    storage.set(STORAGE_KEYS.DARK_MODE, isDarkMode);
     if (isDarkMode) document.documentElement.classList.add('dark');
     else document.documentElement.classList.remove('dark');
   }, [isDarkMode]);
 
   // Handle Login
-  const handleLogin = (auth: AuthState) => {
-      login(auth);
+  const handleLogin = useCallback((auth: AuthState) => {
+      setAuthState(auth);
+      storage.set(STORAGE_KEYS.AUTH, auth);
       
       if (!auth.isGuest) {
           const newConfig = { serverUrl: auth.serverUrl, apiKey: auth.accessToken };
@@ -116,10 +105,19 @@ export default function App() {
               syncEmbyLibrary(newConfig);
           }
       }
-  };
+  }, []);
 
   const handleLogout = () => {
-      logout();
+      const emptyAuth = {
+          isAuthenticated: false,
+          user: null,
+          serverUrl: '',
+          accessToken: '',
+          isAdmin: false,
+          isGuest: false
+      };
+      setAuthState(emptyAuth);
+      localStorage.removeItem('streamhub_auth');
       setEmbyLibrary(new Set());
   };
 
@@ -131,18 +129,9 @@ export default function App() {
   }, []); // Run once on mount if already logged in
 
   const checkRequestsStatus = (ids: Set<string>) => {
-      let existingRequests = [];
-      try {
-          existingRequests = JSON.parse(localStorage.getItem('requests') || '[]');
-      } catch (e) {
-          existingRequests = [];
-      }
-
+      const existingRequests = JSON.parse(localStorage.getItem('requests') || '[]');
       let requestsChanged = false;
-      let notifyConfig: any = {};
-      try {
-          notifyConfig = JSON.parse(localStorage.getItem('streamhub_notifications') || '{}');
-      } catch (e) { /* ignore */ }
+      const notifyConfig = JSON.parse(localStorage.getItem('streamhub_notifications') || '{}');
 
       const updatedRequests = existingRequests.map((req: any) => {
           if (req.status === 'pending') {
@@ -167,133 +156,150 @@ export default function App() {
       }
   };
 
-  const syncEmbyLibrary = async (config: EmbyConfig, isAutoScan = false) => {
+  const syncEmbyLibrary = useCallback(async (config: EmbyConfig, isAutoScan = false) => {
       setSyncingEmby(true);
-      const { ids, items } = await fetchEmbyLibrary(config);
       
-      if (isAutoScan && embyLibrary.size > 0) {
-          // Detect changes
-          const newItems = items.filter(item => {
-              if (!item.ProviderIds?.Tmdb) return false;
-              const type = item.Type === 'Series' ? 'tv' : 'movie';
-              const key = `${type}_${item.ProviderIds.Tmdb}`;
-              return !embyLibrary.has(key);
-          });
+      try {
+          // Use current selected libraries for sync
+          const { ids, items } = await fetchEmbyLibrary(config, undefined, selectedLibraryIds);
           
-          // Send notifications for newItems
-          if (newItems.length > 0) {
-              let notifyConfig: any = {};
-              try {
-                  notifyConfig = JSON.parse(localStorage.getItem('streamhub_notifications') || '{}');
-              } catch (e) { /* ignore */ }
+          if (isAutoScan && embyLibrary.size > 0) {
+              // Detect new items
+              const newItems = items.filter(item => {
+                  if (!item.ProviderIds?.Tmdb) return false;
+                  const type = item.Type === 'Series' ? 'tv' : 'movie';
+                  const key = `${type}_${item.ProviderIds.Tmdb}`;
+                  return !embyLibrary.has(key);
+              });
+              
+              // Detect deleted items (optional)
+              const deletedItems: string[] = [];
+              embyLibrary.forEach(key => {
+                  if (!ids.has(key)) {
+                      deletedItems.push(key);
+                  }
+              });
 
-              if (notifyConfig.telegramBotToken && notifyConfig.telegramChatId) {
-                  for (const item of newItems) {
-                      try {
-                          const type = item.Type === 'Series' ? 'tv' : 'movie';
-                          const tmdbId = parseInt(item.ProviderIds?.Tmdb || '0');
-                          if (!tmdbId) continue;
+              if (deletedItems.length > 0) {
+                  console.log(`Detected ${deletedItems.length} deleted items:`, deletedItems.slice(0, 5));
+              }
+              
+              // Send notifications in parallel
+              if (newItems.length > 0) {
+                  const notifyConfig = storage.get<any>(STORAGE_KEYS.NOTIFICATIONS, {});
+                  if (notifyConfig.telegramBotToken && notifyConfig.telegramChatId) {
+                      const notificationPromises = newItems.map(async (item) => {
+                          try {
+                              const type = item.Type === 'Series' ? 'tv' : 'movie';
+                              const tmdbId = parseInt(item.ProviderIds?.Tmdb || '0');
+                              if (!tmdbId) return;
 
-                          // Fetch details to get poster and nice info
-                          const detailData = await fetchDetails(tmdbId, type);
-                          const mediaItem: MediaItem = processMediaItem({
-                              id: tmdbId,
-                              media_type: type,
-                              title: item.Name,
-                              // ... minimal fields
-                          } as any, detailData, type);
+                              const detailData = await fetchDetails(tmdbId, type);
+                              const mediaItem: MediaItem = processMediaItem({
+                                  id: tmdbId,
+                                  media_type: type,
+                                  title: item.Name,
+                              } as any, detailData, type);
 
-                          await sendTelegramNotification(notifyConfig, mediaItem, 'System', undefined, 'auto_scan');
-                      } catch (e) {
-                          console.error('Failed to notify for new item', item.Name, e);
-                      }
+                              await sendTelegramNotification(notifyConfig, mediaItem, 'System', undefined, 'auto_scan');
+                          } catch (e) {
+                              console.error('Failed to notify for new item', item.Name, e);
+                          }
+                      });
+                      
+                      // Wait for all notifications (with timeout)
+                      await Promise.allSettled(notificationPromises);
                   }
               }
           }
+
+          checkRequestsStatus(ids);
+          
+          setEmbyLibrary(ids);
+          storage.set(STORAGE_KEYS.EMBY_LIBRARY, Array.from(ids));
+      } catch (error) {
+          console.error('Sync failed:', error);
+      } finally {
+          setSyncingEmby(false);
       }
+  }, [embyLibrary, checkRequestsStatus]);
 
-      checkRequestsStatus(ids);
-      
-      setEmbyLibrary(ids);
-      localStorage.setItem('emby_library_cache', JSON.stringify(Array.from(ids)));
-      setSyncingEmby(false);
-  };
-
-  // Auto Scan Interval
+  // Auto Scan Interval (Configurable)
   useEffect(() => {
       if (!authState.isAuthenticated || !embyConfig.serverUrl) return;
       
-      // Minimum 1 minute, default 15
-      const intervalMinutes = Math.max(1, systemSettings.scanInterval || 15);
-      
+      const intervalMs = syncInterval * 60 * 1000;
       const interval = setInterval(() => {
           syncEmbyLibrary(embyConfig, true);
-      }, intervalMinutes * 60 * 1000); 
+      }, intervalMs); 
 
       return () => clearInterval(interval);
-  }, [authState.isAuthenticated, embyConfig, systemSettings.scanInterval]);
+  }, [authState.isAuthenticated, embyConfig, syncInterval, syncEmbyLibrary]);
 
-  const handleSaveSettings = (newConfig: EmbyConfig, library?: Set<string>) => {
+  const handleSaveSettings = useCallback((newConfig: EmbyConfig, library?: Set<string>, newSyncInterval?: number, newSelectedLibIds?: string[]) => {
       setEmbyConfig(newConfig);
-      localStorage.setItem('embyConfig', JSON.stringify(newConfig));
+      storage.set(STORAGE_KEYS.EMBY_CONFIG, newConfig);
+
+      if (newSyncInterval !== undefined) {
+          setSyncInterval(newSyncInterval);
+          storage.set(STORAGE_KEYS.SYNC_INTERVAL, newSyncInterval);
+      }
+
+      if (newSelectedLibIds) {
+          setSelectedLibraryIds(newSelectedLibIds);
+          storage.set('streamhub_selected_libraries', newSelectedLibIds);
+      }
 
       // Update Auth State as well to keep them in sync
       if (authState.isAuthenticated) {
-          const newAuth = {
+          const newAuth: AuthState = {
               ...authState,
               serverUrl: newConfig.serverUrl,
               accessToken: newConfig.apiKey
           };
-          login(newAuth);
+          setAuthState(newAuth);
+          storage.set(STORAGE_KEYS.AUTH, newAuth);
       }
 
       if (library) {
           setEmbyLibrary(library);
-          localStorage.setItem('emby_library_cache', JSON.stringify(Array.from(library)));
+          storage.set(STORAGE_KEYS.EMBY_LIBRARY, Array.from(library));
           checkRequestsStatus(library);
       } else {
           syncEmbyLibrary(newConfig);
       }
-  };
+  }, [authState, checkRequestsStatus, syncEmbyLibrary]);
 
-  const handleRequest = (item: MediaItem) => {
-      // Simple request logic for now
-      let existingRequests = [];
-      try {
-          existingRequests = JSON.parse(localStorage.getItem('requests') || '[]');
-      } catch (e) {
-           existingRequests = [];
-      }
-      const isRequested = existingRequests.some((r: any) => r.id === item.id && r.mediaType === item.mediaType);
+  const handleRequest = useCallback((item: MediaItem) => {
+      const existingRequests = storage.get<RequestItem[]>(STORAGE_KEYS.REQUESTS, []);
+      const isRequested = existingRequests.some((r) => r.id === item.id && r.mediaType === item.mediaType);
       
       if (isRequested) {
-          toast.error('您已经提交过此请求');
-          return;
+          toast.showToast('您已经提交过此请求', 'warning');
+          return 'already_requested';
       }
 
-      const newRequest = {
+      const newRequest: RequestItem = {
           ...item,
+          backdropUrl: item.backdropUrl,
           requestDate: new Date().toISOString(),
           requestedBy: authState.user?.Name || 'Unknown',
           status: 'pending'
       };
       
       const updatedRequests = [...existingRequests, newRequest];
-      localStorage.setItem('requests', JSON.stringify(updatedRequests));
+      storage.set(STORAGE_KEYS.REQUESTS, updatedRequests);
 
       // Send Notification
-      let notifyConfig: any = {};
-      try {
-          notifyConfig = JSON.parse(localStorage.getItem('streamhub_notifications') || '{}');
-      } catch (e) { /* ignore */ }
-      
+      const notifyConfig = storage.get<any>(STORAGE_KEYS.NOTIFICATIONS, {});
       if (notifyConfig.telegramBotToken && notifyConfig.telegramChatId) {
           sendTelegramNotification(notifyConfig, item, authState.user?.Name || 'Guest')
             .catch(err => console.error('Failed to send notification', err));
       }
 
-      toast.success('请求已提交！管理员审核后将自动下载。');
-  };
+      toast.showToast('请求已提交！管理员审核后将自动下载', 'success');
+      return 'success';
+  }, [authState.user, toast]);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearchTerm(searchTerm), 800);
@@ -503,9 +509,8 @@ export default function App() {
 
   return (
     <div className="min-h-screen font-sans selection:bg-indigo-500/30 pb-20">
-      <Toaster richColors position="top-center" theme={isDarkMode ? 'dark' : 'light'} />
       {selectedMedia && (
-          <DetailModal  
+          <DetailModal 
             selectedMedia={selectedMedia} 
             onClose={() => setSelectedMedia(null)} 
             isDarkMode={isDarkMode}
@@ -519,9 +524,9 @@ export default function App() {
         isOpen={showSettings} 
         onClose={() => setShowSettings(false)} 
         onSave={handleSaveSettings}
-        onSystemSettingsChange={setSystemSettings}
         currentConfig={embyConfig}
         isDarkMode={isDarkMode}
+        initialSelectedLibraries={selectedLibraryIds}
       />
 
       <header className={`sticky top-0 z-40 backdrop-blur-xl border-b transition-colors duration-300 ${isDarkMode ? 'bg-black/70 border-white/5' : 'bg-white/70 border-slate-200'}`}>
@@ -686,5 +691,13 @@ export default function App() {
         <ArrowUp size={20} />
       </button>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <ToastProvider>
+      <AppContent />
+    </ToastProvider>
   );
 }

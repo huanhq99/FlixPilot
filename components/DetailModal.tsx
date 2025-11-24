@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-    ArrowLeft, Star, Clock, CheckCircle2, Film, PlayCircle, Youtube, User, Terminal, HelpCircle, Calendar, X, Tv, Layers, LayoutList, Disc, MonitorPlay, Globe, Languages, Library
+    ArrowLeft, Star, Clock, CheckCircle2, Film, PlayCircle, Youtube, User, Terminal, HelpCircle, Calendar, X, Tv, Layers, LayoutList, Disc, MonitorPlay, Globe, Languages, Library, Send, AlertCircle, MessageSquare
 } from 'lucide-react';
 import { MediaItem, Episode, AuthState } from '../types';
 import { IMAGE_BASE_URL, PROFILE_BASE_URL } from '../constants';
@@ -12,7 +12,7 @@ interface DetailModalProps {
     isDarkMode: boolean;
     embyLibrary?: Set<string>;
     authState?: AuthState;
-    onRequest?: (item: MediaItem) => void;
+    onRequest?: (item: MediaItem, options?: { resolution: string; note: string }) => void;
 }
 
 const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDarkMode, embyLibrary, authState, onRequest }) => {
@@ -29,6 +29,11 @@ const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDar
     const [collectionItems, setCollectionItems] = useState<MediaItem[]>([]);
     const [recommendations, setRecommendations] = useState<MediaItem[]>([]);
     const [relatedLoading, setRelatedLoading] = useState(false);
+
+    // Request Modal State
+    const [showRequestForm, setShowRequestForm] = useState(false);
+    const [resolution, setResolution] = useState('Any');
+    const [requestNote, setRequestNote] = useState('');
 
     let statusText = selectedMedia.badgeLabel;
     let statusIcon = <Clock size={14}/>;
@@ -54,11 +59,6 @@ const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDar
         statusColor = 'text-amber-400';
         statusBg = 'bg-amber-500/10 border-amber-500/20';
     }
-
-    // TV Specific Badge (e.g., S1 E8)
-    const tvUpdateBadge = selectedMedia.mediaType === 'tv' && selectedMedia.lastEpisodeToAir 
-        ? `S${selectedMedia.lastEpisodeToAir.season_number} E${selectedMedia.lastEpisodeToAir.episode_number}` 
-        : null;
 
     useEffect(() => {
         if (isTV && selectedSeason !== null) {
@@ -110,6 +110,16 @@ const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDar
         loadRelated();
     }, [selectedMedia.id, selectedMedia.collectionId, selectedMedia.mediaType]);
 
+    const handleSubmitRequest = () => {
+        if (onRequest) {
+            onRequest(selectedMedia, {
+                resolution: resolution,
+                note: requestNote
+            });
+            setShowRequestForm(false);
+        }
+    };
+
     const RelatedCard = ({ item }: { item: MediaItem }) => (
         <div className={`flex-shrink-0 w-32 md:w-40 snap-start`}>
             <div className="aspect-[2/3] rounded-lg overflow-hidden mb-2 relative group cursor-pointer">
@@ -135,6 +145,7 @@ const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDar
                 className="absolute inset-0 bg-black/60 backdrop-blur-sm"
                 onClick={onClose}
             ></div>
+            
             <div className={`relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl flex flex-col overflow-hidden ${isDarkMode ? 'bg-[#18181b] text-white' : 'bg-white text-slate-900'}`}>
                 
                 {/* Close Button */}
@@ -144,6 +155,64 @@ const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDar
                 >
                     <X size={20} />
                 </button>
+
+                {/* Request Form Overlay */}
+                {showRequestForm && (
+                    <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-200 p-4">
+                        <div className={`w-full max-w-md p-6 rounded-2xl shadow-2xl border ${isDarkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-slate-200'}`}>
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>提交求片请求</h3>
+                                <button onClick={() => setShowRequestForm(false)} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-white/10">
+                                    <X size={20} />
+                                </button>
+                            </div>
+                            
+                            <div className="space-y-4">
+                                <div>
+                                    <label className={`text-xs font-bold uppercase tracking-wider block mb-2 ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
+                                        期望分辨率
+                                    </label>
+                                    <div className="grid grid-cols-4 gap-2">
+                                        {['Any', '4K', '1080p', '720p'].map(res => (
+                                            <button
+                                                key={res}
+                                                onClick={() => setResolution(res)}
+                                                className={`py-2 rounded-lg text-sm font-bold transition-all border ${
+                                                    resolution === res
+                                                    ? 'bg-indigo-600 text-white border-indigo-600'
+                                                    : isDarkMode ? 'bg-zinc-800 border-zinc-700 hover:bg-zinc-700' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                                                }`}
+                                            >
+                                                {res === 'Any' ? '不限' : res}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className={`text-xs font-bold uppercase tracking-wider block mb-2 ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
+                                        备注 / 版本要求 (选填)
+                                    </label>
+                                    <textarea 
+                                        value={requestNote}
+                                        onChange={(e) => setRequestNote(e.target.value)}
+                                        placeholder="例如：特效字幕版 / 导演剪辑版..."
+                                        className={`w-full p-3 rounded-xl border outline-none transition-all text-sm min-h-[100px] ${
+                                            isDarkMode ? 'bg-zinc-800 border-zinc-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'
+                                        }`}
+                                    />
+                                </div>
+
+                                <button 
+                                    onClick={handleSubmitRequest}
+                                    className="w-full py-3 rounded-xl bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 active:scale-95 transition-all flex items-center justify-center gap-2"
+                                >
+                                    <Send size={18} /> 确认提交
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Backdrop Section */}
                 <div className="w-full relative aspect-video md:aspect-[21/9] shrink-0">
@@ -224,7 +293,14 @@ const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDar
                             </button>
                         ) : (
                             <button 
-                                onClick={() => onRequest && onRequest(selectedMedia)}
+                                onClick={() => {
+                                    if (authState?.isAuthenticated) {
+                                        setShowRequestForm(true);
+                                    } else if (onRequest) {
+                                        // Trigger login hint or flow if not authenticated (handled by parent usually)
+                                        onRequest(selectedMedia); 
+                                    }
+                                }}
                                 disabled={!authState?.isAuthenticated}
                                 className={`px-6 py-2.5 rounded-xl font-bold shadow-lg transition-all flex items-center gap-2 ${
                                     authState?.isAuthenticated 

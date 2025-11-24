@@ -113,6 +113,26 @@ export interface AuthState {
   isGuest: boolean;
 }
 
+export interface RequestItem {
+  id: number;
+  title: string;
+  year: string;
+  mediaType: 'movie' | 'tv';
+  posterUrl: string | null;
+  backdropUrl?: string | null;
+  overview: string;
+  requestDate: string;
+  requestedBy: string;
+  requestedByAvatar?: string;
+  status: 'pending' | 'completed' | 'rejected' | 'processing';
+  completedAt?: string;
+  
+  // New fields
+  resolutionPreference?: 'Any' | '4K' | '1080p' | '720p';
+  notes?: string;
+  seasonsRequested?: number[]; // For TV shows, maybe specific seasons?
+}
+
 export interface EmbyItem {
   Id: string;
   Name: string;

@@ -53,46 +53,97 @@ export const getEmbyUsers = async (config: EmbyConfig): Promise<EmbyUser[]> => {
     }
 };
 
+export const fetchEmbyLibraries = async (config: EmbyConfig): Promise<any[]> => {
+    try {
+        const baseUrl = config.serverUrl.replace(/\/$/, '');
+        const response = await fetch(`${baseUrl}/Library/VirtualFolders?api_key=${config.apiKey}`);
+        if (!response.ok) throw new Error('Failed to fetch libraries');
+        return await response.json();
+    } catch (e) {
+        console.error("Failed to fetch Emby libraries", e);
+        return [];
+    }
+};
+
+const fetchItemsForParent = async (
+    baseUrl: string, 
+    apiKey: string, 
+    parentId: string | null, 
+    startIndex: number, 
+    limit: number
+): Promise<EmbyItem[]> => {
+    const parentParam = parentId ? `&ParentId=${parentId}` : '';
+    const url = `${baseUrl}/Items?Recursive=true&IncludeItemTypes=Movie,Series,Episode&IsMissing=false${parentParam}&Fields=ProviderIds,SeriesId,ParentIndexNumber,IndexNumber&StartIndex=${startIndex}&Limit=${limit}&api_key=${apiKey}`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Failed to fetch batch');
+    const data = await response.json();
+    return data.Items || [];
+};
+
+const getCountForParent = async (baseUrl: string, apiKey: string, parentId: string | null): Promise<number> => {
+    const parentParam = parentId ? `&ParentId=${parentId}` : '';
+    const url = `${baseUrl}/Items?Recursive=true&IncludeItemTypes=Movie,Series,Episode&IsMissing=false${parentParam}&Limit=0&api_key=${apiKey}`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Failed to fetch count');
+    return (await response.json()).TotalRecordCount;
+};
+
 export const fetchEmbyLibrary = async (
     config: EmbyConfig, 
-    onProgress?: (current: number, total: number, status: string) => void
+    onProgress?: (current: number, total: number, status: string) => void,
+    selectedLibraries?: string[]
 ): Promise<{ ids: Set<string>, items: EmbyItem[] }> => {
     try {
         const baseUrl = config.serverUrl.replace(/\/$/, '');
-        // Remove UserId param to ensure global sync
         
-        // 1. Get Total Count first
+        // Determine which parents to query
+        // If selectedLibraries is empty or undefined, we query "all" (parentId = null)
+        // BUT if selectedLibraries is provided but empty array, it implies "Sync Nothing" which might be weird. 
+        // Let's assume undefined/empty array means "All" for backward compatibility, 
+        // UNLESS we strictly enforce selection. 
+        // If the user selected libraries, we iterate. If not, we do one global fetch.
+        
+        let targets: (string | null)[] = [null];
+        if (selectedLibraries && selectedLibraries.length > 0) {
+            targets = selectedLibraries;
+        }
+
+        // 1. Calculate Total Count
+        let totalCount = 0;
+        const counts: number[] = [];
+        
         if (onProgress) onProgress(0, 0, '正在连接服务器...');
-        // Add IsMissing=false to exclude missing episodes/movies
-        const countUrl = `${baseUrl}/Items?Recursive=true&IncludeItemTypes=Movie,Series,Episode&IsMissing=false&Limit=0&api_key=${config.apiKey}`;
-        const countRes = await fetch(countUrl);
-        if (!countRes.ok) throw new Error('Failed to fetch count');
-        const totalCount = (await countRes.json()).TotalRecordCount;
+
+        for (const target of targets) {
+            const count = await getCountForParent(baseUrl, config.apiKey, target);
+            counts.push(count);
+            totalCount += count;
+        }
 
         if (totalCount === 0) return { ids: new Set(), items: [] };
 
-        // 2. Fetch in batches
+        // 2. Fetch Items
         const BATCH_SIZE = 2000;
         const librarySet = new Set<string>();
         const seriesMap = new Map<string, string>();
-        let fetchedCount = 0;
-        
         const allItems: EmbyItem[] = [];
+        let globalFetched = 0;
 
-        while (fetchedCount < totalCount) {
-            if (onProgress) onProgress(fetchedCount, totalCount, `正在同步媒体库索引 (${fetchedCount}/${totalCount})...`);
-            
-            const url = `${baseUrl}/Items?Recursive=true&IncludeItemTypes=Movie,Series,Episode&IsMissing=false&Fields=ProviderIds,SeriesId,ParentIndexNumber,IndexNumber&StartIndex=${fetchedCount}&Limit=${BATCH_SIZE}&api_key=${config.apiKey}`;
-            const response = await fetch(url);
-            if (!response.ok) throw new Error('Failed to fetch batch');
-            
-            const data = await response.json();
-            const items: EmbyItem[] = data.Items || [];
-            
-            if (items.length === 0) break;
-            
-            allItems.push(...items);
-            fetchedCount += items.length;
+        for (let i = 0; i < targets.length; i++) {
+            const target = targets[i];
+            const count = counts[i];
+            let fetchedForTarget = 0;
+
+            while (fetchedForTarget < count) {
+                if (onProgress) onProgress(globalFetched, totalCount, `正在同步媒体库 (${globalFetched}/${totalCount})...`);
+
+                const items = await fetchItemsForParent(baseUrl, config.apiKey, target, fetchedForTarget, BATCH_SIZE);
+                if (items.length === 0) break;
+
+                allItems.push(...items);
+                fetchedForTarget += items.length;
+                globalFetched += items.length;
+            }
         }
 
         if (onProgress) onProgress(totalCount, totalCount, '正在构建索引...');

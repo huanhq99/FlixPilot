@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Server, User, Lock, LogIn, Shield, Ghost, Loader2, AlertCircle, CheckCircle2, Settings2 } from 'lucide-react';
 import { loginEmby } from '../services/embyService';
 import { AuthState } from '../types';
+import { storage, STORAGE_KEYS } from '../utils/storage';
 
 interface LoginProps {
     onLogin: (auth: AuthState) => void;
@@ -27,7 +28,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, isDarkMode }) => {
     // Check if system is initialized
     useEffect(() => {
         try {
-            const users = localStorage.getItem('streamhub_users');
+            const users = storage.get(STORAGE_KEYS.USERS, null);
             if (!users) {
                 setMode('setup');
             } else {
@@ -87,7 +88,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, isDarkMode }) => {
 
             // Save to LocalStorage
             const users = [newUser];
-            localStorage.setItem('streamhub_users', JSON.stringify(users));
+            storage.set(STORAGE_KEYS.USERS, users);
 
             // Auto Login
             const authState: AuthState = {
@@ -121,13 +122,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, isDarkMode }) => {
 
         try {
             // 1. Check Local Users
-            let users: any[] = [];
-            try {
-                const usersStr = localStorage.getItem('streamhub_users');
-                users = usersStr ? JSON.parse(usersStr) : [];
-            } catch (e) {
-                users = [];
-            }
+            const users = storage.get<any[]>(STORAGE_KEYS.USERS, []);
             
             const localUser = users.find((u: any) => u.username === username && u.password === password);
 
