@@ -201,10 +201,12 @@ export const testMoviePilotConnection = async (config: NotificationConfig): Prom
                 }
 
                 console.log(`Testing MP connection: ${baseUrl}${endpoint} with ${authMethod.name}`);
+                console.log(`Request headers:`, headers);
 
                 const response = await fetch(`${baseUrl}${endpoint}`, {
                     method: 'GET',
-                    headers
+                    headers,
+                    credentials: 'omit' // 不发送 cookie，避免干扰
                 });
 
                 if (response.ok) {
@@ -224,9 +226,15 @@ export const testMoviePilotConnection = async (config: NotificationConfig): Prom
                     try {
                         const errorData = await response.json();
                         errorDetail = errorData.detail || errorData.message || errorData.msg || errorData.error || '';
+                        console.log(`API Error Response:`, errorData);
                     } catch {
-                        errorDetail = await response.text().catch(() => '');
+                        const text = await response.text().catch(() => '');
+                        errorDetail = text;
+                        console.log(`API Error Response (text):`, text);
                     }
+                    
+                    // 记录响应头，可能有有用的信息
+                    console.log(`Response headers for ${endpoint}:`, Object.fromEntries(response.headers.entries()));
                     
                     if (response.status === 401 || response.status === 403) {
                         // 记录详细的认证错误信息
