@@ -141,12 +141,14 @@ export const testMoviePilotConnection = async (config: NotificationConfig): Prom
     // Try common endpoints - 优先使用 /api/v1/* 路径（反代通常配置了这个路径）
     // 注意：从错误日志看，/v2/* 和 /v1/* 路径（没有 /api/ 前缀）会被 CORS 阻止
     // 但是从错误看，/api/v1/plugin/plugin_list 能到达服务器，说明路径是对的
+    // 根据 MoviePilot 实际使用的 API 端点
+    // 从用户提供的日志看，MoviePilot 使用 ?token= 作为查询参数
     const endpoints = [
-        '/api/v1/user/info', // 用户信息（可能更常用）
-        '/api/v1/user/me', // Best for token validation - 优先尝试
+        '/api/v1/system/message', // 系统消息（不需要特殊权限）
+        '/api/v1/dashboard/statistic', // 仪表板统计（可能不需要特殊权限）
+        '/api/v1/plugin/remotes', // 插件列表（从日志看使用了 ?token=）
         '/api/v1/system/info', // 系统信息
-        '/api/v1/system/version', // 通常不需要特殊权限
-        '/api/v1/system/status', // 系统状态
+        '/api/v1/system/version', // 版本信息
     ];
 
     const authMethods = [
@@ -181,6 +183,57 @@ export const testMoviePilotConnection = async (config: NotificationConfig): Prom
     let lastStatusCode = 0;
     let lastErrorUrl = '';
 
+    // 首先尝试查询参数方式（MoviePilot 实际使用的方式）
+    console.log('🎯 优先尝试查询参数认证方式（MoviePilot 实际使用的方式）');
+    for (const endpoint of endpoints) {
+        if (!endpoint.startsWith('/api/v1/')) continue;
+        
+        try {
+            const url = `${baseUrl}${endpoint}?token=${encodeURIComponent(cleanToken)}`;
+            console.log(`Testing with query param: ${endpoint}?token=...`);
+            
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                credentials: 'omit'
+            });
+            
+            if (response.ok) {
+                const data = await response.json().catch(() => ({}));
+                console.log(`✅ 连接成功！使用查询参数方式，端点: ${endpoint}`);
+                return { 
+                    success: true, 
+                    message: `连接成功！\n端点: ${endpoint}\n认证方式: 查询参数 (?token=...)`,
+                    method: 'Query Parameter'
+                };
+            } else {
+                console.log(`查询参数方式失败，端点: ${endpoint}, 状态: ${response.status}`);
+                lastStatusCode = response.status;
+                lastErrorUrl = `${baseUrl}${endpoint}`;
+                
+                if (response.status === 401 || response.status === 403) {
+                    try {
+                        const errorData = await response.json();
+                        const detail = errorData.detail || errorData.message || errorData.msg || 'Token 无效';
+                        connectionError = `认证失败 (${response.status}): ${detail}`;
+                    } catch {
+                        connectionError = `认证失败 (${response.status}): Token 可能无效`;
+                    }
+                }
+            }
+        } catch (e: any) {
+            console.log(`查询参数方式请求失败，端点: ${endpoint}`, e.message);
+            if (e.name === 'TypeError' && e.message.includes('Failed to fetch')) {
+                connectionError = '无法连接到服务器（可能是 CORS 问题）';
+            }
+        }
+    }
+
+    // 如果查询参数方式失败，再尝试 Header 方式
+    console.log('🔄 查询参数方式失败，尝试 Header 认证方式');
     for (const endpoint of endpoints) {
         for (const authMethod of authMethods) {
             try {
@@ -265,44 +318,6 @@ export const testMoviePilotConnection = async (config: NotificationConfig): Prom
         }
     }
 
-    // If all failed, try with query parameter (only for /api/v1/* paths to avoid CORS)
-    for (const endpoint of endpoints) {
-        if (!endpoint.startsWith('/api/v1/')) continue; // 只尝试 /api/v1/* 路径，避免 CORS
-        
-        try {
-            const response = await fetch(`${baseUrl}${endpoint}?token=${cleanToken}`, {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' }
-            });
-
-            console.log(`Testing with query param: ${baseUrl}${endpoint}?token=...`);
-            
-            if (response.ok) {
-                console.log(`✅ Success with query parameter on ${endpoint}`);
-                return { 
-                    success: true, 
-                    message: `连接成功！\n端点: ${endpoint}\n认证方式: Query Parameter (token=...)`,
-                    method: 'Query Parameter'
-                };
-            } else {
-                console.log(`Query param failed for ${endpoint}: ${response.status}`);
-                // 记录认证错误详情
-                if (response.status === 401 || response.status === 403) {
-                    try {
-                        const errorData = await response.json();
-                        const detail = errorData.detail || errorData.message || errorData.msg || 'Token 无效';
-                        if (!connectionError || (!connectionError.includes('认证失败') && !connectionError.includes('Query Parameter'))) {
-                            connectionError = `认证失败 (${response.status}): ${detail}`;
-                        }
-                    } catch {
-                        // 继续
-                    }
-                }
-            }
-        } catch (e) {
-            // Continue - 可能是 CORS 或其他网络错误
-        }
-    }
 
     // 如果所有尝试都失败，给出详细诊断信息
     let diagnosticMessage = '';
