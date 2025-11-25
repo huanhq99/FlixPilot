@@ -700,6 +700,969 @@
       "resolutionPreference": "Any",
       "notes": "",
       "completedAt": "2025-11-25T05:51:09.079Z"
+    },
+    {
+      "id": 967941,
+      "title": "魔法坏女巫2",
+      "subtitle": "Wicked: For Good",
+      "overview": "　　自从艾芙芭（辛西娅·埃里沃 饰）与格琳达（爱莉安娜·格兰德 饰）分道扬镳、形同陌路之后，各自承受她们做出的抉择所带来的后果。\r 　　被冠上“西方坏女巫”恶名的艾芙芭遭到放逐后，隐居在奥兹国树林深处，但是却仍然为被噤声的动物争取自由而奋斗，并且迫切地想要揭露她所知道关于奥兹国大巫师（杰夫· 高布伦 饰）的真相。\r 　　与此同时，格琳达已经成为奥兹国光鲜亮丽的良善象征，她住在翡翠城皇宫中， 享受她的响亮名声和超高人气所带来的明星光环与特权。在莫里贝尔夫人（杨紫琼 饰）的安排下，格琳达成为奥兹国人民眼中充满粉红泡泡的安抚力量，并且让他们相信奥兹国在大巫师的统治之下一切都很好。\r 　　当格琳达的明星光环越来越闪亮，她也准备和费耶罗王子（乔纳森·贝利 饰）举行一场盛大的婚礼，但是她却一直受到她和艾芙芭分开后的阴影所纠缠。她试图促成艾芙芭与大巫师之间的和解，然而她所有的努力都以失败告终，使得艾芙芭和格琳达的关系越来越疏远。她们的关系决裂所造成的影响，将彻底改变博克（伊森·斯莱特 饰）与费耶罗的命运，也将威胁到艾芙芭的妹妹涅莎萝丝（玛丽莎·博德 饰）的安危，而一名来自堪萨斯州的少女也将闯入奥兹国，彻底翻转他们的世界。\r 　　当一群愤怒的民众揭竿而起，打算对抗西方坏女巫，格琳达和艾芙芭就必须最后一次携手合作。当她们的友情成为改变她们未来的关键，她们就必须以真心诚意和无比的同理心真正了解彼此，并且改变自己，也让整个奥兹国变得更美好。",
+      "type": "电影",
+      "mediaType": "movie",
+      "platform": null,
+      "hasProvider": false,
+      "providerRegion": "",
+      "status": "completed",
+      "badgeLabel": "待上映",
+      "badgeColorClass": "",
+      "releaseDate": "2025-12-24",
+      "releaseDates": {
+        "theatrical": "2025-12-24",
+        "digital": null,
+        "physical": null
+      },
+      "year": "2025",
+      "region": "英语地区",
+      "voteAverage": 6.7,
+      "posterUrl": "https://image.tmdb.org/t/p/w500/czz4MOzBOsLxFL8G40eIvRKE2Sp.jpg",
+      "backdropUrl": "https://image.tmdb.org/t/p/original/l8pwO23MCvqYumzozpxynCNfck1.jpg",
+      "posterColor": "bg-orange-500",
+      "posterText": "魔法",
+      "seasons": [],
+      "collectionId": 968080,
+      "collectionName": "魔法坏女巫（系列）",
+      "genres": [
+        {
+          "id": 14,
+          "name": "奇幻"
+        },
+        {
+          "id": 12,
+          "name": "冒险"
+        },
+        {
+          "id": 10749,
+          "name": "爱情"
+        }
+      ],
+      "runtime": 137,
+      "cast": [
+        {
+          "adult": false,
+          "gender": 1,
+          "id": 226001,
+          "known_for_department": "Acting",
+          "name": "爱莉安娜·格兰德",
+          "original_name": "Ariana Grande",
+          "popularity": 5.8921,
+          "profile_path": "/ojr2zF46BmPe7EALds7WQf6Ro4O.jpg",
+          "cast_id": 11,
+          "character": "Glinda",
+          "credit_id": "626819df5ab81a132fe1a5fe",
+          "order": 0
+        },
+        {
+          "adult": false,
+          "gender": 1,
+          "id": 1765068,
+          "known_for_department": "Acting",
+          "name": "辛西娅·埃里沃",
+          "original_name": "Cynthia Erivo",
+          "popularity": 8.2404,
+          "profile_path": "/gIAXqZwZCBqkh2ppfAV4xcnMxki.jpg",
+          "cast_id": 12,
+          "character": "Elphaba / Wicked Witch of the West",
+          "credit_id": "626819eb4ccc50004ff5064c",
+          "order": 1
+        },
+        {
+          "adult": false,
+          "gender": 2,
+          "id": 80860,
+          "known_for_department": "Acting",
+          "name": "乔纳森·贝利",
+          "original_name": "Jonathan Bailey",
+          "popularity": 8.3644,
+          "profile_path": "/kMtZtavkXIXYA0CnhaWqbNo6uFV.jpg",
+          "cast_id": 16,
+          "character": "Fiyero / Scarecrow",
+          "credit_id": "632b7c214b6d9d007e58edcc",
+          "order": 2
+        },
+        {
+          "adult": false,
+          "gender": 2,
+          "id": 4785,
+          "known_for_department": "Acting",
+          "name": "杰夫·高布伦",
+          "original_name": "Jeff Goldblum",
+          "popularity": 5.0926,
+          "profile_path": "/ceSmXnD0FUSTaq2WIrnZu9caL0t.jpg",
+          "cast_id": 17,
+          "character": "The Wonderful Wizard of Oz",
+          "credit_id": "635d91611b7294007befcdf0",
+          "order": 3
+        },
+        {
+          "adult": false,
+          "gender": 1,
+          "id": 1620,
+          "known_for_department": "Acting",
+          "name": "杨紫琼",
+          "original_name": "Michelle Yeoh",
+          "popularity": 4.5782,
+          "profile_path": "/nrbHNzSMydpWK9um5VqWIFJihB5.jpg",
+          "cast_id": 19,
+          "character": "Madame Morrible",
+          "credit_id": "63922687d7fbda007be74033",
+          "order": 4
+        },
+        {
+          "adult": false,
+          "gender": 2,
+          "id": 2271410,
+          "known_for_department": "Acting",
+          "name": "伊桑·斯莱特",
+          "original_name": "Ethan Slater",
+          "popularity": 2.589,
+          "profile_path": "/xIgqyrM78FPt7Pb2Vv3IvJcnOWS.jpg",
+          "cast_id": 18,
+          "character": "Boq / Tin Man",
+          "credit_id": "63915b2cb9a0bd00c3fdfd3a",
+          "order": 5
+        }
+      ],
+      "videos": [],
+      "requestDate": "2025-11-25T06:24:30.102Z",
+      "requestedBy": "admin",
+      "resolutionPreference": "Any",
+      "notes": "",
+      "completedAt": "2025-11-25T06:24:35.662Z"
+    },
+    {
+      "id": 425274,
+      "title": "惊天魔盗团3",
+      "subtitle": "Now You See Me: Now You Don't",
+      "overview": "　　因神秘塔罗牌的指引，那群用魔术“替天行盗”的骑士们杀回来了！“初代四骑士”与三位新生代魔术师携手，目标直指一位钻石大亨——其家族凭借庞大资本与隐秘势力，构建了全球性犯罪网络，也为骑士团布下层层陷阱！面对史上最难的“盗窃任务”，骑士们再现奇迹，上演横跨全球的魔术大秀，与“血色钻石家族”展开骗中骗、局中局、计中计的巅峰博弈……",
+      "type": "电影",
+      "mediaType": "movie",
+      "platform": null,
+      "hasProvider": false,
+      "providerRegion": "",
+      "status": "completed",
+      "badgeLabel": "已上映",
+      "badgeColorClass": "",
+      "releaseDate": "2025-11-14",
+      "releaseDates": {
+        "theatrical": "2025-11-14",
+        "digital": null,
+        "physical": null
+      },
+      "year": "2025",
+      "region": "英语地区",
+      "voteAverage": 6.249,
+      "posterUrl": "https://image.tmdb.org/t/p/w500/ew4YPi9d0korzDmAOC9N1SCjYp0.jpg",
+      "backdropUrl": "https://image.tmdb.org/t/p/original/ufqytAlziHq5pljKByGJ8IKhtEZ.jpg",
+      "posterColor": "bg-blue-500",
+      "posterText": "惊天",
+      "seasons": [],
+      "collectionId": 382685,
+      "collectionName": "惊天魔盗团（系列）",
+      "genres": [
+        {
+          "id": 53,
+          "name": "惊悚"
+        },
+        {
+          "id": 80,
+          "name": "犯罪"
+        },
+        {
+          "id": 9648,
+          "name": "悬疑"
+        }
+      ],
+      "runtime": 112,
+      "cast": [
+        {
+          "adult": false,
+          "gender": 2,
+          "id": 44735,
+          "known_for_department": "Acting",
+          "name": "杰西·艾森伯格",
+          "original_name": "Jesse Eisenberg",
+          "popularity": 4.769,
+          "profile_path": "/yYhwWRcxDHTn63gSEF1vnDAD7cD.jpg",
+          "cast_id": 26,
+          "character": "J. Daniel Atlas",
+          "credit_id": "656cdd538eda8700ada6550a",
+          "order": 0
+        },
+        {
+          "adult": false,
+          "gender": 2,
+          "id": 3918497,
+          "known_for_department": "Acting",
+          "name": "多米尼克·塞萨",
+          "original_name": "Dominic Sessa",
+          "popularity": 1.987,
+          "profile_path": "/cTYdhJrye7oTREIkQaLAuLoJ8Rt.jpg",
+          "cast_id": 32,
+          "character": "Bosco Leroy",
+          "credit_id": "661f10d996670e017dd98247",
+          "order": 1
+        },
+        {
+          "adult": false,
+          "gender": 1,
+          "id": 1767250,
+          "known_for_department": "Acting",
+          "name": "阿丽亚娜·格林布拉特",
+          "original_name": "Ariana Greenblatt",
+          "popularity": 5.126,
+          "profile_path": "/bg9ysIhsdygPpVx2rnKDtzylfRv.jpg",
+          "cast_id": 31,
+          "character": "June McClure",
+          "credit_id": "661eea8c6d9fe8017d609012",
+          "order": 2
+        },
+        {
+          "adult": false,
+          "gender": 2,
+          "id": 1029934,
+          "known_for_department": "Acting",
+          "name": "贾斯提斯·史密斯",
+          "original_name": "Justice Smith",
+          "popularity": 3.3731,
+          "profile_path": "/htJrcOzYkLVcnF4ExT4O1bDN5e5.jpg",
+          "cast_id": 33,
+          "character": "Charlie",
+          "credit_id": "661f10e3a6fdaa017d6b3a67",
+          "order": 3
+        },
+        {
+          "adult": false,
+          "gender": 1,
+          "id": 10882,
+          "known_for_department": "Acting",
+          "name": "裴淳华",
+          "original_name": "Rosamund Pike",
+          "popularity": 9.8127,
+          "profile_path": "/8ObNklHDi2hjdz0ayzJFB9jtqzm.jpg",
+          "cast_id": 36,
+          "character": "Veronika Vanderberg",
+          "credit_id": "66340e41470ead012a1127a2",
+          "order": 4
+        },
+        {
+          "adult": false,
+          "gender": 2,
+          "id": 57755,
+          "known_for_department": "Acting",
+          "name": "伍迪·哈里森",
+          "original_name": "Woody Harrelson",
+          "popularity": 6.3237,
+          "profile_path": "/igxYDQBbTEdAqaJxaW6ffqswmUU.jpg",
+          "cast_id": 27,
+          "character": "Merritt McKinney",
+          "credit_id": "656cdd606517d6010e59665c",
+          "order": 5
+        }
+      ],
+      "videos": [],
+      "requestDate": "2025-11-25T06:30:31.254Z",
+      "requestedBy": "admin",
+      "resolutionPreference": "Any",
+      "notes": "",
+      "completedAt": "2025-11-25T06:30:35.824Z"
+    },
+    {
+      "id": 1116465,
+      "title": "传说",
+      "subtitle": "传说",
+      "overview": "考古专家陈教授（成龙 饰）察觉，学生在冰川考察时发现的文物上的纹理和自己梦中所见到的一块玉佩极为相似，仿佛通过玉佩将梦境和现实联通了起来。带着所有的疑问，陈教授率领考察队深入冰川神庙，探寻梦中真相，共同开启一场奇幻冒险之旅。",
+      "type": "电影",
+      "mediaType": "movie",
+      "platform": "Amazon Video(购)",
+      "hasProvider": true,
+      "providerRegion": "US",
+      "status": "completed",
+      "badgeLabel": "Amazon Video(购)",
+      "badgeColorClass": "",
+      "releaseDate": "2024-08-30",
+      "releaseDates": {
+        "theatrical": "2024-07-10",
+        "digital": "2024-08-30",
+        "physical": "2025-01-21"
+      },
+      "year": "2024",
+      "region": "华语",
+      "voteAverage": 6.692,
+      "posterUrl": "https://image.tmdb.org/t/p/w500/2eLjgesRLYQ8kjfwusSwxgNFcHv.jpg",
+      "backdropUrl": "https://image.tmdb.org/t/p/original/7FDVhmCur4LMOfnXMteiSCtsdOb.jpg",
+      "posterColor": "bg-orange-500",
+      "posterText": "传说",
+      "seasons": [],
+      "collectionId": 1452167,
+      "collectionName": "考古学家（系列）",
+      "genres": [
+        {
+          "id": 28,
+          "name": "动作"
+        },
+        {
+          "id": 12,
+          "name": "冒险"
+        },
+        {
+          "id": 14,
+          "name": "奇幻"
+        }
+      ],
+      "runtime": 129,
+      "cast": [
+        {
+          "adult": false,
+          "gender": 2,
+          "id": 18897,
+          "known_for_department": "Acting",
+          "name": "成龙",
+          "original_name": "成龍",
+          "popularity": 22.8366,
+          "profile_path": "/nraZoTzwJQPHspAVsKfgl3RXKKa.jpg",
+          "cast_id": 1,
+          "character": "Professor Fang/Zhao Zhan",
+          "credit_id": "644382b305822404bf328722",
+          "order": 0
+        },
+        {
+          "adult": false,
+          "gender": 2,
+          "id": 1532511,
+          "known_for_department": "Acting",
+          "name": "张艺兴",
+          "original_name": "张艺兴",
+          "popularity": 1.7034,
+          "profile_path": "/xGkVcsvCLhHeawuCBmVwmUi6llP.jpg",
+          "cast_id": 2,
+          "character": "Wang Jing/Hua Jun",
+          "credit_id": "644382dacee2f6049f367763",
+          "order": 1
+        },
+        {
+          "adult": false,
+          "gender": 1,
+          "id": 1291460,
+          "known_for_department": "Acting",
+          "name": "古力娜扎",
+          "original_name": "古力娜扎",
+          "popularity": 3.0221,
+          "profile_path": "/9HZkWl3glcA56J1rWlMU1TKh71q.jpg",
+          "cast_id": 3,
+          "character": "Princess Mengyun",
+          "credit_id": "644382efa06efe059ea46331",
+          "order": 2
+        },
+        {
+          "adult": false,
+          "gender": 2,
+          "id": 148881,
+          "known_for_department": "Acting",
+          "name": "李治廷",
+          "original_name": "李治廷",
+          "popularity": 1.6911,
+          "profile_path": "/xIhutO65mdNEWKHusfvHZYTDITE.jpg",
+          "cast_id": 4,
+          "character": "He Boer/Hu Duna",
+          "credit_id": "6443830db3f6f502fc9e62bf",
+          "order": 3
+        },
+        {
+          "adult": false,
+          "gender": 2,
+          "id": 130984,
+          "known_for_department": "Acting",
+          "name": "李晨",
+          "original_name": "李晨",
+          "popularity": 1.1721,
+          "profile_path": "/29SF639O4mzp3dhIuIFcaux0Te9.jpg",
+          "cast_id": 5,
+          "character": "Lei Zhen",
+          "credit_id": "6443832905822404bf32877a",
+          "order": 4
+        },
+        {
+          "adult": false,
+          "gender": 1,
+          "id": 2243680,
+          "known_for_department": "Acting",
+          "name": "彭小苒",
+          "original_name": "彭小苒",
+          "popularity": 3.9837,
+          "profile_path": "/koH1Nk2jvYxUVKwRIoEFJsZwgNF.jpg",
+          "cast_id": 6,
+          "character": "Xin Ran",
+          "credit_id": "64438342b3f6f502fc9e62e3",
+          "order": 5
+        }
+      ],
+      "videos": [
+        {
+          "iso_639_1": "zh",
+          "iso_3166_1": "CN",
+          "name": "\"A LEGEND\" (传说) with Jackie Chan [OFFICIAL TRAILER] [2023]",
+          "key": "hIrmsHpF7p4",
+          "site": "YouTube",
+          "size": 1080,
+          "type": "Trailer",
+          "official": false,
+          "published_at": "2023-07-28T07:26:38.000Z",
+          "id": "668e87b2d8b0a2037df0e618"
+        }
+      ],
+      "requestDate": "2025-11-25T06:37:23.058Z",
+      "requestedBy": "admin",
+      "resolutionPreference": "Any",
+      "notes": "",
+      "completedAt": "2025-11-25T06:37:32.215Z"
+    },
+    {
+      "id": 1117857,
+      "title": "白日梦奇遇记",
+      "subtitle": "In Your Dreams",
+      "overview": "一对姐弟踏上狂野荒诞的梦境之旅，请求许愿睡魔赐给他们一个完美的家庭。",
+      "type": "电影",
+      "mediaType": "movie",
+      "platform": "Netflix",
+      "hasProvider": true,
+      "providerRegion": "US",
+      "status": "completed",
+      "badgeLabel": "Netflix",
+      "badgeColorClass": "bg-[#E50914] text-white",
+      "releaseDate": "2025-11-14",
+      "releaseDates": {
+        "theatrical": null,
+        "digital": "2025-11-14",
+        "physical": null
+      },
+      "year": "2025",
+      "region": "英语地区",
+      "voteAverage": 7.1,
+      "posterUrl": "https://image.tmdb.org/t/p/w500/9OCiB2bA6EkX7SXDUvjmG8xt1xZ.jpg",
+      "backdropUrl": "https://image.tmdb.org/t/p/original/pU9cz8mZjzwyPAcJDPXBlK99BoR.jpg",
+      "posterColor": "bg-purple-500",
+      "posterText": "白日",
+      "seasons": [],
+      "genres": [
+        {
+          "id": 16,
+          "name": "动画"
+        },
+        {
+          "id": 10751,
+          "name": "家庭"
+        },
+        {
+          "id": 35,
+          "name": "喜剧"
+        },
+        {
+          "id": 12,
+          "name": "冒险"
+        },
+        {
+          "id": 14,
+          "name": "奇幻"
+        }
+      ],
+      "runtime": 91,
+      "cast": [
+        {
+          "adult": false,
+          "gender": 1,
+          "id": 2444659,
+          "known_for_department": "Acting",
+          "name": "Jolie Hoang-Rappaport",
+          "original_name": "Jolie Hoang-Rappaport",
+          "popularity": 0.9545,
+          "profile_path": "/3dvi8HLZ9rZw4aZ00rKsncbAErc.jpg",
+          "cast_id": 15,
+          "character": "Stevie (voice)",
+          "credit_id": "67d058247761a3a68f6093ea",
+          "order": 0
+        },
+        {
+          "adult": false,
+          "gender": 2,
+          "id": 1908252,
+          "known_for_department": "Acting",
+          "name": "Elias Janssen",
+          "original_name": "Elias Janssen",
+          "popularity": 0.7577,
+          "profile_path": "/lWnROuRZnQX0WPR2LTuVYNyayxX.jpg",
+          "cast_id": 16,
+          "character": "Elliot (voice)",
+          "credit_id": "67d0582d3602026906812d49",
+          "order": 1
+        },
+        {
+          "adult": false,
+          "gender": 2,
+          "id": 1489211,
+          "known_for_department": "Acting",
+          "name": "刘思慕",
+          "original_name": "Simu Liu",
+          "popularity": 1.4593,
+          "profile_path": "/xc7I32luBZfJgx9lm92aT9xiI6T.jpg",
+          "cast_id": 5,
+          "character": "Dad (voice)",
+          "credit_id": "66622c4e608e1c6fe779f45e",
+          "order": 2
+        },
+        {
+          "adult": false,
+          "gender": 2,
+          "id": 64342,
+          "known_for_department": "Acting",
+          "name": "克雷格·罗宾逊",
+          "original_name": "Craig Robinson",
+          "popularity": 1.7397,
+          "profile_path": "/mTyTrOWUSOBJMOlDpnd4OYx7FlJ.jpg",
+          "cast_id": 6,
+          "character": "Baloney Tony (voice)",
+          "credit_id": "66622c585dda8e63c45202a9",
+          "order": 3
+        },
+        {
+          "adult": false,
+          "gender": 1,
+          "id": 204392,
+          "known_for_department": "Acting",
+          "name": "克里斯汀·米利欧缇",
+          "original_name": "Cristin Milioti",
+          "popularity": 3.2856,
+          "profile_path": "/54vq2oKWfVR7YZZeoY5j47hTZxW.jpg",
+          "cast_id": 14,
+          "character": "Mom / Additional Voices (voice)",
+          "credit_id": "67d0581727c3960c2d1df156",
+          "order": 4
+        },
+        {
+          "adult": false,
+          "gender": 1,
+          "id": 14226,
+          "known_for_department": "Acting",
+          "name": "吉娅·卡里德斯",
+          "original_name": "Gia Carides",
+          "popularity": 1.1887,
+          "profile_path": "/ozzUvRlmtj9eSAaycFXOVSB7ulz.jpg",
+          "cast_id": 17,
+          "character": "Nightmara (voice)",
+          "credit_id": "67d0583627c3960c2d1df15e",
+          "order": 5
+        }
+      ],
+      "videos": [],
+      "requestDate": "2025-11-25T06:41:09.315Z",
+      "requestedBy": "admin",
+      "resolutionPreference": "Any",
+      "notes": "",
+      "completedAt": "2025-11-25T06:41:15.822Z"
+    },
+    {
+      "id": 1197137,
+      "title": "黑色电话2",
+      "subtitle": "Black Phone 2",
+      "overview": "在逃离“掳童怪”的四年后，芬尼·布莱克依然难以从那段被囚禁的经历中恢复。妹妹格温在梦中开始接到来自那部黑色电话的来电，并看见三个男孩在冬令营中被神秘人跟踪的可怕景象。兄妹俩决定揭开真相，直面那个在死后变得更为强大、也与他们命运纠缠得愈发紧密的杀手。",
+      "type": "电影",
+      "mediaType": "movie",
+      "platform": "Amazon Video(购)",
+      "hasProvider": true,
+      "providerRegion": "US",
+      "status": "completed",
+      "badgeLabel": "Amazon Video(购)",
+      "badgeColorClass": "",
+      "releaseDate": "2025-11-04",
+      "releaseDates": {
+        "theatrical": "2025-10-17",
+        "digital": "2025-11-04",
+        "physical": null
+      },
+      "year": "2025",
+      "region": "英语地区",
+      "voteAverage": 6.856,
+      "posterUrl": "https://image.tmdb.org/t/p/w500/kMo1mRFnSDId6mj0Jvqh22RNS6S.jpg",
+      "backdropUrl": "https://image.tmdb.org/t/p/original/7vd3pBecT2WFfZZd4rj887TcyGx.jpg",
+      "posterColor": "bg-teal-500",
+      "posterText": "黑色",
+      "seasons": [],
+      "collectionId": 1197140,
+      "collectionName": "黑色电话（系列）",
+      "genres": [
+        {
+          "id": 27,
+          "name": "恐怖"
+        },
+        {
+          "id": 53,
+          "name": "惊悚"
+        }
+      ],
+      "runtime": 114,
+      "cast": [
+        {
+          "adult": false,
+          "gender": 2,
+          "id": 569,
+          "known_for_department": "Acting",
+          "name": "伊桑·霍克",
+          "original_name": "Ethan Hawke",
+          "popularity": 8.1708,
+          "profile_path": "/2LoTr6x0TEM7L5em4kSx1VmGDgG.jpg",
+          "cast_id": 5,
+          "character": "Grabber",
+          "credit_id": "6567911ed9542000ab658d6d",
+          "order": 0
+        },
+        {
+          "adult": false,
+          "gender": 2,
+          "id": 2803710,
+          "known_for_department": "Acting",
+          "name": "梅森·泰晤士",
+          "original_name": "Mason Thames",
+          "popularity": 7.7087,
+          "profile_path": "/kPVWuKlDR0wkCSvv5iHLkaEQS0L.jpg",
+          "cast_id": 6,
+          "character": "Finn",
+          "credit_id": "6567913cc2b9df01004cd091",
+          "order": 1
+        },
+        {
+          "adult": false,
+          "gender": 1,
+          "id": 1530558,
+          "known_for_department": "Acting",
+          "name": "玛德琳·麦格劳",
+          "original_name": "Madeleine McGraw",
+          "popularity": 5.1728,
+          "profile_path": "/vdd0a58A1272zB6lvYuK5OEjO6.jpg",
+          "cast_id": 7,
+          "character": "Gwen",
+          "credit_id": "656791466c0b3600c7462c4a",
+          "order": 2
+        },
+        {
+          "adult": false,
+          "gender": 2,
+          "id": 76961,
+          "known_for_department": "Acting",
+          "name": "德米安·比齐尔",
+          "original_name": "Demián Bichir",
+          "popularity": 1.4613,
+          "profile_path": "/dur9tX8tbDDJE5mSOZkuW2VDGz4.jpg",
+          "cast_id": 17,
+          "character": "Mando",
+          "credit_id": "66e36addc81b24b3fe23cc4b",
+          "order": 3
+        },
+        {
+          "adult": false,
+          "gender": 2,
+          "id": 3586928,
+          "known_for_department": "Acting",
+          "name": "米格尔·莫拉",
+          "original_name": "Miguel Mora",
+          "popularity": 8.2772,
+          "profile_path": "/yVjtjXQ4WWlN8XiDYsHKdwcBRXU.jpg",
+          "cast_id": 44,
+          "character": "Ernesto",
+          "credit_id": "6827c29d917f9501805b4dd7",
+          "order": 4
+        },
+        {
+          "adult": false,
+          "gender": 2,
+          "id": 4654,
+          "known_for_department": "Acting",
+          "name": "杰瑞米·戴维斯",
+          "original_name": "Jeremy Davies",
+          "popularity": 2.4806,
+          "profile_path": "/tNtcpQnMxzl0OqVDsyA63oAgPbI.jpg",
+          "cast_id": 8,
+          "character": "Terrence",
+          "credit_id": "65679152021cee011d45142c",
+          "order": 5
+        }
+      ],
+      "videos": [],
+      "requestDate": "2025-11-25T06:44:35.294Z",
+      "requestedBy": "admin",
+      "resolutionPreference": "Any",
+      "notes": "",
+      "completedAt": "2025-11-25T06:44:44.345Z"
+    },
+    {
+      "id": 1311031,
+      "title": "鬼灭之刃：无限城篇 第一章 猗窝座再袭",
+      "subtitle": "劇場版「鬼滅の刃」無限城編 第一章 猗窩座再来",
+      "overview": "当鬼杀队的成员和柱之人在为即将到来的与鬼的战斗做准备，完成共同的体能训练——柱之训练时，鬼舞辻无惨在产屋敷宅邸出现。由于鬼杀队的主公处于危险之中，炭治郎和柱急忙赶往总部，但却被鸣女推入一个神秘的异空间。炭治郎和鬼杀队的目标是鬼的堡垒——无限城。因此，鬼杀队和鬼之间的最终战斗的战场已经准备就绪。",
+      "type": "电影",
+      "mediaType": "movie",
+      "platform": null,
+      "hasProvider": false,
+      "providerRegion": "",
+      "status": "completed",
+      "badgeLabel": "已上映",
+      "badgeColorClass": "",
+      "releaseDate": "2025-11-14",
+      "releaseDates": {
+        "theatrical": "2025-11-14",
+        "digital": null,
+        "physical": null
+      },
+      "year": "2025",
+      "region": "日本",
+      "voteAverage": 7.598,
+      "posterUrl": "https://image.tmdb.org/t/p/w500/bhIytk0hlaHmGrQFY9P7bWhZZfC.jpg",
+      "backdropUrl": "https://image.tmdb.org/t/p/original/1RgPyOhN4DRs225BGTlHJqCudII.jpg",
+      "posterColor": "bg-indigo-500",
+      "posterText": "鬼灭",
+      "seasons": [],
+      "collectionId": 925155,
+      "collectionName": "鬼灭之刃（剧场版）",
+      "genres": [
+        {
+          "id": 16,
+          "name": "动画"
+        },
+        {
+          "id": 28,
+          "name": "动作"
+        },
+        {
+          "id": 14,
+          "name": "奇幻"
+        },
+        {
+          "id": 53,
+          "name": "惊悚"
+        }
+      ],
+      "runtime": 155,
+      "cast": [
+        {
+          "adult": false,
+          "gender": 2,
+          "id": 1256603,
+          "known_for_department": "Acting",
+          "name": "花江夏树",
+          "original_name": "花江夏樹",
+          "popularity": 3.026,
+          "profile_path": "/alTb0DlcPIbcwM08WSmxFai58sd.jpg",
+          "cast_id": 2,
+          "character": "Tanjiro Kamado (voice)",
+          "credit_id": "66e6e105e8211ecd22b08a62",
+          "order": 0
+        },
+        {
+          "adult": false,
+          "gender": 2,
+          "id": 119145,
+          "known_for_department": "Acting",
+          "name": "下野纮",
+          "original_name": "下野紘",
+          "popularity": 1.6446,
+          "profile_path": "/yrSDcgFefHtWkFmLnTrcw2t0MV.jpg",
+          "cast_id": 1,
+          "character": "Zenitsu Agatsuma (voice)",
+          "credit_id": "66e6e0e8050f14e4fccf8130",
+          "order": 1
+        },
+        {
+          "adult": false,
+          "gender": 2,
+          "id": 9705,
+          "known_for_department": "Acting",
+          "name": "樱井孝宏",
+          "original_name": "櫻井孝宏",
+          "popularity": 2.1681,
+          "profile_path": "/8s8owcKmpRAuhzEGjSdRpztthUg.jpg",
+          "cast_id": 25,
+          "character": "Giyu Tomioka (voice)",
+          "credit_id": "67cec4fba8b335257e2aa988",
+          "order": 2
+        },
+        {
+          "adult": false,
+          "gender": 2,
+          "id": 81244,
+          "known_for_department": "Acting",
+          "name": "石田彰",
+          "original_name": "石田彰",
+          "popularity": 5.0475,
+          "profile_path": "/jnW2Gn2NlR2uwOCeyOuzypnTmkH.jpg",
+          "cast_id": 336,
+          "character": "Akaza (voice)",
+          "credit_id": "687d4a14807abd7583d98d45",
+          "order": 3
+        },
+        {
+          "adult": false,
+          "gender": 2,
+          "id": 233590,
+          "known_for_department": "Acting",
+          "name": "松冈祯丞",
+          "original_name": "松岡禎丞",
+          "popularity": 2.6454,
+          "profile_path": "/ugDwdWEXnmv43jcbnfAi4XwiQ8C.jpg",
+          "cast_id": 3,
+          "character": "Inosuke Hashibira (voice)",
+          "credit_id": "66e6e11be8211ecd22b08a76",
+          "order": 4
+        },
+        {
+          "adult": false,
+          "gender": 2,
+          "id": 90571,
+          "known_for_department": "Acting",
+          "name": "关俊彦",
+          "original_name": "関俊彦",
+          "popularity": 2.1579,
+          "profile_path": "/7jUPvx4hxWZWZJgyiCwd8KxWuvI.jpg",
+          "cast_id": 10,
+          "character": "Muzan Kibutsuji (voice)",
+          "credit_id": "67cec12fa8b335257e2aa78e",
+          "order": 5
+        }
+      ],
+      "videos": [],
+      "requestDate": "2025-11-25T06:44:39.622Z",
+      "requestedBy": "admin",
+      "resolutionPreference": "Any",
+      "notes": "",
+      "completedAt": "2025-11-25T06:47:17.439Z"
+    },
+    {
+      "id": 225171,
+      "title": "Pluribus",
+      "subtitle": "Pluribus",
+      "overview": "故事围绕“幸福也会像病毒一样传染”这一概念展开。背景设定在一个与现实世界相似却被微妙扭曲的平行世界中，当快乐突然成为可怕的“传染病”，女主必须想办法在这场全民狂欢中拯救世界。",
+      "type": "剧集",
+      "mediaType": "tv",
+      "platform": "Apple TV",
+      "hasProvider": true,
+      "providerRegion": "US",
+      "status": "completed",
+      "badgeLabel": "Apple TV",
+      "badgeColorClass": "",
+      "releaseDate": "更新至 2025-11-20",
+      "releaseDates": {},
+      "year": "2025",
+      "region": "英语地区",
+      "voteAverage": 8.1,
+      "posterUrl": "https://image.tmdb.org/t/p/w500/pGl5oc6dN6DKWDGgDPbeplxxPS6.jpg",
+      "backdropUrl": "https://image.tmdb.org/t/p/original/vNCNUxNHHgP0WsA19hxztUsG3yG.jpg",
+      "posterColor": "bg-pink-500",
+      "posterText": "PL",
+      "numberOfSeasons": 1,
+      "numberOfEpisodes": 9,
+      "seasons": [
+        {
+          "id": 338336,
+          "name": "第 1 季",
+          "season_number": 1,
+          "episode_count": 9,
+          "poster_path": "/pGl5oc6dN6DKWDGgDPbeplxxPS6.jpg",
+          "air_date": "2025-11-06"
+        }
+      ],
+      "lastEpisodeToAir": {
+        "id": 5964850,
+        "name": "拜托，卡萝尔",
+        "overview": "卡萝尔放下自尊，试探这个怪异地诚实的世界边界线。在远方，一个意志坚定的人发现自己并非孤单一人。",
+        "vote_average": 7.478,
+        "vote_count": 23,
+        "air_date": "2025-11-20",
+        "episode_number": 4,
+        "episode_type": "standard",
+        "production_code": "",
+        "runtime": 46,
+        "season_number": 1,
+        "show_id": 225171,
+        "still_path": "/7HyFmXC7ydtA4aKzlimCPGLcdxJ.jpg"
+      },
+      "nextEpisodeToAir": {
+        "id": 5964851,
+        "name": "第 5 集",
+        "overview": "",
+        "vote_average": 0,
+        "vote_count": 0,
+        "air_date": "2025-11-25",
+        "episode_number": 5,
+        "episode_type": "standard",
+        "production_code": "",
+        "runtime": 46,
+        "season_number": 1,
+        "show_id": 225171,
+        "still_path": "/7dQXHMP7irZNis7erI8mHL3p8Ve.jpg"
+      },
+      "genres": [
+        {
+          "id": 18,
+          "name": "剧情"
+        },
+        {
+          "id": 10765,
+          "name": "Sci-Fi & Fantasy"
+        }
+      ],
+      "cast": [
+        {
+          "adult": false,
+          "gender": 1,
+          "id": 62765,
+          "known_for_department": "Acting",
+          "name": "蕾亚·塞洪",
+          "original_name": "Rhea Seehorn",
+          "popularity": 6.9042,
+          "profile_path": "/g6niUzFMQOiAcSThWoGk0LlAQRP.jpg",
+          "character": "Carol Sturka",
+          "credit_id": "64466e8f76484104fabe5356",
+          "order": 0
+        },
+        {
+          "adult": false,
+          "gender": 1,
+          "id": 210829,
+          "known_for_department": "Acting",
+          "name": "卡罗利娜·维德拉",
+          "original_name": "Karolina Wydra",
+          "popularity": 3.9928,
+          "profile_path": "/uDRBm8boXLDkWZH981C9Q6QRwXS.jpg",
+          "character": "Zosia",
+          "credit_id": "66097c3fd4fe040149278250",
+          "order": 1
+        },
+        {
+          "adult": false,
+          "gender": 2,
+          "id": 1251536,
+          "known_for_department": "Acting",
+          "name": "Carlos-Manuel Vesga",
+          "original_name": "Carlos-Manuel Vesga",
+          "popularity": 1.768,
+          "profile_path": "/crm5YcUTtb5pXhZbJsATA8EAoPD.jpg",
+          "character": "Manousos",
+          "credit_id": "6883c90d22c579e4f038f2b2",
+          "order": 2
+        }
+      ],
+      "videos": [],
+      "requestDate": "2025-11-25T06:49:09.780Z",
+      "requestedBy": "admin",
+      "resolutionPreference": "Any",
+      "notes": "",
+      "completedAt": "2025-11-25T06:49:13.936Z"
     }
   ],
   "vitepress:local-search-detailed-list": false,
@@ -715,6 +1678,48 @@
   ],
   "streamhub_logs": [
     {
+      "id": "1764053356875jfptqwg03",
+      "timestamp": 1764053356875,
+      "message": "[MoviePilot] 成功订阅: Pluribus",
+      "type": "success"
+    },
+    {
+      "id": "1764053240414l7sq5j9vb",
+      "timestamp": 1764053240414,
+      "message": "[MoviePilot] 成功订阅: 鬼灭之刃：无限城篇 第一章 猗窝座再袭",
+      "type": "success"
+    },
+    {
+      "id": "1764053087646pfw56juej",
+      "timestamp": 1764053087646,
+      "message": "[MoviePilot] 成功订阅: 黑色电话2",
+      "type": "success"
+    },
+    {
+      "id": "176405287675781c51fewe",
+      "timestamp": 1764052876757,
+      "message": "[MoviePilot] 订阅失败 (白日梦奇遇记): 订阅失败: \"Internal Server Error\"",
+      "type": "error"
+    },
+    {
+      "id": "1764052652979ywr0at0jj",
+      "timestamp": 1764052652979,
+      "message": "[MoviePilot] 订阅失败 (传说): 订阅失败: \"Internal Server Error\"",
+      "type": "error"
+    },
+    {
+      "id": "1764052236642p3s5u96o3",
+      "timestamp": 1764052236642,
+      "message": "[MoviePilot] 订阅失败 (惊天魔盗团3): 订阅失败: \"Internal Server Error\"",
+      "type": "error"
+    },
+    {
+      "id": "1764051876466mucfazfs2",
+      "timestamp": 1764051876466,
+      "message": "[MoviePilot] 订阅失败 (魔法坏女巫2): 订阅失败: \"Internal Server Error\"",
+      "type": "error"
+    },
+    {
       "id": "1764049870396dbpsqh83w",
       "timestamp": 1764049870396,
       "message": "[MoviePilot] 订阅失败 (Frankenstein): 订阅失败: Not authenticated",
@@ -723,7 +1728,10 @@
   ],
   "streamhub_notifications": {
     "moviePilotUrl": "https://mp.111107.xyz:7777",
-    "moviePilotToken": "Pi8c56SUVs-9oP7ZR1eaCA"
+    "moviePilotToken": "",
+    "moviePilotUsername": "zlh",
+    "moviePilotPassword": "zlh0909..",
+    "moviePilotSubscribeUser": "hub"
   },
   "streamhub_auth": {
     "isAuthenticated": true,

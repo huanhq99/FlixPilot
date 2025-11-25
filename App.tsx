@@ -445,9 +445,9 @@ function AppContent() {
             }
         }
 
-        const { apiKey, baseUrl } = getTmdbConfig();
+        const { baseUrl } = getTmdbConfig();
         const cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
-        const response = await fetch(`${baseUrl}/${cleanEndpoint}?api_key=${apiKey}${params}`);
+        const response = await fetch(`${baseUrl}/${cleanEndpoint}?${params.substring(1)}`); // 移除开头的 &
         if (!response.ok) throw new Error('API 请求失败');
         const data = await response.json();
         setTotalPages(Math.min(data.total_pages, 500));
@@ -457,7 +457,7 @@ function AppContent() {
             const type = item.media_type || (item.title ? 'movie' : 'tv');
             try {
                 const detailRes = await fetch(
-                    `${baseUrl}/${type}/${item.id}?api_key=${apiKey}&language=zh-CN&append_to_response=watch/providers,release_dates`
+                    `${baseUrl}/${type}/${item.id}?language=zh-CN&append_to_response=watch/providers,release_dates`
                 );
                 const detailData = await detailRes.json();
                 return processMediaItem(item, detailData, type);

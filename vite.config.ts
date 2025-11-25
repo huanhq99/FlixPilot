@@ -16,9 +16,9 @@ export default defineConfig(({ mode }) => {
             secure: false,
           },
           '/tmdb': {
-            target: 'https://api.themoviedb.org/3',
+            target: 'http://localhost:3000', // Proxy to local backend TMDB proxy
             changeOrigin: true,
-            rewrite: (path) => path.replace(/^\/tmdb/, '')
+            secure: false,
           }
         }
       },

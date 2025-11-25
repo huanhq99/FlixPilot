@@ -99,6 +99,7 @@ export interface NotificationConfig {
   moviePilotToken?: string;
   moviePilotUsername?: string;
   moviePilotPassword?: string;
+  moviePilotSubscribeUser?: string; // 订阅时使用的用户名
 }
 
 export interface EmbyUser {

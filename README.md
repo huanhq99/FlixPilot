@@ -47,15 +47,21 @@ StreamHub 是一个优雅、现代化的影视媒体发现与追踪平台。它�
    - **Framework preset**: `Vite`
    - **Build command**: `npm run build`
    - **Build output directory**: `dist`
-   - **Environment variables**:
-     - `VITE_TMDB_API_KEY`: 您的 TMDB API Key
-     - `VITE_TMDB_API_URL`: `/api` (启用 CF 代理)
-4. 点击 **Deploy**，即可获得免费域名访问。
+   - **⚠️ 安全警告**: 不建议在 CF Pages 环境变量中配置 API Key
+4. 点击 **Deploy**，获得免费域名。
+5. **推荐**: 使用后端代理模式,将 API Key 配置在服务器端。
 
-### 方式二：Docker 部署 (VPS 🐳)
+### 方式二：Docker 部署 (推荐 🐳)
 
-适合有自己服务器的进阶用户。
+**🔒 安全部署方式** - API Key 完全隐藏,不会暴露在前端代码中。
 
+1. **创建环境变量文件**
+```bash
+cp .env.example .env
+# 编辑 .env 文件,填入你的 API Keys
+```
+
+2. **使用 Docker Compose 部署**
 ```yaml
 version: '3'
 services:
@@ -64,20 +70,20 @@ services:
     container_name: streamhub
     ports:
       - "3000:3000"
-    environment:
-      - TMDB_API_KEY=your_key_here
-      - HTTP_PROXY=http://127.0.0.1:7890  # 可选：代理设置
-      - HTTPS_PROXY=http://127.0.0.1:7890  # 可选：代理设置
+    env_file:
+      - .env  # 从文件加载环境变量
     volumes:
-      - ./config:/app/backend/config  # 配置文件持久化
-      - ./data:/app/backend/data       # 数据文件持久化
+      - ./data:/app/data  # 数据持久化
     restart: unless-stopped
 ```
 
-**注意事项**:
-- 端口固定为 `3000`，可通过 Nginx 反向代理到其他端口
-- 配置文件和数据会自动持久化到本地 `config` 和 `data` 目录
-- 支持代理环境变量，方便国内用户访问 TMDB API
+**安全特性**:
+- ✅ TMDB API Key 完全在后端,前端无法看到
+- ✅ 所有 API 请求通过后端代理转发
+- ✅ `.env` 文件不会被 git 追踪
+- ✅ 支持 HTTP 代理(国内用户访问 TMDB)
+
+详细安全配置请查看 [SECURITY.md](./SECURITY.md)
 
 ## 🛠️ 管理员指南
 

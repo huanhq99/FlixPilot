@@ -842,6 +842,22 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
                                                 如果填写了用户名密码，此项可留空
                                             </p>
                                         </div>
+                                        
+                                        <div className="space-y-2">
+                                            <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
+                                                订阅用户名（可选）
+                                            </label>
+                                            <input 
+                                                type="text" 
+                                                value={notifyConfig.moviePilotSubscribeUser || ''}
+                                                onChange={(e) => setNotifyConfig({...notifyConfig, moviePilotSubscribeUser: e.target.value})}
+                                                placeholder="留空则使用登录用户"
+                                                className={`w-full p-3 rounded-xl border outline-none transition-all text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
+                                            />
+                                            <p className="text-xs opacity-60">
+                                                指定订阅记录到哪个 MoviePilot 用户名下
+                                            </p>
+                                        </div>
                                     </div>
 
                                     <div className="space-y-4 pt-6 border-t border-dashed border-gray-200 dark:border-white/10">

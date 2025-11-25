@@ -40,10 +40,19 @@ build/
 .coverage
 htmlcov/
 
-# Environment variables
+# Environment variables and sensitive data
 .env
 .env.local
 .env.*.local
+.env.production
+env-config.js
+config.local.js
+
+# Data directory (contains user data and configurations)
+data/
+*.db
+*.sqlite
+*.sqlite3
 
 # Vite
 .vite/

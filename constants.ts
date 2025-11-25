@@ -1,11 +1,9 @@
 // App Version
-export const APP_VERSION = 'v2.1.16';
+export const APP_VERSION = 'v2.1.17';
 
-// TMDB Configuration
-export const TMDB_API_KEY = (window as any).env?.TMDB_API_KEY || import.meta.env.VITE_TMDB_API_KEY || '';
-export const TMDB_BASE_URL = import.meta.env.DEV 
-    ? '/tmdb' 
-    : ((window as any).env?.TMDB_API_URL || import.meta.env.VITE_TMDB_API_URL || 'https://api.themoviedb.org/3');
+// TMDB Configuration - 所有请求通过后端代理,不暴露 API Key
+export const TMDB_API_KEY = ''; // 已弃用,使用后端代理
+export const TMDB_BASE_URL = '/tmdb'; // 始终使用后端代理
 
 export const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
 export const BACKDROP_BASE_URL = 'https://image.tmdb.org/t/p/original';

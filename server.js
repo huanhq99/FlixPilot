@@ -72,6 +72,8 @@ app.post('/api/proxy/moviepilot', async (req, res) => {
         }
 
         console.log(`[Proxy] ${method} -> ${target_url}`);
+        console.log(`[Proxy] Headers:`, headers);
+        console.log(`[Proxy] Body type:`, typeof body);
         
         // Parse the URL
         const urlObj = new URL(target_url);
@@ -94,6 +96,7 @@ app.post('/api/proxy/moviepilot', async (req, res) => {
 
             proxyRes.on('end', () => {
                 console.log(`[Proxy] Response Status: ${proxyRes.statusCode}`);
+                console.log(`[Proxy] Response Body:`, data.substring(0, 200));
                 
                 // Try to parse JSON
                 let responseData = data;
@@ -123,6 +126,7 @@ app.post('/api/proxy/moviepilot', async (req, res) => {
         if (body) {
             // Body can be either JSON or string (for form data)
             const bodyContent = typeof body === 'string' ? body : JSON.stringify(body);
+            console.log(`[Proxy] Sending body:`, bodyContent.substring(0, 200));
             proxyReq.write(bodyContent);
         }
         

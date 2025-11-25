@@ -3,17 +3,18 @@ import { MediaItem, Episode, Season } from '../types';
 import { storage, STORAGE_KEYS } from '../utils/storage';
 
 export const getTmdbConfig = () => {
-    const stored = storage.get(STORAGE_KEYS.TMDB_CONFIG, {});
+    // TMDB 配置已移至后端,前端统一使用代理
     return {
-        apiKey: stored.apiKey || TMDB_API_KEY,
-        baseUrl: stored.baseUrl || TMDB_BASE_URL
+        apiKey: '', // 不再使用
+        baseUrl: TMDB_BASE_URL // 始终是 /tmdb
     };
 };
 
-export const testTmdbConnection = async (apiKey: string, baseUrl: string) => {
+export const testTmdbConnection = async () => {
     const start = Date.now();
     try {
-        const url = `${baseUrl}/configuration?api_key=${apiKey}`;
+        // 通过后端代理测试连接
+        const url = `/tmdb/configuration`;
         const response = await fetch(url);
         const end = Date.now();
         
@@ -226,7 +227,7 @@ export const processMediaItem = (baseItem: any, detailData: any, mediaType: 'mov
 export const fetchDetails = async (id: number, mediaType: 'movie' | 'tv') => {
     const { apiKey, baseUrl } = getTmdbConfig();
     const response = await fetch(
-        `${baseUrl}/${mediaType}/${id}?api_key=${apiKey}&language=zh-CN&append_to_response=credits,videos,release_dates`
+        `${baseUrl}/${mediaType}/${id}?language=zh-CN&append_to_response=credits,videos,release_dates`
     );
     return response.json();
 };
@@ -235,7 +236,7 @@ export const fetchCollectionDetails = async (collectionId: number) => {
     try {
         const { apiKey, baseUrl } = getTmdbConfig();
         const response = await fetch(
-            `${baseUrl}/collection/${collectionId}?api_key=${apiKey}&language=zh-CN`
+            `${baseUrl}/collection/${collectionId}?language=zh-CN`
         );
         return response.json();
     } catch (e) {
@@ -248,7 +249,7 @@ export const fetchRecommendations = async (id: number, mediaType: 'movie' | 'tv'
     try {
         const { apiKey, baseUrl } = getTmdbConfig();
         const response = await fetch(
-            `${baseUrl}/${mediaType}/${id}/recommendations?api_key=${apiKey}&language=zh-CN&page=1`
+            `${baseUrl}/${mediaType}/${id}/recommendations?language=zh-CN&page=1`
         );
         const data = await response.json();
         return data.results || [];
@@ -262,7 +263,7 @@ export const fetchSeasonDetails = async (tvId: number, seasonNumber: number) => 
     try {
         const { apiKey, baseUrl } = getTmdbConfig();
         const response = await fetch(
-            `${baseUrl}/tv/${tvId}/season/${seasonNumber}?api_key=${apiKey}&language=zh-CN`
+            `${baseUrl}/tv/${tvId}/season/${seasonNumber}?language=zh-CN`
         );
         const data = await response.json();
         return data.episodes || [];
@@ -278,7 +279,7 @@ export const fetchTrending = async (mediaType: 'all' | 'movie' | 'tv' = 'all', t
     try {
         const { apiKey, baseUrl } = getTmdbConfig();
         const response = await fetch(
-            `${baseUrl}/trending/${mediaType}/${timeWindow}?api_key=${apiKey}&language=zh-CN`
+            `${baseUrl}/trending/${mediaType}/${timeWindow}?language=zh-CN`
         );
         const data = await response.json();
         const processed = data.results.map((item: any) => {
@@ -294,7 +295,7 @@ export const fetchTrending = async (mediaType: 'all' | 'movie' | 'tv' = 'all', t
 export const fetchDiscover = async (mediaType: 'movie' | 'tv', sortBy: string = 'popularity.desc', year?: string) => {
     try {
         const { apiKey, baseUrl } = getTmdbConfig();
-        let url = `${baseUrl}/discover/${mediaType}?api_key=${apiKey}&language=zh-CN&sort_by=${sortBy}&page=1`;
+        let url = `${baseUrl}/discover/${mediaType}?language=zh-CN&sort_by=${sortBy}&page=1`;
         if (year) {
             if (mediaType === 'movie') url += `&primary_release_year=${year}`;
             else url += `&first_air_date_year=${year}`;
@@ -313,7 +314,7 @@ export const fetchPersonDetails = async (personId: number) => {
     try {
         const { apiKey, baseUrl } = getTmdbConfig();
         const response = await fetch(
-            `${baseUrl}/person/${personId}?api_key=${apiKey}&language=zh-CN&append_to_response=combined_credits`
+            `${baseUrl}/person/${personId}?language=zh-CN&append_to_response=combined_credits`
         );
         return await response.json();
     } catch (e) {

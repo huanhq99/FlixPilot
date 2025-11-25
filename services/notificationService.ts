@@ -353,7 +353,6 @@ export const subscribeToMoviePilot = async (config: NotificationConfig, item: Me
     }
 
     const baseUrl = config.moviePilotUrl.replace(/\/$/, '');
-    const endpoint = '/api/v1/subscribe/';
     
     // 如果提供了用户名密码，先登录获取 Token
     let cleanToken = config.moviePilotToken?.trim() || '';
@@ -369,105 +368,67 @@ export const subscribeToMoviePilot = async (config: NotificationConfig, item: Me
         return { success: false, message: '请提供 Token 或用户名密码' };
     }
 
-    const payload = {
-        name: item.title,
-        year: item.year ? String(item.year) : "",
-        type: item.mediaType,
-        tmdbid: item.id,
-        season: item.mediaType === 'tv' ? 1 : 0,
-    };
-
-    // MoviePilot 使用 JWT Token 进行认证
-    // Token 格式：Bearer <JWT>
-    const strategies = [
-        {
-            name: 'Bearer JWT',
-            url: `${baseUrl}${endpoint}`,
-            headers: {
-                'Authorization': `Bearer ${cleanToken}`
-            }
+    // 使用 MCP Tools API 来添加订阅
+    const mcpPayload: any = {
+        tool_name: "add_subscribe",
+        arguments: {
+            title: item.title,
+            year: String(item.year || ""),
+            media_type: item.mediaType === 'movie' ? '电影' : '电视剧',
+            tmdb_id: String(item.id)
         }
-    ];
+    };
+    
+    // 添加可选参数
+    if (item.mediaType === 'tv') {
+        mcpPayload.arguments.season = 1;
+    }
+    
+    // 如果配置了订阅用户名，使用指定的用户名
+    if (config.moviePilotSubscribeUser) {
+        mcpPayload.arguments.username = config.moviePilotSubscribeUser;
+    }
 
-    let lastError = '';
+    const PROXY_URL = '/api/proxy/moviepilot';
+    
+    console.log('Starting MoviePilot subscription via MCP Tools API...');
+    console.log('Payload:', mcpPayload);
 
-    console.log('Starting MoviePilot subscription attempt...');
-
-    for (const strategy of strategies) {
-        console.log(`Trying MP Subscription with strategy: ${strategy.name}`);
-        
-        // 1. 尝试直连
-        try {
-            const response = await fetch(strategy.url, {
+    // 尝试通过代理调用 MCP Tools API
+    try {
+        const response = await fetch(PROXY_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                target_url: `${baseUrl}/api/v1/mcp/tools/call`,
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
-                    ...strategy.headers
+                    'X-API-KEY': cleanToken
                 },
-                body: JSON.stringify(payload)
-            });
+                body: mcpPayload
+            })
+        });
 
-            if (response.ok) {
-                const data = await response.json();
-                if (data.success || data.code === 0 || data.message?.includes('success')) {
-                    return { success: true, message: '已添加到 MoviePilot 订阅 (直连)' };
-                }
-            }
-        } catch (e) {
-            // 直连失败，继续尝试代理
-        }
-
-        // 2. 尝试代理
-        try {
-            const response = await fetch(PROXY_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    target_url: strategy.url,
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        ...strategy.headers
-                    },
-                    body: payload
-                })
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                if (data.success || data.code === 0) {
-                    return { success: true, message: '已成功添加到 MoviePilot 订阅' };
-                } else {
-                    lastError = data.message || data.detail || 'MoviePilot 返回错误';
-                    // 如果是认证错误，继续尝试下一个策略
-                    if (response.status === 401 || response.status === 403) {
-                        console.log(`Strategy ${strategy.name} failed with auth error: ${lastError}`, data);
-                        continue;
-                    }
-                    // 如果是其他业务错误（如已存在），则直接返回
-                    return { success: false, message: lastError };
-                }
+        if (response.ok) {
+            const data = await response.json();
+            console.log('MCP Tools API response:', data);
+            
+            if (data.success) {
+                return { success: true, message: data.result || '已成功添加到 MoviePilot 订阅' };
             } else {
-                const text = await response.text();
-                try {
-                    const json = JSON.parse(text);
-                    lastError = json.detail || json.message || text;
-                    console.log(`Strategy ${strategy.name} failed response body:`, json);
-                } catch {
-                    lastError = `Status ${response.status} - ${text}`;
-                    console.log(`Strategy ${strategy.name} failed response text:`, text);
-                }
-                console.log(`Strategy ${strategy.name} failed: ${lastError}`);
+                return { success: false, message: data.error || '订阅失败' };
             }
-        } catch (e: any) {
-            console.error(`Strategy ${strategy.name} exception:`, e);
-            lastError = e.message;
+        } else {
+            const text = await response.text();
+            console.error('MCP Tools API failed:', text);
+            return { success: false, message: `订阅失败: ${text}` };
         }
+    } catch (e: any) {
+        console.error('MCP Tools API exception:', e);
+        return { success: false, message: `订阅失败: ${e.message}` };
     }
-
-    return { success: false, message: `订阅失败: ${lastError}` };
 };
