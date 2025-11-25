@@ -417,7 +417,14 @@ function AppContent() {
   }, [authState.user, toast, systemSettings.movieRequestLimit, systemSettings.tvRequestLimit]);
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearchTerm(searchTerm), 800);
+    const timer = setTimeout(() => {
+        setDebouncedSearchTerm(searchTerm);
+        // 搜索时清除 genre 筛选（搜索 API 不支持 genre）
+        if (searchTerm && filters.genre) {
+            setFilters(prev => ({ ...prev, genre: '' }));
+            toast.showToast('搜索不支持类型筛选，已自动清除', 'info');
+        }
+    }, 800);
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
