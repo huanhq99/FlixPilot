@@ -266,38 +266,82 @@ const PlaybackReportModal: React.FC<PlaybackReportModalProps> = ({
                                 </div>
                             ) : (
                                 <div className="space-y-3">
-                                    {activeSessions.map((session, idx) => (
-                                        <div
-                                            key={idx}
-                                            className={`p-4 rounded-xl ${isDarkMode ? 'bg-zinc-800' : 'bg-slate-100'}`}
-                                        >
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold">
-                                                    {session.UserName?.[0] || '?'}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                                                        {session.UserName || '未知用户'}
+                                    {activeSessions.map((session, idx) => {
+                                        const item = session.NowPlayingItem;
+                                        const isEpisode = item?.Type === 'Episode';
+                                        const isSeries = item?.Type === 'Series';
+                                        
+                                        // 构建海报 URL
+                                        let posterUrl = '';
+                                        if (item && embyConfig.serverUrl) {
+                                            const baseUrl = embyConfig.serverUrl.replace(/\/$/, '');
+                                            if (isEpisode) {
+                                                // 剧集：使用当前集的图片（Primary 或 Thumb）
+                                                posterUrl = `${baseUrl}/Items/${item.Id}/Images/Primary?maxHeight=120&api_key=${embyConfig.apiKey}`;
+                                            } else {
+                                                // 电影：使用横图（Backdrop）
+                                                posterUrl = `${baseUrl}/Items/${item.Id}/Images/Backdrop?maxWidth=200&api_key=${embyConfig.apiKey}`;
+                                            }
+                                        }
+                                        
+                                        return (
+                                            <div
+                                                key={idx}
+                                                className={`p-4 rounded-xl ${isDarkMode ? 'bg-zinc-800' : 'bg-slate-100'} overflow-hidden`}
+                                            >
+                                                <div className="flex items-center gap-4">
+                                                    {/* 用户头像 */}
+                                                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold shrink-0">
+                                                        {session.UserName?.[0]?.toUpperCase() || '?'}
                                                     </div>
-                                                    <div className={`text-sm truncate ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
-                                                        {session.NowPlayingItem?.SeriesName 
-                                                            ? `${session.NowPlayingItem.SeriesName} - ${session.NowPlayingItem.Name}`
-                                                            : session.NowPlayingItem?.Name || '未知内容'
-                                                        }
+                                                    
+                                                    {/* 内容信息 */}
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                                                            {session.UserName || '未知用户'}
+                                                        </div>
+                                                        <div className={`text-sm truncate ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+                                                            {item?.SeriesName 
+                                                                ? `${item.SeriesName} - ${item.Name}`
+                                                                : item?.Name || '未知内容'
+                                                            }
+                                                        </div>
+                                                        <div className={`text-xs ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`}>
+                                                            {session.DeviceName} • {session.Client}
+                                                        </div>
                                                     </div>
-                                                    <div className={`text-xs ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`}>
-                                                        {session.DeviceName} • {session.Client}
-                                                    </div>
-                                                </div>
-                                                <div className="text-right">
-                                                    <div className="flex items-center gap-1 text-emerald-500">
-                                                        <Play size={14} fill="currentColor" />
-                                                        <span className="text-sm font-medium">播放中</span>
+                                                    
+                                                    {/* 海报图片 */}
+                                                    {posterUrl && (
+                                                        <div className={`shrink-0 ${isEpisode ? 'w-16 h-24' : 'w-28 h-16'} rounded-lg overflow-hidden bg-zinc-700`}>
+                                                            <img 
+                                                                src={posterUrl} 
+                                                                alt={item?.Name}
+                                                                className="w-full h-full object-cover"
+                                                                onError={(e) => {
+                                                                    // 如果加载失败，尝试使用 Primary 图片
+                                                                    const target = e.target as HTMLImageElement;
+                                                                    if (!target.dataset.fallback) {
+                                                                        target.dataset.fallback = 'true';
+                                                                        const baseUrl = embyConfig.serverUrl?.replace(/\/$/, '');
+                                                                        target.src = `${baseUrl}/Items/${item?.Id}/Images/Primary?maxHeight=120&api_key=${embyConfig.apiKey}`;
+                                                                    }
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                    
+                                                    {/* 播放状态 */}
+                                                    <div className="text-right shrink-0">
+                                                        <div className="flex items-center gap-1 text-emerald-500">
+                                                            <Play size={14} fill="currentColor" />
+                                                            <span className="text-sm font-medium">播放中</span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>

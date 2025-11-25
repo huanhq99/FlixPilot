@@ -170,6 +170,7 @@ app.get('/api/config', (req, res) => {
         // Return configuration for frontend (hide passwords)
         const isEmbyConfigured = !!config.emby?.serverUrl && config.emby?.serverUrl !== 'http://your-emby-server:8096';
         const isMPConfigured = !!config.moviepilot?.url && config.moviepilot?.url !== 'https://your-moviepilot-server.com';
+        const isTelegramConfigured = !!config.telegram?.botToken && !!config.telegram?.chatId;
         
         res.json({
             version: VERSION,
@@ -191,7 +192,20 @@ app.get('/api/config', (req, res) => {
                 username: config.moviepilot.username,
                 // password 不返回,前端需要时单独请求
                 subscribeUser: config.moviepilot.subscribeUser
-            } : { configured: false }
+            } : { configured: false },
+            // 返回 Telegram 配置给前端使用
+            telegram: isTelegramConfigured ? {
+                configured: true,
+                botToken: config.telegram.botToken,
+                chatId: config.telegram.chatId
+            } : { configured: false },
+            // 报告配置
+            report: {
+                enabled: config.report?.enabled || false,
+                dailyTime: config.report?.dailyTime || '23:00',
+                weeklyDay: config.report?.weeklyDay ?? 0,
+                weeklyTime: config.report?.weeklyTime || '22:00'
+            }
         });
     } catch (error) {
         console.error('Get Config Error:', error);

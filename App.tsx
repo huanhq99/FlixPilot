@@ -254,6 +254,18 @@ function AppContent() {
                   };
                   storage.set(STORAGE_KEYS.NOTIFICATIONS, newNotify);
               }
+              
+              // 后端配置了 Telegram 就用后端的
+              if (serverConfig.telegram?.configured && serverConfig.telegram.botToken) {
+                  console.log('✅ 使用后端 Telegram 配置');
+                  const localNotify = storage.get(STORAGE_KEYS.NOTIFICATIONS, {}) as any;
+                  const newNotify = {
+                      ...localNotify,
+                      telegramBotToken: serverConfig.telegram.botToken,
+                      telegramChatId: serverConfig.telegram.chatId
+                  };
+                  storage.set(STORAGE_KEYS.NOTIFICATIONS, newNotify);
+              }
           })
           .catch(err => console.error('获取后端配置失败:', err));
   }, []);
