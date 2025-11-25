@@ -60,7 +60,7 @@ app.post('/api/db', (req, res) => {
 // but we can add a proxy here if needed. For now, let's keep TMDB client-side as per original design.
 
 // Serve React App
-app.get('*', (req, res) => {
+app.get(/.*/, (req, res) => {
     res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
