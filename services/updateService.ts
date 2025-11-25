@@ -10,24 +10,43 @@ export interface UpdateInfo {
 
 export const checkForUpdates = async (): Promise<UpdateInfo> => {
     try {
+        // Try fetching latest release first
+        let data;
+        let isTag = false;
+        
         const response = await fetch('https://api.github.com/repos/huanhq99/StreamHub/releases/latest');
-        if (!response.ok) {
-            throw new Error('Failed to fetch release info');
+        
+        if (response.ok) {
+            data = await response.json();
+        } else {
+            // Fallback to tags if releases are not found (e.g. only tags exist)
+            console.log('Latest release not found, checking tags...');
+            const tagsResponse = await fetch('https://api.github.com/repos/huanhq99/StreamHub/tags');
+            if (!tagsResponse.ok) {
+                throw new Error('Failed to fetch update info');
+            }
+            const tags = await tagsResponse.json();
+            if (tags.length > 0) {
+                data = tags[0];
+                isTag = true;
+            } else {
+                throw new Error('No version information found');
+            }
         }
         
-        const data = await response.json();
-        const latestVersion = data.tag_name.replace(/^v/, ''); // Remove 'v' prefix if present
+        const tagName = isTag ? data.name : data.tag_name;
+        const latestVersion = tagName.replace(/^v/, ''); // Remove 'v' prefix
         const currentVersion = APP_VERSION;
         
-        // Simple version comparison (assumes semantic versioning x.y.z)
+        // Simple version comparison
         const hasUpdate = compareVersions(latestVersion, currentVersion) > 0;
         
         return {
             hasUpdate,
             latestVersion,
             currentVersion,
-            releaseNotes: data.body,
-            downloadUrl: data.html_url
+            releaseNotes: isTag ? 'No release notes available (Tag only)' : data.body,
+            downloadUrl: isTag ? `https://github.com/huanhq99/StreamHub/releases/tag/${tagName}` : data.html_url
         };
     } catch (error) {
         console.error('Update check failed:', error);
