@@ -1,0 +1,750 @@
+{
+  "tmdb_config": {
+    "apiKey": "83020de488099117460a41251fcb64a8",
+    "baseUrl": "https://api.themoviedb.org/3"
+  },
+  "algolia-client-js-5.14.2-********": {
+    "{\"url\":\"********-dsn.algolia.net\",\"accept\":\"read\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421438930}": {
+      "timestamp": 1743421438939,
+      "value": {
+        "url": "********-dsn.algolia.net",
+        "accept": "read",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421438939
+      }
+    },
+    "{\"url\":\"********-1.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421438930}": {
+      "timestamp": 1743421438942,
+      "value": {
+        "url": "********-1.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421438942
+      }
+    },
+    "{\"url\":\"********-3.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421438930}": {
+      "timestamp": 1743421438944,
+      "value": {
+        "url": "********-3.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421438944
+      }
+    },
+    "{\"url\":\"********-2.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421438930}": {
+      "timestamp": 1743421438946,
+      "value": {
+        "url": "********-2.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421438946
+      }
+    },
+    "{\"url\":\"********-dsn.algolia.net\",\"accept\":\"read\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421439158}": {
+      "timestamp": 1743421439162,
+      "value": {
+        "url": "********-dsn.algolia.net",
+        "accept": "read",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421439161
+      }
+    },
+    "{\"url\":\"********-1.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421439158}": {
+      "timestamp": 1743421439164,
+      "value": {
+        "url": "********-1.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421439164
+      }
+    },
+    "{\"url\":\"********-3.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421439158}": {
+      "timestamp": 1743421439167,
+      "value": {
+        "url": "********-3.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421439167
+      }
+    },
+    "{\"url\":\"********-2.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421439158}": {
+      "timestamp": 1743421439170,
+      "value": {
+        "url": "********-2.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421439170
+      }
+    },
+    "{\"url\":\"********-dsn.algolia.net\",\"accept\":\"read\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421439295}": {
+      "timestamp": 1743421439300,
+      "value": {
+        "url": "********-dsn.algolia.net",
+        "accept": "read",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421439300
+      }
+    },
+    "{\"url\":\"********-1.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421439295}": {
+      "timestamp": 1743421439304,
+      "value": {
+        "url": "********-1.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421439303
+      }
+    },
+    "{\"url\":\"********-3.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421439295}": {
+      "timestamp": 1743421439307,
+      "value": {
+        "url": "********-3.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421439307
+      }
+    },
+    "{\"url\":\"********-2.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421439295}": {
+      "timestamp": 1743421439310,
+      "value": {
+        "url": "********-2.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421439310
+      }
+    },
+    "{\"url\":\"********-dsn.algolia.net\",\"accept\":\"read\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421439865}": {
+      "timestamp": 1743421439869,
+      "value": {
+        "url": "********-dsn.algolia.net",
+        "accept": "read",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421439869
+      }
+    },
+    "{\"url\":\"********-1.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421439865}": {
+      "timestamp": 1743421439873,
+      "value": {
+        "url": "********-1.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421439873
+      }
+    },
+    "{\"url\":\"********-3.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421439865}": {
+      "timestamp": 1743421439875,
+      "value": {
+        "url": "********-3.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421439875
+      }
+    },
+    "{\"url\":\"********-2.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421439865}": {
+      "timestamp": 1743421439878,
+      "value": {
+        "url": "********-2.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421439877
+      }
+    },
+    "{\"url\":\"********-dsn.algolia.net\",\"accept\":\"read\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421440024}": {
+      "timestamp": 1743421440029,
+      "value": {
+        "url": "********-dsn.algolia.net",
+        "accept": "read",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421440029
+      }
+    },
+    "{\"url\":\"********-1.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421440024}": {
+      "timestamp": 1743421440032,
+      "value": {
+        "url": "********-1.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421440032
+      }
+    },
+    "{\"url\":\"********-3.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421440024}": {
+      "timestamp": 1743421440035,
+      "value": {
+        "url": "********-3.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421440034
+      }
+    },
+    "{\"url\":\"********-2.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421440024}": {
+      "timestamp": 1743421440037,
+      "value": {
+        "url": "********-2.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421440037
+      }
+    },
+    "{\"url\":\"********-dsn.algolia.net\",\"accept\":\"read\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421440182}": {
+      "timestamp": 1743421440187,
+      "value": {
+        "url": "********-dsn.algolia.net",
+        "accept": "read",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421440187
+      }
+    },
+    "{\"url\":\"********-1.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421440182}": {
+      "timestamp": 1743421440190,
+      "value": {
+        "url": "********-1.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421440190
+      }
+    },
+    "{\"url\":\"********-3.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421440182}": {
+      "timestamp": 1743421440193,
+      "value": {
+        "url": "********-3.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421440193
+      }
+    },
+    "{\"url\":\"********-2.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421440182}": {
+      "timestamp": 1743421440196,
+      "value": {
+        "url": "********-2.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421440196
+      }
+    },
+    "{\"url\":\"********-dsn.algolia.net\",\"accept\":\"read\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421440361}": {
+      "timestamp": 1743421440364,
+      "value": {
+        "url": "********-dsn.algolia.net",
+        "accept": "read",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421440364
+      }
+    },
+    "{\"url\":\"********-1.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421440361}": {
+      "timestamp": 1743421440369,
+      "value": {
+        "url": "********-1.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421440369
+      }
+    },
+    "{\"url\":\"********-3.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421440361}": {
+      "timestamp": 1743421440372,
+      "value": {
+        "url": "********-3.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421440372
+      }
+    },
+    "{\"url\":\"********-2.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421440361}": {
+      "timestamp": 1743421440374,
+      "value": {
+        "url": "********-2.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421440374
+      }
+    },
+    "{\"url\":\"********-dsn.algolia.net\",\"accept\":\"read\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421440520}": {
+      "timestamp": 1743421440524,
+      "value": {
+        "url": "********-dsn.algolia.net",
+        "accept": "read",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421440524
+      }
+    },
+    "{\"url\":\"********-1.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421440520}": {
+      "timestamp": 1743421440527,
+      "value": {
+        "url": "********-1.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421440526
+      }
+    },
+    "{\"url\":\"********-3.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421440520}": {
+      "timestamp": 1743421440529,
+      "value": {
+        "url": "********-3.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421440529
+      }
+    },
+    "{\"url\":\"********-2.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421440520}": {
+      "timestamp": 1743421440531,
+      "value": {
+        "url": "********-2.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421440531
+      }
+    },
+    "{\"url\":\"********-dsn.algolia.net\",\"accept\":\"read\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421440691}": {
+      "timestamp": 1743421440696,
+      "value": {
+        "url": "********-dsn.algolia.net",
+        "accept": "read",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421440696
+      }
+    },
+    "{\"url\":\"********-1.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421440691}": {
+      "timestamp": 1743421440699,
+      "value": {
+        "url": "********-1.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421440698
+      }
+    },
+    "{\"url\":\"********-3.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421440691}": {
+      "timestamp": 1743421440701,
+      "value": {
+        "url": "********-3.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421440701
+      }
+    },
+    "{\"url\":\"********-2.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421440691}": {
+      "timestamp": 1743421440703,
+      "value": {
+        "url": "********-2.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421440703
+      }
+    },
+    "{\"url\":\"********-dsn.algolia.net\",\"accept\":\"read\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421440848}": {
+      "timestamp": 1743421440853,
+      "value": {
+        "url": "********-dsn.algolia.net",
+        "accept": "read",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421440853
+      }
+    },
+    "{\"url\":\"********-1.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421440848}": {
+      "timestamp": 1743421440856,
+      "value": {
+        "url": "********-1.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421440856
+      }
+    },
+    "{\"url\":\"********-3.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421440848}": {
+      "timestamp": 1743421440859,
+      "value": {
+        "url": "********-3.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421440859
+      }
+    },
+    "{\"url\":\"********-2.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421440848}": {
+      "timestamp": 1743421440861,
+      "value": {
+        "url": "********-2.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421440861
+      }
+    },
+    "{\"url\":\"********-dsn.algolia.net\",\"accept\":\"read\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421441022}": {
+      "timestamp": 1743421441027,
+      "value": {
+        "url": "********-dsn.algolia.net",
+        "accept": "read",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421441027
+      }
+    },
+    "{\"url\":\"********-1.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421441022}": {
+      "timestamp": 1743421441032,
+      "value": {
+        "url": "********-1.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421441031
+      }
+    },
+    "{\"url\":\"********-3.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421441022}": {
+      "timestamp": 1743421441035,
+      "value": {
+        "url": "********-3.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421441035
+      }
+    },
+    "{\"url\":\"********-2.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421441022}": {
+      "timestamp": 1743421441038,
+      "value": {
+        "url": "********-2.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421441038
+      }
+    },
+    "{\"url\":\"********-dsn.algolia.net\",\"accept\":\"read\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421441181}": {
+      "timestamp": 1743421441184,
+      "value": {
+        "url": "********-dsn.algolia.net",
+        "accept": "read",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421441184
+      }
+    },
+    "{\"url\":\"********-1.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421441181}": {
+      "timestamp": 1743421441186,
+      "value": {
+        "url": "********-1.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421441186
+      }
+    },
+    "{\"url\":\"********-3.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421441181}": {
+      "timestamp": 1743421441188,
+      "value": {
+        "url": "********-3.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421441188
+      }
+    },
+    "{\"url\":\"********-2.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421441181}": {
+      "timestamp": 1743421441190,
+      "value": {
+        "url": "********-2.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421441190
+      }
+    },
+    "{\"url\":\"********-dsn.algolia.net\",\"accept\":\"read\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421441345}": {
+      "timestamp": 1743421441350,
+      "value": {
+        "url": "********-dsn.algolia.net",
+        "accept": "read",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421441350
+      }
+    },
+    "{\"url\":\"********-1.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421441345}": {
+      "timestamp": 1743421441353,
+      "value": {
+        "url": "********-1.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421441353
+      }
+    },
+    "{\"url\":\"********-3.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421441345}": {
+      "timestamp": 1743421441356,
+      "value": {
+        "url": "********-3.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421441356
+      }
+    },
+    "{\"url\":\"********-2.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421441345}": {
+      "timestamp": 1743421441358,
+      "value": {
+        "url": "********-2.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421441358
+      }
+    },
+    "{\"url\":\"********-dsn.algolia.net\",\"accept\":\"read\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421441504}": {
+      "timestamp": 1743421441509,
+      "value": {
+        "url": "********-dsn.algolia.net",
+        "accept": "read",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421441509
+      }
+    },
+    "{\"url\":\"********-1.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421441504}": {
+      "timestamp": 1743421441511,
+      "value": {
+        "url": "********-1.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421441511
+      }
+    },
+    "{\"url\":\"********-3.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421441504}": {
+      "timestamp": 1743421441514,
+      "value": {
+        "url": "********-3.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421441514
+      }
+    },
+    "{\"url\":\"********-2.algolianet.com\",\"accept\":\"readWrite\",\"protocol\":\"https\",\"status\":\"up\",\"lastUpdate\":1743421441504}": {
+      "timestamp": 1743421441516,
+      "value": {
+        "url": "********-2.algolianet.com",
+        "accept": "readWrite",
+        "protocol": "https",
+        "status": "down",
+        "lastUpdate": 1743421441516
+      }
+    }
+  },
+  "requests": [
+    {
+      "id": 1062722,
+      "title": "Frankenstein",
+      "subtitle": "Frankenstein",
+      "overview": "",
+      "type": "电影",
+      "mediaType": "movie",
+      "platform": "Netflix",
+      "hasProvider": true,
+      "providerRegion": "US",
+      "status": "completed",
+      "badgeLabel": "Netflix",
+      "badgeColorClass": "bg-[#E50914] text-white",
+      "releaseDate": "2025-11-07",
+      "releaseDates": {
+        "theatrical": null,
+        "digital": "2025-11-07",
+        "physical": null
+      },
+      "year": "2025",
+      "region": "英语地区",
+      "voteAverage": 7.766,
+      "posterUrl": "https://image.tmdb.org/t/p/w500/7GLwLJ3YCLOUZpZ3F57Ysy5UOTP.jpg",
+      "backdropUrl": "https://image.tmdb.org/t/p/original/hpXBJxLD2SEf8l2CspmSeiHrBKX.jpg",
+      "posterColor": "bg-red-500",
+      "posterText": "FR",
+      "seasons": [],
+      "genres": [
+        {
+          "id": 18,
+          "name": "剧情"
+        },
+        {
+          "id": 27,
+          "name": "恐怖"
+        },
+        {
+          "id": 14,
+          "name": "奇幻"
+        }
+      ],
+      "runtime": 152,
+      "cast": [
+        {
+          "adult": false,
+          "gender": 2,
+          "id": 25072,
+          "known_for_department": "Acting",
+          "name": "奥斯卡·伊萨克",
+          "original_name": "Oscar Isaac",
+          "popularity": 6.6562,
+          "profile_path": "/dW5U5yrIIPmMjRThR9KT2xH6nTz.jpg",
+          "cast_id": 5,
+          "character": "Victor Frankenstein",
+          "credit_id": "639e4e624f33ad00a2b08a0f",
+          "order": 0
+        },
+        {
+          "adult": false,
+          "gender": 2,
+          "id": 2034418,
+          "known_for_department": "Acting",
+          "name": "雅各布·艾洛蒂",
+          "original_name": "Jacob Elordi",
+          "popularity": 21.4839,
+          "profile_path": "/lC9pK3ADyPpH4dRo2BKZBaTZPfu.jpg",
+          "cast_id": 10,
+          "character": "The Creature",
+          "credit_id": "659b322a89b5614906fc0c15",
+          "order": 1
+        },
+        {
+          "adult": false,
+          "gender": 2,
+          "id": 27319,
+          "known_for_department": "Acting",
+          "name": "克里斯托弗·瓦尔兹",
+          "original_name": "Christoph Waltz",
+          "popularity": 5.3928,
+          "profile_path": "/jMvLGCVXLaBqjRLf5olyvEucZob.jpg",
+          "cast_id": 8,
+          "character": "Harlander",
+          "credit_id": "65208adb07216600e2d96bf4",
+          "order": 2
+        },
+        {
+          "adult": false,
+          "gender": 1,
+          "id": 1137824,
+          "known_for_department": "Acting",
+          "name": "米娅·高斯",
+          "original_name": "Mia Goth",
+          "popularity": 6.932,
+          "profile_path": "/rwko7XVaKFcJH1dtAIIsrgLMzHb.jpg",
+          "cast_id": 7,
+          "character": "Elizabeth / Claire Frankenstein",
+          "credit_id": "6411ef35fe6c1800daef1148",
+          "order": 3
+        },
+        {
+          "adult": false,
+          "gender": 2,
+          "id": 3631223,
+          "known_for_department": "Acting",
+          "name": "费利克斯·卡默雷尔",
+          "original_name": "Felix Kammerer",
+          "popularity": 1.5957,
+          "profile_path": "/T12faHW0QXunSZbv6YNmDWG7bC.jpg",
+          "cast_id": 11,
+          "character": "William Frankenstein",
+          "credit_id": "659b3e3c89b5610d3cb9a1dc",
+          "order": 4
+        },
+        {
+          "adult": false,
+          "gender": 2,
+          "id": 4391,
+          "known_for_department": "Acting",
+          "name": "查尔斯·丹斯",
+          "original_name": "Charles Dance",
+          "popularity": 3.9197,
+          "profile_path": "/3xHwq5lchAI6mfW0aGQOEijexv6.jpg",
+          "cast_id": 15,
+          "character": "Leopold Frankenstein",
+          "credit_id": "65b1b521dbf144016b9b7155",
+          "order": 5
+        }
+      ],
+      "videos": [],
+      "requestDate": "2025-11-25T05:50:59.419Z",
+      "requestedBy": "admin",
+      "resolutionPreference": "Any",
+      "notes": "",
+      "completedAt": "2025-11-25T05:51:09.079Z"
+    }
+  ],
+  "vitepress:local-search-detailed-list": false,
+  "streamhub_users": [
+    {
+      "id": "admin-1764049666418",
+      "username": "admin",
+      "password": "admin",
+      "isAdmin": true,
+      "embyConfig": null,
+      "createdAt": 1764049666418
+    }
+  ],
+  "streamhub_logs": [
+    {
+      "id": "1764049870396dbpsqh83w",
+      "timestamp": 1764049870396,
+      "message": "[MoviePilot] 订阅失败 (Frankenstein): 订阅失败: Not authenticated",
+      "type": "error"
+    }
+  ],
+  "streamhub_notifications": {
+    "moviePilotUrl": "https://mp.111107.xyz:7777",
+    "moviePilotToken": "Pi8c56SUVs-9oP7ZR1eaCA"
+  },
+  "streamhub_auth": {
+    "isAuthenticated": true,
+    "user": {
+      "Id": "admin-1764049666418",
+      "Name": "admin",
+      "Policy": {
+        "IsAdministrator": true
+      }
+    },
+    "serverUrl": "",
+    "accessToken": "",
+    "isAdmin": true,
+    "isGuest": false
+  },
+  "streamhub_settings": {
+    "scanInterval": 15,
+    "websiteTitle": "StreamHub - Global Media Monitor",
+    "faviconUrl": "",
+    "requestLimit": 0
+  },
+  "vitepress-theme-appearance": "auto",
+  "darkMode": false
+}

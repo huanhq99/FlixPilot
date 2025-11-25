@@ -97,6 +97,8 @@ export interface NotificationConfig {
   // MoviePilot Config
   moviePilotUrl?: string;
   moviePilotToken?: string;
+  moviePilotUsername?: string;
+  moviePilotPassword?: string;
 }
 
 export interface EmbyUser {

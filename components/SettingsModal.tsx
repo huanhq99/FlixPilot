@@ -207,8 +207,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
 
     const [testingMP, setTestingMP] = useState(false);
     const handleTestMoviePilot = async () => {
-        if (!notifyConfig.moviePilotUrl || !notifyConfig.moviePilotToken) {
-            toast.showToast('请先填写 MoviePilot 地址和 Token', 'warning');
+        if (!notifyConfig.moviePilotUrl) {
+            toast.showToast('请先填写 MoviePilot 地址', 'warning');
+            return;
+        }
+        if (!notifyConfig.moviePilotToken && (!notifyConfig.moviePilotUsername || !notifyConfig.moviePilotPassword)) {
+            toast.showToast('请提供 Token 或用户名密码', 'warning');
             return;
         }
         setTestingMP(true);
@@ -235,7 +239,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
             newRequests[index].completedAt = new Date().toISOString();
             
             // Trigger MoviePilot subscription
-            if (notifyConfig.moviePilotUrl && notifyConfig.moviePilotToken) {
+            if (notifyConfig.moviePilotUrl && (notifyConfig.moviePilotToken || (notifyConfig.moviePilotUsername && notifyConfig.moviePilotPassword))) {
                 toast.showToast('正在推送到 MoviePilot...', 'info');
                 try {
                     // Cast request to any to satisfy MediaItem type (RequestItem has compatible fields)
@@ -773,7 +777,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
                                             </h4>
                                             <button 
                                                 onClick={handleTestMoviePilot}
-                                                disabled={testingMP || !notifyConfig.moviePilotUrl || !notifyConfig.moviePilotToken}
+                                                disabled={testingMP || !notifyConfig.moviePilotUrl || (!notifyConfig.moviePilotToken && (!notifyConfig.moviePilotUsername || !notifyConfig.moviePilotPassword))}
                                                 className="text-xs text-purple-500 hover:underline font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                                             >
                                                 {testingMP ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
@@ -786,19 +790,57 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
                                                 type="text" 
                                                 value={notifyConfig.moviePilotUrl || ''}
                                                 onChange={(e) => setNotifyConfig({...notifyConfig, moviePilotUrl: e.target.value})}
-                                                placeholder="http://192.168.1.10:3000"
+                                                placeholder="https://mp.example.com:7777"
                                                 className={`w-full p-3 rounded-xl border outline-none transition-all font-mono text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
                                             />
                                         </div>
+                                        
                                         <div className="space-y-2">
-                                            <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>API Token</label>
+                                            <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
+                                                认证方式
+                                            </label>
+                                            <p className="text-xs opacity-60">
+                                                推荐：使用用户名密码，系统会自动登录获取 Token
+                                            </p>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>用户名</label>
+                                                <input 
+                                                    type="text" 
+                                                    value={notifyConfig.moviePilotUsername || ''}
+                                                    onChange={(e) => setNotifyConfig({...notifyConfig, moviePilotUsername: e.target.value})}
+                                                    placeholder="admin"
+                                                    className={`w-full p-3 rounded-xl border outline-none transition-all font-mono text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>密码</label>
+                                                <input 
+                                                    type="password" 
+                                                    value={notifyConfig.moviePilotPassword || ''}
+                                                    onChange={(e) => setNotifyConfig({...notifyConfig, moviePilotPassword: e.target.value})}
+                                                    placeholder="••••••"
+                                                    className={`w-full p-3 rounded-xl border outline-none transition-all font-mono text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
+                                                />
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="space-y-2">
+                                            <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
+                                                或直接填写 JWT Token（高级）
+                                            </label>
                                             <input 
                                                 type="password" 
                                                 value={notifyConfig.moviePilotToken || ''}
                                                 onChange={(e) => setNotifyConfig({...notifyConfig, moviePilotToken: e.target.value})}
-                                                placeholder="MoviePilot API Token"
+                                                placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
                                                 className={`w-full p-3 rounded-xl border outline-none transition-all font-mono text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
                                             />
+                                            <p className="text-xs opacity-60">
+                                                如果填写了用户名密码，此项可留空
+                                            </p>
                                         </div>
                                     </div>
 

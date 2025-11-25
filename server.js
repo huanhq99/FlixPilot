@@ -121,7 +121,9 @@ app.post('/api/proxy/moviepilot', async (req, res) => {
 
         // Write body if exists
         if (body) {
-            proxyReq.write(JSON.stringify(body));
+            // Body can be either JSON or string (for form data)
+            const bodyContent = typeof body === 'string' ? body : JSON.stringify(body);
+            proxyReq.write(bodyContent);
         }
         
         proxyReq.end();
@@ -132,9 +134,32 @@ app.post('/api/proxy/moviepilot', async (req, res) => {
     }
 });
 
-// Proxy for TMDB (Simple pass-through to avoid CORS on client if needed, though client handles it mostly)
-// Note: In this architecture, we might still rely on client-side requests for TMDB to reduce server load,
-// but we can add a proxy here if needed. For now, let's keep TMDB client-side as per original design.
+// API: Proxy for TMDB
+app.use('/tmdb', async (req, res) => {
+    try {
+        const tmdbPath = req.path.replace(/^\//, ''); // Remove leading slash
+        const apiKey = '83020de488099117460a41251fcb64a8'; // From .env
+        
+        // Add API key to query params
+        const url = new URL(`https://api.themoviedb.org/3/${tmdbPath}`);
+        url.searchParams.append('api_key', apiKey);
+        
+        // Forward other query params
+        Object.keys(req.query).forEach(key => {
+            url.searchParams.append(key, req.query[key]);
+        });
+
+        console.log(`[TMDB Proxy] GET -> ${url.pathname}`);
+
+        const response = await fetch(url.toString());
+        const data = await response.json();
+        
+        res.status(response.status).json(data);
+    } catch (error) {
+        console.error('[TMDB Proxy] Error:', error);
+        res.status(500).json({ error: 'TMDB proxy failed', details: error.message });
+    }
+});
 
 // Serve React App
 app.get(/.*/, (req, res) => {

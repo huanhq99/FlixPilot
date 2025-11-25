@@ -133,13 +133,93 @@ ${tagLine}
 
 const PROXY_URL = '/api/proxy/moviepilot';
 
-export const testMoviePilotConnection = async (config: NotificationConfig): Promise<{ success: boolean, message: string, method?: string }> => {
-    if (!config.moviePilotUrl || !config.moviePilotToken) {
-        return { success: false, message: '请先配置 MoviePilot 地址和 Token' };
+// 登录 MoviePilot 获取 JWT Token
+const loginToMoviePilot = async (baseUrl: string, username: string, password: string): Promise<string | null> => {
+    try {
+        const loginUrl = `${baseUrl}/api/v1/login/access-token`;
+        console.log('正在登录 MoviePilot...');
+        
+        // 尝试直连
+        try {
+            const formData = new URLSearchParams();
+            formData.append('username', username);
+            formData.append('password', password);
+            
+            const response = await fetch(loginUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Accept': 'application/json'
+                },
+                body: formData
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log('✅ MoviePilot 登录成功（直连）');
+                return data.access_token;
+            }
+        } catch (e) {
+            console.log('直连登录失败，尝试代理...');
+        }
+        
+        // 尝试代理
+        const formData = new URLSearchParams();
+        formData.append('username', username);
+        formData.append('password', password);
+        
+        const response = await fetch(PROXY_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                target_url: loginUrl,
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Accept': 'application/json'
+                },
+                body: formData.toString()
+            })
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data.access_token) {
+                console.log('✅ MoviePilot 登录成功（代理）');
+                return data.access_token;
+            }
+        }
+        
+        console.error('❌ MoviePilot 登录失败');
+        return null;
+    } catch (error) {
+        console.error('MoviePilot 登录异常:', error);
+        return null;
     }
+};
 
+export const testMoviePilotConnection = async (config: NotificationConfig): Promise<{ success: boolean, message: string, method?: string }> => {
+    if (!config.moviePilotUrl) {
+        return { success: false, message: '请先配置 MoviePilot 地址' };
+    }
+    
     const baseUrl = config.moviePilotUrl.replace(/\/$/, '');
-    const cleanToken = config.moviePilotToken.trim();
+    
+    // 如果提供了用户名密码，先登录获取 Token
+    let cleanToken = config.moviePilotToken?.trim() || '';
+    if (!cleanToken && config.moviePilotUsername && config.moviePilotPassword) {
+        const token = await loginToMoviePilot(baseUrl, config.moviePilotUsername, config.moviePilotPassword);
+        if (!token) {
+            return { success: false, message: '登录失败，请检查用户名和密码' };
+        }
+        cleanToken = token;
+    }
+    
+    if (!cleanToken) {
+        return { success: false, message: '请提供 Token 或用户名密码' };
+    }
     
     // Endpoints to test (优先测试 MCP 端点，因为它支持 API Key)
     const endpoints = [
@@ -268,46 +348,43 @@ export const testMoviePilotConnection = async (config: NotificationConfig): Prom
 };
 
 export const subscribeToMoviePilot = async (config: NotificationConfig, item: MediaItem): Promise<{ success: boolean, message: string }> => {
-    if (!config.moviePilotUrl || !config.moviePilotToken) {
-        return { success: false, message: '未配置 MoviePilot' };
+    if (!config.moviePilotUrl) {
+        return { success: false, message: '未配置 MoviePilot 地址' };
     }
 
     const baseUrl = config.moviePilotUrl.replace(/\/$/, '');
     const endpoint = '/api/v1/subscribe/';
-    const cleanToken = config.moviePilotToken.trim();
+    
+    // 如果提供了用户名密码，先登录获取 Token
+    let cleanToken = config.moviePilotToken?.trim() || '';
+    if (!cleanToken && config.moviePilotUsername && config.moviePilotPassword) {
+        const token = await loginToMoviePilot(baseUrl, config.moviePilotUsername, config.moviePilotPassword);
+        if (!token) {
+            return { success: false, message: '登录失败，请检查用户名和密码' };
+        }
+        cleanToken = token;
+    }
+    
+    if (!cleanToken) {
+        return { success: false, message: '请提供 Token 或用户名密码' };
+    }
 
     const payload = {
         name: item.title,
-        year: item.year,
+        year: item.year ? String(item.year) : "",
         type: item.mediaType,
         tmdbid: item.id,
         season: item.mediaType === 'tv' ? 1 : 0,
     };
 
-    // 定义多种认证策略，按顺序尝试
+    // MoviePilot 使用 JWT Token 进行认证
+    // Token 格式：Bearer <JWT>
     const strategies = [
         {
-            name: 'Bearer Auth',
+            name: 'Bearer JWT',
             url: `${baseUrl}${endpoint}`,
             headers: {
                 'Authorization': `Bearer ${cleanToken}`
-            }
-        },
-        {
-            name: 'Query Param (apikey)',
-            url: `${baseUrl}${endpoint}?apikey=${encodeURIComponent(cleanToken)}`,
-            headers: {}
-        },
-        {
-            name: 'Query Param (token)',
-            url: `${baseUrl}${endpoint}?token=${encodeURIComponent(cleanToken)}`,
-            headers: {}
-        },
-        {
-            name: 'X-API-KEY Header',
-            url: `${baseUrl}${endpoint}`,
-            headers: {
-                'X-API-KEY': cleanToken
             }
         }
     ];
