@@ -318,7 +318,6 @@ export const subscribeToMoviePilot = async (config: NotificationConfig, item: Me
     // 2. 尝试代理
     try {
         // Try with token in query param first (most reliable based on logs)
-        
         const response = await fetch(PROXY_URL, {
             method: 'POST',
             headers: {
@@ -335,27 +334,25 @@ export const subscribeToMoviePilot = async (config: NotificationConfig, item: Me
                 },
                 body: payload
             })
-        });                if (response.ok) {
-                    const data = await response.json();
-                    if (data.success || data.code === 0) {
-                        return { success: true, message: '已成功添加到 MoviePilot 订阅' };
-                    } else {
-                        return { success: false, message: data.message || data.detail || 'MoviePilot 返回错误' };
-                    }
-                } else {
-                    const text = await response.text();
-                    console.error('Proxy Error Response:', text);
-                    try {
-                        const json = JSON.parse(text);
-                        return { success: false, message: `代理请求失败: ${json.details || json.error || json.message || 'Unknown Error'}` };
-                    } catch {
-                        return { success: false, message: `代理请求失败 (Status ${response.status})` };
-                    }
-                }
-                return { success: false, message: `订阅失败 (${response.status}): ${text}` };
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success || data.code === 0) {
+                return { success: true, message: '已成功添加到 MoviePilot 订阅' };
+            } else {
+                return { success: false, message: data.message || data.detail || 'MoviePilot 返回错误' };
+            }
+        } else {
+            const text = await response.text();
+            console.error('Proxy Error Response:', text);
+            try {
+                const json = JSON.parse(text);
+                return { success: false, message: `代理请求失败: ${json.details || json.error || json.message || 'Unknown Error'}` };
+            } catch {
+                return { success: false, message: `代理请求失败 (Status ${response.status})` };
             }
         }
-
     } catch (e: any) {
         console.error('MoviePilot Subscription Failed:', e);
         return { success: false, message: `订阅失败: ${e.message}` };
