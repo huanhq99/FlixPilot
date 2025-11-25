@@ -2,7 +2,7 @@
 
 StreamHub 是一个优雅、现代化的影视媒体发现与追踪平台。它不仅仅是一个海报墙，更是一个连接 Emby 媒体库与全球热门影视的桥梁。
 
-![Version](https://img.shields.io/badge/version-2.1.1-blue.svg)
+![Version](https://img.shields.io/badge/version-2.1.2-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![React](https://img.shields.io/badge/React-19-61DAFB.svg)
 ![Vite](https://img.shields.io/badge/Vite-6.0-646CFF.svg)
@@ -105,6 +105,10 @@ services:
 - [x] **TMDB 前端配置** (v2.0.1 新增)
 
 ## 📝 更新日志
+
+### v2.1.2 (2025-11-25)
+- **配置**: 更新 `docker-compose.yml` 模板，适配新的数据持久化路径 `/app/data`。
+- **优化**: 移除对 `.env` 文件的强制依赖。
 
 ### v2.1.1 (2025-11-25)
 - **新增**: TMDB 代理连接测试新增延迟显示，方便评估网络质量。

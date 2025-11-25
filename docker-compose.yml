@@ -1,14 +1,17 @@
-version: "3.8"
+version: "3"
 services:
   streamhub:
-    build: .
-    image: streamhub:local
+    image: ghcr.io/huanhq99/streamhub:latest
     container_name: streamhub
     ports:
       - "3000:3000"
     environment:
-      - TMDB_API_KEY=${TMDB_API_KEY}
-      - HTTP_PROXY=${HTTP_PROXY}
-      - HTTPS_PROXY=${HTTPS_PROXY}
-    restart: always
+      # TMDB API Key (Optional, can be set in Web UI)
+      - TMDB_API_KEY=
+      # Proxy Settings (Optional)
+      # - HTTP_PROXY=http://host.docker.internal:7890
+      # - HTTPS_PROXY=http://host.docker.internal:7890
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
 
