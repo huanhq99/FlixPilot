@@ -21,7 +21,8 @@ import {
   Share2,
   Sparkles,
   Calendar,
-  Star as StarIcon
+  Star as StarIcon,
+  BarChart3
 } from 'lucide-react';
 import { TMDB_API_KEY, TMDB_BASE_URL } from './constants';
 import { MediaItem, FilterState, EmbyConfig, AuthState, RequestItem, FavoriteItem, UserRating, CustomTag, MediaTag, WatchHistory, Subscription } from './types';
@@ -39,6 +40,7 @@ import Login from './components/Login';
 import PersonModal from './components/PersonModal';
 import MyListModal from './components/MyListModal';
 import CalendarModal from './components/CalendarModal';
+import PlaybackReportModal from './components/PlaybackReportModal';
 
 function AppContent() {
   const toast = useToast();
@@ -71,6 +73,7 @@ function AppContent() {
   const [showLogs, setShowLogs] = useState(false);
   const [showMyList, setShowMyList] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [showPlaybackReport, setShowPlaybackReport] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
 
   const handleOpenLogs = () => {
@@ -961,6 +964,14 @@ function AppContent() {
         }}
       />
 
+      <PlaybackReportModal
+        isOpen={showPlaybackReport}
+        onClose={() => setShowPlaybackReport(false)}
+        isDarkMode={isDarkMode}
+        embyConfig={embyConfig}
+        notificationConfig={storage.get(STORAGE_KEYS.NOTIFICATIONS, {})}
+      />
+
       <SettingsModal 
         isOpen={showSettings} 
         onClose={() => setShowSettings(false)} 
@@ -1090,6 +1101,17 @@ function AppContent() {
             )}
 
             <div className="flex items-center gap-2 pl-2 border-l border-gray-200 dark:border-white/10">
+                {/* 观影报告按钮 - 仅管理员可见 */}
+                {authState.isAdmin && (
+                    <button 
+                        onClick={() => setShowPlaybackReport(true)}
+                        className={`p-1.5 md:p-2 rounded-full transition-all hover:scale-110 active:scale-95 shrink-0 ${isDarkMode ? 'bg-zinc-800 text-emerald-400 hover:bg-zinc-700' : 'bg-emerald-50 text-emerald-500 hover:bg-emerald-100'}`}
+                        title="观影统计报告"
+                    >
+                        <BarChart3 size={16} className="md:w-[18px] md:h-[18px]" />
+                    </button>
+                )}
+                
                 {/* 日历按钮 */}
                 <button 
                     onClick={() => setShowCalendar(true)}
