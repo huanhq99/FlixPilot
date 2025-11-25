@@ -55,6 +55,44 @@ app.post('/api/db', (req, res) => {
     }
 });
 
+// API: Proxy for MoviePilot
+app.post('/api/proxy/moviepilot', async (req, res) => {
+    try {
+        const { target_url, method, headers, body } = req.body;
+        
+        if (!target_url) {
+            return res.status(400).json({ error: 'Missing target_url' });
+        }
+
+        console.log(`[Proxy] ${method} -> ${target_url}`);
+
+        const response = await fetch(target_url, {
+            method: method || 'POST',
+            headers: headers || { 'Content-Type': 'application/json' },
+            body: body ? JSON.stringify(body) : undefined
+        });
+
+        // Try to parse JSON, fallback to text if failed
+        const contentType = response.headers.get('content-type');
+        let responseData;
+        if (contentType && contentType.includes('application/json')) {
+            responseData = await response.json();
+        } else {
+            const text = await response.text();
+            try {
+                responseData = JSON.parse(text);
+            } catch (e) {
+                responseData = { message: text };
+            }
+        }
+
+        res.status(response.status).json(responseData);
+    } catch (error) {
+        console.error('[Proxy] Error:', error);
+        res.status(500).json({ error: 'Proxy request failed', details: error.message });
+    }
+});
+
 // Proxy for TMDB (Simple pass-through to avoid CORS on client if needed, though client handles it mostly)
 // Note: In this architecture, we might still rely on client-side requests for TMDB to reduce server load,
 // but we can add a proxy here if needed. For now, let's keep TMDB client-side as per original design.
