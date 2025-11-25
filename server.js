@@ -10,6 +10,14 @@ import http from 'http';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Version info
+const VERSION = '2.1.18';
+const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf-8'));
+if (packageJson.version !== VERSION) {
+  console.log(`\n⚠️  版本不匹配: package.json (${packageJson.version}) vs server.js (${VERSION})`);
+  console.log(`📝 建议更新 package.json 中的版本号\n`);
+}
+
 // Load configuration from config.json (fallback to .env)
 let config = {
   tmdb: {
@@ -27,9 +35,61 @@ let config = {
 };
 
 const configPath = path.join(__dirname, 'config.json');
+const configExamplePath = path.join(__dirname, 'config.example.json');
+let isFirstRun = false;
+
+// Auto-generate default config.json if not exists
+if (!fs.existsSync(configPath)) {
+  isFirstRun = true;
+  console.log('\n🔧 首次运行检测到，正在生成默认配置文件...');
+  
+  const defaultConfig = {
+    "tmdb": {
+      "apiKey": "your_tmdb_api_key_here",
+      "baseUrl": "https://api.themoviedb.org/3"
+    },
+    "emby": {
+      "serverUrl": "http://your-emby-server:8096",
+      "apiKey": "your_emby_api_key_here"
+    },
+    "moviepilot": {
+      "url": "https://your-moviepilot-server.com",
+      "username": "your_username",
+      "password": "your_password",
+      "subscribeUser": "hub"
+    },
+    "server": {
+      "port": 3000,
+      "dataDir": "./data"
+    },
+    "proxy": {
+      "http": "",
+      "https": ""
+    }
+  };
+  
+  try {
+    fs.writeFileSync(configPath, JSON.stringify(defaultConfig, null, 2), 'utf-8');
+    console.log('✅ 已生成默认配置文件: config.json');
+    console.log('📝 请编辑 config.json 填入您的配置信息');
+    console.log('🔑 必需配置: tmdb.apiKey (从 https://www.themoviedb.org/settings/api 获取)');
+    console.log('\n⏸️  服务器将使用默认配置启动，建议修改配置后重启服务\n');
+  } catch (err) {
+    console.error('❌ 生成配置文件失败:', err.message);
+  }
+}
+
+// Load configuration
 if (fs.existsSync(configPath)) {
   try {
     const configFile = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    
+    // Check if using default values
+    const hasDefaultValues = 
+      configFile.tmdb?.apiKey === 'your_tmdb_api_key_here' ||
+      configFile.emby?.apiKey === 'your_emby_api_key_here' ||
+      configFile.moviepilot?.username === 'your_username';
+    
     // Merge config.json with defaults, config.json takes priority
     config = {
       ...config,
@@ -38,7 +98,12 @@ if (fs.existsSync(configPath)) {
       server: { ...config.server, ...configFile.server },
       proxy: { ...config.proxy, ...configFile.proxy }
     };
-    console.log('✅ 已加载 config.json 配置文件');
+    
+    if (isFirstRun || hasDefaultValues) {
+      console.log('⚠️  检测到默认配置值，请修改 config.json 中的配置');
+    } else {
+      console.log('✅ 已加载 config.json 配置文件');
+    }
   } catch (err) {
     console.error('⚠️  config.json 解析失败，使用默认配置:', err.message);
   }
@@ -214,17 +279,64 @@ app.get(/.*/, (req, res) => {
 });
 
 app.listen(PORT, () => {
+    const startTime = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
+    const configSource = fs.existsSync(configPath) ? 'config.json' : '.env / defaults';
+    const hasValidTmdbKey = config.tmdb.apiKey && config.tmdb.apiKey !== 'your_tmdb_api_key_here';
+    
     console.log(`
 ╔════════════════════════════════════════════════════════╗
-║  🚀 StreamHub Monitor Server                          ║
+║  🚀 StreamHub Monitor Server v${VERSION.padEnd(23)}║
 ╠════════════════════════════════════════════════════════╣
-║  📡 Port:         ${PORT.toString().padEnd(35)}║
-║  📂 Data Dir:     ${path.basename(DATA_DIR).padEnd(35)}║
-║  🔧 Config:       ${fs.existsSync(configPath) ? 'config.json'.padEnd(35) : '.env / defaults'.padEnd(35)}║
-╚════════════════════════════════════════════════════════╝
-    `);
+║  📡 端口:         ${PORT.toString().padEnd(35)}║
+║  📂 数据目录:     ${path.basename(DATA_DIR).padEnd(35)}║
+║  🔧 配置源:       ${configSource.padEnd(35)}║
+║  🕐 启动时间:     ${startTime.padEnd(35)}║
+╠════════════════════════════════════════════════════════╣`);
     
-    if (!config.tmdb.apiKey) {
-        console.log('⚠️  警告: TMDB API Key 未配置，请创建 config.json 文件');
+    if (hasValidTmdbKey) {
+        console.log(`║  ✅ TMDB API:     已配置                              ║`);
+    } else {
+        console.log(`║  ⚠️  TMDB API:     未配置 (必需)                      ║`);
     }
+    
+    if (config.emby?.serverUrl && config.emby?.serverUrl !== 'http://your-emby-server:8096') {
+        console.log(`║  ✅ Emby:         已配置                              ║`);
+    }
+    
+    if (config.moviepilot?.url && config.moviepilot?.url !== 'https://your-moviepilot-server.com') {
+        console.log(`║  ✅ MoviePilot:   已配置                              ║`);
+    }
+    
+    console.log(`╚════════════════════════════════════════════════════════╝\n`);
+    
+    // First run tips
+    if (isFirstRun) {
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('🎉 欢迎使用 StreamHub Monitor!');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('\n📋 快速开始指南:');
+        console.log('   1. 编辑 config.json 文件');
+        console.log('   2. 填入 TMDB API Key (必需)');
+        console.log('   3. 配置 Emby 和 MoviePilot (可选)');
+        console.log('   4. 重启服务器: Ctrl+C 然后 node server.js');
+        console.log('\n📚 详细配置说明: 查看 CONFIG.md');
+        console.log('🔒 安全提示: config.json 不会被提交到 Git');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+    }
+    
+    // Configuration warnings
+    if (!hasValidTmdbKey) {
+        console.log('⚠️  警告: TMDB API Key 未配置或使用默认值');
+        console.log('   → 编辑 config.json 中的 tmdb.apiKey');
+        console.log('   → 获取地址: https://www.themoviedb.org/settings/api\n');
+    }
+    
+    // Runtime info
+    console.log('📊 运行信息:');
+    console.log(`   → 访问地址: http://localhost:${PORT}`);
+    console.log(`   → 进程 PID: ${process.pid}`);
+    console.log(`   → Node 版本: ${process.version}`);
+    console.log(`   → 平台: ${process.platform}`);
+    console.log('\n💡 提示: 修改配置文件后需要重启服务器才能生效');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 });
