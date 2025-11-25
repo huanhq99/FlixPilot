@@ -5,13 +5,26 @@ services:
     container_name: streamhub
     ports:
       - "3000:3000"
-    environment:
-      # TMDB API Key (Optional, can be set in Web UI)
-      - TMDB_API_KEY=
-      # Proxy Settings (Optional)
-      # - HTTP_PROXY=http://host.docker.internal:7890
-      # - HTTPS_PROXY=http://host.docker.internal:7890
+    
+    # 推荐方式: 使用 config.json (自动生成)
     volumes:
-      - ./data:/app/data
+      - ./data:/app/data              # 数据持久化 (必需)
+      - ./config.json:/app/config.json # 配置文件 (推荐)
+    
+    # 可选方式: 使用环境变量
+    # environment:
+    #   - TMDB_API_KEY=your_tmdb_api_key
+    #   - PORT=3000
+    #   - DATA_DIR=/app/data
+    #   # Proxy Settings (Optional)
+    #   - HTTP_PROXY=http://host.docker.internal:7890
+    #   - HTTPS_PROXY=http://host.docker.internal:7890
+    
     restart: unless-stopped
+
+# 使用说明:
+# 1. 首次运行会自动生成 config.json
+# 2. 停止容器: docker-compose down
+# 3. 编辑 ./config.json 填入配置
+# 4. 重启容器: docker-compose up -d
 

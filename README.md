@@ -72,37 +72,18 @@
 git clone https://github.com/huanhq99/StreamHub.git
 cd StreamHub
 
-# 2. 配置 (二选一)
-# 方式 A: 使用 config.json (推荐 ✨)
-cp config.example.json config.json
-nano config.json  # 填入你的配置
+# 2. 首次启动 (自动生成 config.json)
+docker-compose up -d
 
-# 方式 B: 使用 .env (传统方式)
-cp .env.example .env
-nano .env  # 填入你的 TMDB_API_KEY
+# 3. 停止容器，编辑配置
+docker-compose down
+nano config.json  # 填入你的 TMDB API Key
 
-# 3. 启动服务
+# 4. 重启容器
 docker-compose up -d
 ```
 
-**docker-compose.yml 示例:**
-```yaml
-version: '3'
-services:
-  streamhub:
-    image: ghcr.io/huanhq99/streamhub:latest
-    container_name: streamhub
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./config.json:/app/config.json  # 推荐: 使用配置文件
-      - ./data:/app/data                # 数据持久化
-    restart: unless-stopped
-    
-    # 可选: 使用环境变量替代 config.json
-    # env_file:
-    #   - .env
-```
+📚 **详细 Docker 部署指南**: [DOCKER.md](DOCKER.md)
 
 访问 `http://localhost:3000` 开始使用!
 
