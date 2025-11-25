@@ -3,7 +3,8 @@ import { X, Save, Server, CheckCircle2, AlertCircle, Loader2, User, ShieldCheck,
 import { checkForUpdates, UpdateInfo } from '../services/updateService';
 import { EmbyConfig, EmbyUser, NotificationConfig, RequestItem } from '../types';
 import { validateEmbyConnection, getEmbyUsers, fetchEmbyLibrary, fetchEmbyLibraries } from '../services/embyService';
-import { sendTelegramTest, sendTelegramNotification, testMoviePilotConnection } from '../services/notificationService';
+import { sendTelegramTest, sendTelegramNotification, testMoviePilotConnection, subscribeToMoviePilot } from '../services/notificationService';
+import { logger } from '../utils/logger';
 import { testTmdbConnection } from '../services/tmdbService';
 import { storage, STORAGE_KEYS } from '../utils/storage';
 import { useToast } from './Toast';
@@ -225,12 +226,33 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
         }
     };
 
-    const updateRequestStatus = (index: number, status: 'completed' | 'rejected') => {
+    const updateRequestStatus = async (index: number, status: 'completed' | 'rejected') => {
         const newRequests = [...requests];
+        const request = newRequests[index];
         newRequests[index].status = status;
+        
         if (status === 'completed') {
             newRequests[index].completedAt = new Date().toISOString();
+            
+            // Trigger MoviePilot subscription
+            if (notifyConfig.moviePilotUrl && notifyConfig.moviePilotToken) {
+                toast.showToast('正在推送到 MoviePilot...', 'info');
+                try {
+                    // Cast request to any to satisfy MediaItem type (RequestItem has compatible fields)
+                    const result = await subscribeToMoviePilot(notifyConfig, request as any);
+                    if (result.success) {
+                        toast.showToast('MoviePilot 订阅成功', 'success');
+                        logger.add(`[MoviePilot] 成功订阅: ${request.title}`, 'success');
+                    } else {
+                        toast.showToast(`MoviePilot 订阅失败: ${result.message}`, 'error');
+                        logger.add(`[MoviePilot] 订阅失败 (${request.title}): ${result.message}`, 'error');
+                    }
+                } catch (e: any) {
+                    logger.add(`[MoviePilot] 订阅异常 (${request.title}): ${e.message}`, 'error');
+                }
+            }
         }
+        
         setRequests(newRequests);
         storage.set(STORAGE_KEYS.REQUESTS, newRequests);
         toast.showToast(`请求已标记为 ${status === 'completed' ? '已完成' : '已拒绝'}`, 'success');

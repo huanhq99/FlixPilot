@@ -12,7 +12,9 @@ import {
   ArrowUp,
   Settings,
   LogOut,
-  User as UserIcon
+  User as UserIcon,
+  ScrollText,
+  X
 } from 'lucide-react';
 import { TMDB_API_KEY, TMDB_BASE_URL } from './constants';
 import { MediaItem, FilterState, EmbyConfig, AuthState, RequestItem } from './types';
@@ -20,6 +22,7 @@ import { processMediaItem, fetchDetails, fetchPersonDetails, getTmdbConfig } fro
 import { fetchEmbyLibrary } from './services/embyService';
 import { sendTelegramNotification } from './services/notificationService';
 import { storage, STORAGE_KEYS } from './utils/storage';
+import { logger, LogEntry } from './utils/logger';
 import { ToastProvider, useToast } from './components/Toast';
 import Filters from './components/Filters';
 import MediaCard from './components/MediaCard';
@@ -56,6 +59,19 @@ function AppContent() {
 
   // Emby State
   const [showSettings, setShowSettings] = useState(false);
+  const [showLogs, setShowLogs] = useState(false);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+
+  const handleOpenLogs = () => {
+      setLogs(logger.getLogs());
+      setShowLogs(true);
+  };
+
+  const handleClearLogs = () => {
+      logger.clear();
+      setLogs([]);
+  };
+
   const [embyConfig, setEmbyConfig] = useState<EmbyConfig>(() => {
       const savedAuth = storage.get<AuthState | null>(STORAGE_KEYS.AUTH, null);
       if (savedAuth?.isAuthenticated) {
@@ -623,6 +639,14 @@ function AppContent() {
             </div>
 
             {authState.isAdmin && (
+                <>
+                <button 
+                    onClick={handleOpenLogs}
+                    className={`p-1.5 md:p-2 rounded-full transition-all hover:scale-110 active:scale-95 shrink-0 relative flex items-center gap-2 ${isDarkMode ? 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                    title="系统日志"
+                >
+                    <ScrollText size={16} className="md:w-[18px] md:h-[18px]" />
+                </button>
                 <button 
                 onClick={() => setShowSettings(true)}
                 className={`p-1.5 md:p-2 rounded-full transition-all hover:scale-110 active:scale-95 shrink-0 relative flex items-center gap-2 ${isDarkMode ? 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
@@ -633,6 +657,7 @@ function AppContent() {
                     <span className="absolute top-0 right-0 w-2 h-2 bg-emerald-500 rounded-full ring-2 ring-white dark:ring-zinc-900"></span>
                 )}
                 </button>
+                </>
             )}
 
             <div className="flex items-center gap-2 pl-2 border-l border-gray-200 dark:border-white/10">
@@ -742,6 +767,42 @@ function AppContent() {
       >
         <ArrowUp size={20} />
       </button>
+
+      {/* Log Modal */}
+      {showLogs && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+              <div className={`w-full max-w-2xl h-[600px] rounded-2xl shadow-2xl overflow-hidden flex flex-col ${isDarkMode ? 'bg-[#18181b] border border-white/10' : 'bg-white'}`}>
+                  <div className={`p-4 border-b flex items-center justify-between ${isDarkMode ? 'border-white/5' : 'border-slate-100'}`}>
+                      <h3 className={`font-bold flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                          <ScrollText size={18} className="text-indigo-500" /> 系统日志
+                      </h3>
+                      <div className="flex gap-2">
+                          <button onClick={handleClearLogs} className="text-xs text-red-500 hover:underline px-2">清空</button>
+                          <button onClick={() => setShowLogs(false)} className={`p-1 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-white/10 text-zinc-400' : 'hover:bg-slate-100 text-slate-500'}`}>
+                              <X size={18} />
+                          </button>
+                      </div>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-4 space-y-2 font-mono text-xs">
+                      {logs.length === 0 ? (
+                          <div className="text-center opacity-50 py-10">暂无日志</div>
+                      ) : (
+                          logs.map(log => (
+                              <div key={log.id} className={`p-2 rounded border flex gap-2 ${
+                                  log.type === 'error' ? (isDarkMode ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-red-50 border-red-100 text-red-600') :
+                                  log.type === 'success' ? (isDarkMode ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-green-50 border-green-100 text-green-600') :
+                                  log.type === 'warning' ? (isDarkMode ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400' : 'bg-yellow-50 border-yellow-100 text-yellow-600') :
+                                  (isDarkMode ? 'bg-white/5 border-white/5 text-zinc-400' : 'bg-slate-50 border-slate-100 text-slate-600')
+                              }`}>
+                                  <span className="opacity-50 shrink-0">[{new Date(log.timestamp).toLocaleTimeString()}]</span>
+                                  <span className="break-all">{log.message}</span>
+                              </div>
+                          ))
+                      )}
+                  </div>
+              </div>
+          </div>
+      )}
     </div>
   );
 }
