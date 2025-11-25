@@ -575,7 +575,7 @@ function AppContent() {
   };
 
   const clearFilters = () => {
-    setFilters({ type: 'all', region: '', platform: '', year: '全部', sort: 'popularity.desc' });
+    setFilters({ type: 'all', genre: '', region: '', platform: '', year: '全部', sort: 'popularity.desc' });
     setSearchTerm('');
   };
 
