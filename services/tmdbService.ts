@@ -2,7 +2,7 @@ import { TMDB_API_KEY, TMDB_BASE_URL, IMAGE_BASE_URL, BACKDROP_BASE_URL, PROVIDE
 import { MediaItem, Episode, Season } from '../types';
 import { storage, STORAGE_KEYS } from '../utils/storage';
 
-const getTmdbConfig = () => {
+export const getTmdbConfig = () => {
     const stored = storage.get(STORAGE_KEYS.TMDB_CONFIG, {});
     return {
         apiKey: stored.apiKey || TMDB_API_KEY,

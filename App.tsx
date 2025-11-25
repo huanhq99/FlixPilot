@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { TMDB_API_KEY, TMDB_BASE_URL } from './constants';
 import { MediaItem, FilterState, EmbyConfig, AuthState, RequestItem } from './types';
-import { processMediaItem, fetchDetails, fetchPersonDetails } from './services/tmdbService';
+import { processMediaItem, fetchDetails, fetchPersonDetails, getTmdbConfig } from './services/tmdbService';
 import { fetchEmbyLibrary } from './services/embyService';
 import { sendTelegramNotification } from './services/notificationService';
 import { storage, STORAGE_KEYS } from './utils/storage';
@@ -429,8 +429,9 @@ function AppContent() {
             }
         }
 
+        const { apiKey, baseUrl } = getTmdbConfig();
         const cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
-        const response = await fetch(`${TMDB_BASE_URL}/${cleanEndpoint}?api_key=${TMDB_API_KEY}${params}`);
+        const response = await fetch(`${baseUrl}/${cleanEndpoint}?api_key=${apiKey}${params}`);
         if (!response.ok) throw new Error('API 请求失败');
         const data = await response.json();
         setTotalPages(Math.min(data.total_pages, 500));
@@ -440,7 +441,7 @@ function AppContent() {
             const type = item.media_type || (item.title ? 'movie' : 'tv');
             try {
                 const detailRes = await fetch(
-                    `${TMDB_BASE_URL}/${type}/${item.id}?api_key=${TMDB_API_KEY}&language=zh-CN&append_to_response=watch/providers,release_dates`
+                    `${baseUrl}/${type}/${item.id}?api_key=${apiKey}&language=zh-CN&append_to_response=watch/providers,release_dates`
                 );
                 const detailData = await detailRes.json();
                 return processMediaItem(item, detailData, type);
