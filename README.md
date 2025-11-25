@@ -1,67 +1,86 @@
-# StreamHub - Global Media Monitor 📺
+# StreamHub - 全球媒体监控与求片系统 🎬
 
-StreamHub 是一个优雅、现代化的影视媒体发现与追踪平台。它不仅仅是一个海报墙，更是一个连接 Emby 媒体库与全球热门影视的桥梁。
+<div align="center">
 
-![Version](https://img.shields.io/badge/version-2.1.2-blue.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
-![React](https://img.shields.io/badge/React-19-61DAFB.svg)
-![Vite](https://img.shields.io/badge/Vite-6.0-646CFF.svg)
+![StreamHub Logo](https://via.placeholder.com/200x200/4f46e5/ffffff?text=StreamHub)
 
-## ✨ 核心亮点
+**优雅、现代化的影视媒体发现与追踪平台**
 
-*   **🔥 全球热门聚合**: 实时同步 Netflix, Disney+, Apple TV+ 等主流平台的最新热门电影与剧集。
-*   **🔍 智能搜索**: 
-    *   **媒体搜索**: 支持电影、剧集搜索，实时联想提示。
-    *   **演员搜索**: 新增演员搜索功能，可查看演员详细信息及作品列表。
-    *   **无缝导航**: 从演员详情页可直接跳转到其作品详情，完整浏览体验。
-*   **🔗 Emby 深度集成**: 
-    *   **智能比对**: 自动扫描您的 Emby 媒体库，在海报上标记 "已入库"，避免重复下载。
-    *   **一键跳转**: 已有的影片可直接跳转 Emby 客户端播放。
-*   **🎬 MoviePilot 自动订阅**: 
-    *   **PT 站自动搜索**: 集成 MoviePilot API，支持自动订阅并搜索 PT 站资源。
-    *   **一键订阅**: 在详情页直接订阅到 MoviePilot，自动触发下载流程。
-    *   **灵活配置**: 支持多种认证方式（Bearer Token、API Key、Query 参数）。
-*   **🙋‍♂️ 求片管理系统**: 
-    *   **用户点播**: 用户可浏览并提交 "求片" 请求。
-    *   **管理员审核**: 完善的后台管理面板，支持审核、拒绝、标记完成。
-    *   **即时通知**: 支持 Telegram Bot 推送，新请求和入库通知秒级触达。
-*   **🎨 极致 UI/UX**:
-    *   **类原生体验**: 丝滑的动画、骨架屏加载、响应式布局。
-    *   **个性化定制**: 支持深色模式、自定义网站标题与 Logo。
-    *   **系列与推荐**: 详情页自动聚合 "系列合集" 和 "猜你喜欢"。
-    *   **版本标识**: 设置界面和页面头部显示版本号，方便区分不同版本。
-*   **🛡️ 安全与稳定**:
-    *   **纯前端架构**: 无需数据库，数据存储于本地 (LocalStorage)，安全隐私。
-    *   **数据备份**: 支持一键导出/导入所有配置数据。
-    *   **错误拦截**: 全局 Error Boundary 保护，杜绝白屏。
+连接 Emby 媒体库与全球热门影视的智能桥梁
+
+[![Version](https://img.shields.io/badge/version-2.1.17-blue.svg)](https://github.com/huanhq99/StreamHub/releases)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![React](https://img.shields.io/badge/React-19-61DAFB.svg)](https://reactjs.org/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](https://hub.docker.com/)
+[![Security](https://img.shields.io/badge/Security-Hardened-success.svg)](./SECURITY.md)
+
+[功能特性](#-核心功能) • [快速开始](#-快速部署) • [配置指南](#️-配置指南) • [更新日志](#-更新日志) • [安全性](#-安全性)
+
+</div>
+
+---
+
+## 🌟 核心功能
+
+### 📺 媒体发现与管理
+- **🔥 全球热门聚合** - 实时同步 Netflix, Disney+, Apple TV+ 等主流平台热门内容
+- **🔍 智能全文搜索** - 电影、剧集、演员三位一体搜索，支持实时联想
+- **🎭 演员中心** - 深度演员信息展示，作品列表一键直达
+- **🎨 视觉盛宴** - 瀑布流/列表视图切换，响应式布局，深色模式支持
+
+### 🔗 生态集成
+- **Emby 深度集成**
+  - 🏷️ 智能库存标记 - 自动比对媒体库，已入库内容清晰标识
+  - ▶️ 一键播放 - 已入库影片直接跳转 Emby 播放
+  - 🔄 实时同步 - 自动扫描媒体库变化
+
+- **MoviePilot 自动化**
+  - 📥 一键订阅 - 详情页直接订阅到 MoviePilot
+  - 🎯 智能搜索 - 自动搜索 PT 站资源并下载
+  - 👤 用户管理 - 支持自定义订阅用户名
+  - 🔐 安全认证 - 支持用户名/密码或 JWT Token
+
+### 🙋‍♂️ 求片管理系统
+- **用户侧**
+  - 📝 求片提交 - 浏览媒体库时一键发起求片请求
+  - 🔔 状态通知 - 实时了解求片处理进度
+  
+- **管理侧**
+  - 📊 请求面板 - 完善的后台管理界面
+  - ✅ 三态管理 - 待审核/已完成/已拒绝
+  - 🤖 自动通知 - Telegram/邮件/Webhook 多渠道推送
+
+### 🛡️ 安全与稳定
+- **🔒 企业级安全**
+  - API Key 完全隐藏在后端
+  - 所有敏感请求通过代理转发
+  - 前端零暴露设计
+  
+- **💾 数据可靠**
+  - 服务端持久化存储
+  - 一键备份/恢复
+  - 跨设备数据同步
 
 ## 🚀 快速部署
 
-### 方式一：Cloudflare Pages (小白推荐 ☁️)
+### 方式一：Docker 部署 (推荐 ⭐)
 
-无需服务器，零成本，自动解决 API 网络问题。
+**最安全、最简单的部署方式**
 
-1. **Fork** 本项目到你的 GitHub。
-2. 登录 [Cloudflare Pages](https://dash.cloudflare.com/) -> `Create Application` -> `Connect to Git`。
-3. 选择仓库，配置如下：
-   - **Framework preset**: `Vite`
-   - **Build command**: `npm run build`
-   - **Build output directory**: `dist`
-   - **⚠️ 安全警告**: 不建议在 CF Pages 环境变量中配置 API Key
-4. 点击 **Deploy**，获得免费域名。
-5. **推荐**: 使用后端代理模式,将 API Key 配置在服务器端。
-
-### 方式二：Docker 部署 (推荐 🐳)
-
-**🔒 安全部署方式** - API Key 完全隐藏,不会暴露在前端代码中。
-
-1. **创建环境变量文件**
 ```bash
+# 1. 克隆项目
+git clone https://github.com/huanhq99/StreamHub.git
+cd StreamHub
+
+# 2. 配置环境变量
 cp .env.example .env
-# 编辑 .env 文件,填入你的 API Keys
+nano .env  # 填入你的 TMDB_API_KEY
+
+# 3. 启动服务
+docker-compose up -d
 ```
 
-2. **使用 Docker Compose 部署**
+**docker-compose.yml 示例:**
 ```yaml
 version: '3'
 services:
@@ -71,89 +90,244 @@ services:
     ports:
       - "3000:3000"
     env_file:
-      - .env  # 从文件加载环境变量
+      - .env
     volumes:
       - ./data:/app/data  # 数据持久化
     restart: unless-stopped
 ```
 
-**安全特性**:
-- ✅ TMDB API Key 完全在后端,前端无法看到
-- ✅ 所有 API 请求通过后端代理转发
-- ✅ `.env` 文件不会被 git 追踪
-- ✅ 支持 HTTP 代理(国内用户访问 TMDB)
+访问 `http://localhost:3000` 开始使用!
 
-详细安全配置请查看 [SECURITY.md](./SECURITY.md)
+### 方式二：手动部署
 
-## 🛠️ 管理员指南
+```bash
+# 安装依赖
+npm install
 
-### 首次设置
-1. 首次访问会自动跳转初始化页面，设置管理员账号。
-2. 进入设置面板 (`Settings`) -> `系统设置`，配置您的 Emby 地址和 API Key。
-3. (可选) 配置 Telegram Bot 以获取通知。
-4. (可选) 配置 MoviePilot：
-   - 进入 `设置` -> `通知服务` 标签页
-   - 填写 MoviePilot URL 和 API Token
-   - 支持多种认证方式，系统会自动尝试
+# 配置环境变量
+cp .env.example .env
+# 编辑 .env 文件
 
-### 功能清单
-- [x] 瀑布流/列表视图切换
-- [x] 多维度筛选 (平台/年份/地区)
-- [x] 媒体搜索与联想
-- [x] **演员搜索** (v2.0.0 新增)
-- [x] 详情页 (预告片/演员/推荐)
-- [x] Emby 库同步
-- [x] **MoviePilot 自动订阅** (v2.0.0 新增)
-- [x] 求片系统
-- [x] 用户管理 (多用户支持)
-- [x] 数据备份与恢复
-- [x] **版本号显示** (v2.0.0 新增)
-- [x] **TMDB 前端配置** (v2.0.1 新增)
+# 开发模式
+npm run dev
+
+# 生产构建
+npm run build
+node server.js
+```
+
+### 方式三：Cloudflare Pages
+
+⚠️ **不推荐** - 无法使用后端代理功能,需要在前端配置 API Key(有安全风险)
+
+<details>
+<summary>点击查看 CF Pages 部署步骤</summary>
+
+1. Fork 本项目到 GitHub
+2. 登录 [Cloudflare Pages](https://dash.cloudflare.com/)
+3. 连接 GitHub 仓库
+4. 配置构建设置:
+   - Framework: `Vite`
+   - Build command: `npm run build`
+   - Output directory: `dist`
+5. 部署后在设置面板中配置 TMDB API Key
+
+</details>
+
+## 🛠️ 配置指南
+
+### 必需配置
+
+1. **TMDB API Key** (必需)
+   - 注册地址: https://www.themoviedb.org/settings/api
+   - 配置方式: 
+     - 推荐: `.env` 文件中设置 `TMDB_API_KEY`
+     - 或: 前端设置面板配置
+
+2. **管理员账号** (首次访问自动创建)
+   - 设置用户名和密码
+   - 用于管理求片请求和系统设置
+
+### 可选配置
+
+<details>
+<summary>🎬 Emby 集成</summary>
+
+设置 → 系统设置 → Emby 配置
+- **服务器地址**: `http://your-emby-server:8096`
+- **API Key**: 在 Emby 设置 → API 密钥中生成
+- **媒体库选择**: 选择要同步的媒体库
+
+</details>
+
+<details>
+<summary>🤖 MoviePilot 集成</summary>
+
+设置 → 通知服务 → MoviePilot
+
+**方式 A: 用户名密码 (推荐)**
+- MoviePilot URL
+- 用户名
+- 密码
+- (可选) 订阅用户名 - 指定订阅归属
+
+**方式 B: JWT Token**
+- 浏览器访问 MoviePilot
+- F12 → Application → Local Storage
+- 复制 `token` 值
+
+</details>
+
+<details>
+<summary>📬 通知配置</summary>
+
+支持多种通知方式:
+
+**Telegram Bot**
+- Bot Token (从 @BotFather 获取)
+- Chat ID (发送消息给 @userinfobot 获取)
+
+**邮件通知 (SMTP)**
+- SMTP 服务器/端口
+- 发件人邮箱/密码
+- 收件人邮箱
+
+**Webhook**
+- 自定义 Webhook URL
+- 支持 POST 请求推送
+
+</details>
+
+## 🔒 安全性
+
+StreamHub v2.1.17+ 实施了企业级安全措施:
+
+✅ **TMDB API Key 零暴露** - 完全存储在服务器端  
+✅ **代理架构** - 所有外部 API 请求通过后端转发  
+✅ **敏感信息隔离** - 前端代码中无任何硬编码密钥  
+✅ **`.env` 保护** - 自动排除在版本控制之外
+
+详细安全说明请查看: [SECURITY.md](./SECURITY.md)
+
+### 安全检查清单
+
+- [ ] `.env` 文件已创建并配置
+- [ ] `.env` 已添加到 `.gitignore`
+- [ ] 生产环境使用 HTTPS
+- [ ] Emby API Key 使用受限权限账户
+- [ ] 定期更换 API Keys
 
 ## 📝 更新日志
 
+### v2.1.17 (2025-01-25) 🔒 重大安全更新
+
+**🔐 安全增强**
+- ✨ TMDB API Key 完全移至后端,前端零暴露
+- ✨ 新增 `.env.example` 配置模板
+- ✨ 完善的安全文档 (SECURITY.md)
+- ✨ 改进 `.gitignore` 防止敏感文件泄露
+
+**🚀 功能改进**
+- ✨ MoviePilot 支持自定义订阅用户名
+- ✨ 使用 MCP Tools API 提升订阅稳定性
+- 📚 全面更新部署和安全文档
+
+**⚠️ 破坏性变更**
+- TMDB API Key 必须配置在后端 `.env` 文件
+- 前端 `VITE_TMDB_API_KEY` 已废弃
+
+### v2.1.16 (2025-01-25)
+- 🔑 MoviePilot 支持用户名/密码自动登录
+- 🔧 优化 JWT Token 获取流程
+
 ### v2.1.2 (2025-11-25)
-- **配置**: 更新 `docker-compose.yml` 模板，适配新的数据持久化路径 `/app/data`。
-- **优化**: 移除对 `.env` 文件的强制依赖。
+- 🐳 更新 Docker 配置,适配新的数据路径
+- 🔧 移除 `.env` 强制依赖
+
+<details>
+<summary>查看完整更新历史</summary>
 
 ### v2.1.1 (2025-11-25)
-- **新增**: TMDB 代理连接测试新增延迟显示，方便评估网络质量。
-- **优化**: 弱化对 `.env` 文件的依赖，推荐使用前端设置面板进行配置。
+- ⚡ TMDB 连接测试新增延迟显示
+- 🔧 优化配置体验
 
 ### v2.1.0 (2025-11-25)
-- **重构**: 架构升级为 Node.js 服务端渲染，支持数据持久化存储。
-- **新增**: 支持 Docker 卷挂载 (`/app/data`)，实现跨浏览器/重启后的数据同步。
-- **优化**: 自动同步本地数据到服务端，确保多端数据一致性。
+- 🏗️ 架构升级: Node.js 后端 + 数据持久化
+- 🐳 Docker 卷挂载支持
+- 🔄 跨设备数据同步
 
 ### v2.0.4 (2025-11-25)
-- **修复**: 修复 Docker 镜像中 Nginx 配置指向不存在的后端导致 502 错误的问题。
-- **优化**: 移除 Docker Compose 中无用的后端卷挂载。
+- 🐛 修复 Docker Nginx 配置错误
 
 ### v2.0.3 (2025-11-25)
-- **新增**: 设置面板新增 "检查更新" 功能，可一键检测 GitHub 最新版本。
-- **优化**: 移除冗余的后端代理文件，精简项目结构。
+- ✨ 新增版本检查功能
+- 🧹 精简项目结构
 
 ### v2.0.1 (2025-11-25)
-- **新增**: 设置面板新增 TMDB 配置功能，支持直接在前端配置 API Key 和 代理地址。
-- **优化**: TMDB 连接测试功能，配置保存即生效。
-- **修复**: 修复了 MoviePilot 连接认证问题，支持 v2 API Key。
+- ⚙️ 前端 TMDB 配置功能
+- 🔧 MoviePilot v2 API 支持
 
 ### v2.0.0
-- **新增**: 演员搜索功能。
-- **新增**: MoviePilot 自动订阅集成。
-- **重构**: 全新 UI 设计。
+- 🎭 演员搜索功能
+- 🤖 MoviePilot 集成
+- 🎨 全新 UI 设计
 
 ### v1.0.0
 - 🎉 初始版本发布
-- 基础媒体浏览和搜索功能
-- Emby 集成
-- 求片管理系统
-- Telegram 通知
 
-## 🤝 贡献与反馈
+</details>
 
-欢迎提交 Issue 或 Pull Request。如果您觉得本项目对您有帮助，请给一个 ⭐️ Star！
+## 🗺️ Roadmap
+
+- [ ] 批量订阅功能
+- [ ] 订阅历史记录
+- [ ] 多语言支持 (i18n)
+- [ ] 移动端 PWA 支持
+- [ ] Jellyfin 集成
+- [ ] Plex 集成
+- [ ] 观看进度追踪
+
+## 🤝 贡献与支持
+
+### 贡献指南
+
+欢迎提交 Issue 和 Pull Request!
+
+1. Fork 本项目
+2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 开启 Pull Request
+
+### 问题反馈
+
+- 🐛 Bug 报告: [GitHub Issues](https://github.com/huanhq99/StreamHub/issues)
+- 💡 功能建议: [GitHub Discussions](https://github.com/huanhq99/StreamHub/discussions)
+- 📧 安全问题: 请直接联系维护者(不要公开)
+
+### Star History
+
+如果这个项目对你有帮助,请给一个 ⭐️!
+
+[![Star History Chart](https://api.star-history.com/svg?repos=huanhq99/StreamHub&type=Date)](https://star-history.com/#huanhq99/StreamHub&Date)
 
 ## 📄 许可证
 
-MIT License © 2024 StreamHub
+本项目采用 MIT License 许可证。
+
+## 🙏 致谢
+
+- [TMDB](https://www.themoviedb.org/) - 媒体数据提供
+- [Emby](https://emby.media/) - 媒体服务器
+- [MoviePilot](https://github.com/jxxghp/MoviePilot) - 自动化订阅
+- [React](https://reactjs.org/) & [Vite](https://vitejs.dev/) - 前端框架
+
+---
+
+<div align="center">
+
+**[⬆️ 返回顶部](#streamhub---全球媒体监控与求片系统-)**
+
+Made with ❤️ by [huanhq99](https://github.com/huanhq99)
+
+</div>
