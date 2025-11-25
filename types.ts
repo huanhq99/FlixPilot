@@ -169,3 +169,60 @@ export interface FavoriteItem {
   addedAt: string;
   addedBy: string;
 }
+
+// 用户评分
+export interface UserRating {
+  mediaId: number;
+  mediaType: 'movie' | 'tv';
+  title: string;
+  posterUrl: string | null;
+  rating: number; // 1-10
+  comment?: string;
+  ratedAt: string;
+  ratedBy: string;
+}
+
+// 自定义标签
+export interface CustomTag {
+  id: string;
+  name: string;
+  color: string;
+  createdAt: string;
+  createdBy: string;
+}
+
+// 媒体标签关联
+export interface MediaTag {
+  mediaId: number;
+  mediaType: 'movie' | 'tv';
+  tagId: string;
+  addedAt: string;
+  addedBy: string;
+}
+
+// 观影记录
+export interface WatchHistory {
+  mediaId: number;
+  mediaType: 'movie' | 'tv';
+  title: string;
+  posterUrl: string | null;
+  watchedAt: string;
+  watchedBy: string;
+  progress?: number; // 0-100 百分比
+  season?: number;
+  episode?: number;
+}
+
+// 订阅提醒
+export interface Subscription {
+  id: string;
+  type: 'person' | 'media' | 'genre';
+  targetId: number | string;
+  targetName: string;
+  targetImage?: string;
+  createdAt: string;
+  createdBy: string;
+  notifyOnRelease: boolean;
+  notifyOnNews: boolean;
+}
+

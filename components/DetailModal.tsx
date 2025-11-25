@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-    ArrowLeft, Star, Clock, CheckCircle2, Film, PlayCircle, Youtube, User, Terminal, HelpCircle, Calendar, X, Tv, Layers, LayoutList, Disc, MonitorPlay, Globe, Languages, Library, Send, AlertCircle, MessageSquare, Heart, Share2
+    ArrowLeft, Star, Clock, CheckCircle2, Film, PlayCircle, Youtube, User, Terminal, HelpCircle, Calendar, X, Tv, Layers, LayoutList, Disc, MonitorPlay, Globe, Languages, Library, Send, AlertCircle, MessageSquare, Heart, Share2, Tag, Eye
 } from 'lucide-react';
-import { MediaItem, Episode, AuthState } from '../types';
+import { MediaItem, Episode, AuthState, CustomTag, UserRating } from '../types';
 import { IMAGE_BASE_URL, PROFILE_BASE_URL } from '../constants';
 import { fetchSeasonDetails, fetchCollectionDetails, fetchRecommendations, processMediaItem } from '../services/tmdbService';
+import RatingStars, { RatingModal } from './RatingStars';
+import TagManager, { TagBadges } from './TagManager';
 
 interface QuotaInfo {
     movieUsed: number;
@@ -24,9 +26,20 @@ interface DetailModalProps {
     quotaInfo?: QuotaInfo;
     isFavorite?: boolean;
     onToggleFavorite?: (item: MediaItem) => void;
+    // 评分相关
+    userRating?: UserRating;
+    onRate?: (mediaId: number, mediaType: 'movie' | 'tv', title: string, posterUrl: string | null, rating: number, comment?: string) => void;
+    // 标签相关
+    customTags?: CustomTag[];
+    mediaTags?: CustomTag[];
+    onAddTag?: (tag: Omit<CustomTag, 'id' | 'createdAt' | 'createdBy'>) => void;
+    onRemoveTag?: (tagId: string) => void;
+    onToggleMediaTag?: (mediaId: number, mediaType: 'movie' | 'tv', tagId: string) => void;
+    // 观影记录
+    onMarkAsWatched?: (item: MediaItem) => void;
 }
 
-const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDarkMode, embyLibrary, authState, onRequest, onPersonClick, quotaInfo, isFavorite, onToggleFavorite }) => {
+const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDarkMode, embyLibrary, authState, onRequest, onPersonClick, quotaInfo, isFavorite, onToggleFavorite, userRating, onRate, customTags, mediaTags, onAddTag, onRemoveTag, onToggleMediaTag, onMarkAsWatched }) => {
     const isStreaming = selectedMedia.status === 'streaming';
     const isReleased = selectedMedia.status === 'released';
     const isTV = selectedMedia.mediaType === 'tv';
@@ -49,12 +62,22 @@ const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDar
     const [resolution, setResolution] = useState('Any');
     const [requestNote, setRequestNote] = useState('');
 
+    // Rating Modal State
+    const [showRatingModal, setShowRatingModal] = useState(false);
+
+    // Tag Panel State
+    const [showTagPanel, setShowTagPanel] = useState(false);
+
     // ESC 键关闭模态框
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'Escape') {
                 if (showRequestForm) {
                     setShowRequestForm(false);
+                } else if (showRatingModal) {
+                    setShowRatingModal(false);
+                } else if (showTagPanel) {
+                    setShowTagPanel(false);
                 } else {
                     onClose();
                 }
@@ -263,6 +286,64 @@ const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDar
                     </div>
                 )}
 
+                {/* Rating Modal */}
+                {showRatingModal && onRate && (
+                    <RatingModal
+                        isOpen={showRatingModal}
+                        onClose={() => setShowRatingModal(false)}
+                        onSubmit={(rating, comment) => {
+                            onRate(selectedMedia.id, selectedMedia.mediaType, selectedMedia.title, selectedMedia.posterUrl, rating, comment);
+                        }}
+                        currentRating={userRating?.rating}
+                        currentComment={userRating?.comment}
+                        mediaTitle={selectedMedia.title}
+                        posterUrl={selectedMedia.posterUrl ? IMAGE_BASE_URL + selectedMedia.posterUrl : null}
+                        isDarkMode={isDarkMode}
+                    />
+                )}
+
+                {/* Tag Panel */}
+                {showTagPanel && customTags && onToggleMediaTag && onAddTag && onRemoveTag && (
+                    <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-200 p-4">
+                        <div className={`w-full max-w-md p-6 rounded-2xl shadow-2xl border ${isDarkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-slate-200'}`}>
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className={`text-xl font-bold flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                                    <Tag size={20} />
+                                    管理标签
+                                </h3>
+                                <button onClick={() => setShowTagPanel(false)} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-white/10">
+                                    <X size={20} />
+                                </button>
+                            </div>
+                            
+                            {/* 当前标签 */}
+                            {mediaTags && mediaTags.length > 0 && (
+                                <div className="mb-4">
+                                    <label className={`text-xs font-bold uppercase tracking-wider block mb-2 ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
+                                        已添加标签
+                                    </label>
+                                    <TagBadges tags={mediaTags} size="md" />
+                                </div>
+                            )}
+                            
+                            {/* 标签管理器 */}
+                            <div>
+                                <label className={`text-xs font-bold uppercase tracking-wider block mb-2 ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
+                                    {mediaTags && mediaTags.length > 0 ? '添加更多标签' : '选择或创建标签'}
+                                </label>
+                                <TagManager
+                                    tags={customTags}
+                                    selectedTagIds={mediaTags?.map(t => t.id) || []}
+                                    onAddTag={onAddTag}
+                                    onRemoveTag={onRemoveTag}
+                                    onToggleTag={(tagId) => onToggleMediaTag(selectedMedia.id, selectedMedia.mediaType, tagId)}
+                                    isDarkMode={isDarkMode}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Main Scroll Container */}
                 <div 
                     ref={scrollRef}
@@ -405,6 +486,51 @@ const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDar
                             <Share2 size={20} />
                             分享
                         </button>
+
+                        {/* 评分按钮 */}
+                        {authState?.isAuthenticated && onRate && (
+                            <button 
+                                onClick={() => setShowRatingModal(true)}
+                                className={`px-4 py-2.5 rounded-xl font-bold border transition-all flex items-center gap-2 ${
+                                    userRating 
+                                        ? 'bg-amber-500 border-amber-500 text-white hover:bg-amber-600' 
+                                        : isDarkMode 
+                                            ? 'border-zinc-700 hover:bg-zinc-800 text-zinc-300' 
+                                            : 'border-slate-200 hover:bg-slate-50 text-slate-600'
+                                }`}
+                            >
+                                <Star size={20} fill={userRating ? 'currentColor' : 'none'} />
+                                {userRating ? `${userRating.rating}分` : '评分'}
+                            </button>
+                        )}
+
+                        {/* 标签按钮 */}
+                        {authState?.isAuthenticated && customTags && onToggleMediaTag && (
+                            <button 
+                                onClick={() => setShowTagPanel(!showTagPanel)}
+                                className={`px-4 py-2.5 rounded-xl font-bold border transition-all flex items-center gap-2 ${
+                                    mediaTags && mediaTags.length > 0
+                                        ? 'bg-indigo-500 border-indigo-500 text-white hover:bg-indigo-600' 
+                                        : isDarkMode 
+                                            ? 'border-zinc-700 hover:bg-zinc-800 text-zinc-300' 
+                                            : 'border-slate-200 hover:bg-slate-50 text-slate-600'
+                                }`}
+                            >
+                                <Tag size={20} />
+                                标签{mediaTags && mediaTags.length > 0 ? ` (${mediaTags.length})` : ''}
+                            </button>
+                        )}
+
+                        {/* 标记为看过 */}
+                        {authState?.isAuthenticated && onMarkAsWatched && (
+                            <button 
+                                onClick={() => onMarkAsWatched(selectedMedia)}
+                                className={`px-4 py-2.5 rounded-xl font-bold border transition-all flex items-center gap-2 ${isDarkMode ? 'border-zinc-700 hover:bg-zinc-800 text-zinc-300' : 'border-slate-200 hover:bg-slate-50 text-slate-600'}`}
+                            >
+                                <Eye size={20} />
+                                标记看过
+                            </button>
+                        )}
                         
                         {/* 配额显示 - 仅对非管理员显示 */}
                         {authState?.isAuthenticated && !authState?.isAdmin && quotaInfo && (

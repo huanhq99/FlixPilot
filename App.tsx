@@ -19,10 +19,12 @@ import {
   Dices,
   History,
   Share2,
-  Sparkles
+  Sparkles,
+  Calendar,
+  Star as StarIcon
 } from 'lucide-react';
 import { TMDB_API_KEY, TMDB_BASE_URL } from './constants';
-import { MediaItem, FilterState, EmbyConfig, AuthState, RequestItem, FavoriteItem } from './types';
+import { MediaItem, FilterState, EmbyConfig, AuthState, RequestItem, FavoriteItem, UserRating, CustomTag, MediaTag, WatchHistory, Subscription } from './types';
 import { processMediaItem, fetchDetails, fetchPersonDetails, getTmdbConfig } from './services/tmdbService';
 import { fetchEmbyLibrary } from './services/embyService';
 import { sendTelegramNotification } from './services/notificationService';
@@ -36,6 +38,7 @@ import SettingsModal from './components/SettingsModal';
 import Login from './components/Login';
 import PersonModal from './components/PersonModal';
 import MyListModal from './components/MyListModal';
+import CalendarModal from './components/CalendarModal';
 
 function AppContent() {
   const toast = useToast();
@@ -67,6 +70,7 @@ function AppContent() {
   const [showSettings, setShowSettings] = useState(false);
   const [showLogs, setShowLogs] = useState(false);
   const [showMyList, setShowMyList] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
 
   const handleOpenLogs = () => {
@@ -99,6 +103,26 @@ function AppContent() {
   // 收藏夹状态
   const [favorites, setFavorites] = useState<FavoriteItem[]>(() => 
     storage.get(STORAGE_KEYS.FAVORITES, [])
+  );
+
+  // 用户评分状态
+  const [userRatings, setUserRatings] = useState<UserRating[]>(() =>
+    storage.get(STORAGE_KEYS.USER_RATINGS, [])
+  );
+
+  // 自定义标签状态
+  const [customTags, setCustomTags] = useState<CustomTag[]>(() =>
+    storage.get(STORAGE_KEYS.CUSTOM_TAGS, [])
+  );
+
+  // 媒体标签关联
+  const [mediaTags, setMediaTags] = useState<MediaTag[]>(() =>
+    storage.get(STORAGE_KEYS.MEDIA_TAGS, [])
+  );
+
+  // 观影记录
+  const [watchHistory, setWatchHistory] = useState<WatchHistory[]>(() =>
+    storage.get(STORAGE_KEYS.WATCH_HISTORY, [])
   );
 
   const [page, setPage] = useState(1);
@@ -477,6 +501,126 @@ function AppContent() {
     toast.showToast('已从收藏夹移除', 'info');
   }, [favorites, toast]);
 
+  // 用户评分功能
+  const rateMedia = useCallback((mediaId: number, mediaType: 'movie' | 'tv', title: string, posterUrl: string | null, rating: number, comment?: string) => {
+    const existingIndex = userRatings.findIndex(r => r.mediaId === mediaId && r.mediaType === mediaType);
+    const newRating: UserRating = {
+      mediaId,
+      mediaType,
+      title,
+      posterUrl,
+      rating,
+      comment,
+      ratedAt: new Date().toISOString(),
+      ratedBy: authState.user?.Name || 'Unknown'
+    };
+
+    let newRatings: UserRating[];
+    if (existingIndex >= 0) {
+      newRatings = [...userRatings];
+      newRatings[existingIndex] = newRating;
+      toast.showToast('评分已更新', 'success');
+    } else {
+      newRatings = [...userRatings, newRating];
+      toast.showToast(`已为 "${title}" 打分 ${rating} 分`, 'success');
+    }
+    
+    setUserRatings(newRatings);
+    storage.set(STORAGE_KEYS.USER_RATINGS, newRatings);
+  }, [userRatings, authState.user?.Name, toast]);
+
+  const getUserRating = useCallback((mediaId: number, mediaType: 'movie' | 'tv') => {
+    return userRatings.find(r => r.mediaId === mediaId && r.mediaType === mediaType);
+  }, [userRatings]);
+
+  // 标签功能
+  const addCustomTag = useCallback((tag: Omit<CustomTag, 'id' | 'createdAt' | 'createdBy'>) => {
+    const newTag: CustomTag = {
+      ...tag,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString(),
+      createdBy: authState.user?.Name || 'Unknown'
+    };
+    const newTags = [...customTags, newTag];
+    setCustomTags(newTags);
+    storage.set(STORAGE_KEYS.CUSTOM_TAGS, newTags);
+    toast.showToast(`标签 "${tag.name}" 已创建`, 'success');
+  }, [customTags, authState.user?.Name, toast]);
+
+  const removeCustomTag = useCallback((tagId: string) => {
+    const newTags = customTags.filter(t => t.id !== tagId);
+    setCustomTags(newTags);
+    storage.set(STORAGE_KEYS.CUSTOM_TAGS, newTags);
+    // 同时删除关联
+    const newMediaTags = mediaTags.filter(mt => mt.tagId !== tagId);
+    setMediaTags(newMediaTags);
+    storage.set(STORAGE_KEYS.MEDIA_TAGS, newMediaTags);
+    toast.showToast('标签已删除', 'info');
+  }, [customTags, mediaTags, toast]);
+
+  const toggleMediaTag = useCallback((mediaId: number, mediaType: 'movie' | 'tv', tagId: string) => {
+    const existingIndex = mediaTags.findIndex(
+      mt => mt.mediaId === mediaId && mt.mediaType === mediaType && mt.tagId === tagId
+    );
+
+    let newMediaTags: MediaTag[];
+    if (existingIndex >= 0) {
+      newMediaTags = mediaTags.filter((_, i) => i !== existingIndex);
+    } else {
+      const newMediaTag: MediaTag = {
+        mediaId,
+        mediaType,
+        tagId,
+        addedAt: new Date().toISOString(),
+        addedBy: authState.user?.Name || 'Unknown'
+      };
+      newMediaTags = [...mediaTags, newMediaTag];
+    }
+    
+    setMediaTags(newMediaTags);
+    storage.set(STORAGE_KEYS.MEDIA_TAGS, newMediaTags);
+  }, [mediaTags, authState.user?.Name]);
+
+  const getMediaTags = useCallback((mediaId: number, mediaType: 'movie' | 'tv') => {
+    const tagIds = mediaTags
+      .filter(mt => mt.mediaId === mediaId && mt.mediaType === mediaType)
+      .map(mt => mt.tagId);
+    return customTags.filter(t => tagIds.includes(t.id));
+  }, [mediaTags, customTags]);
+
+  // 观影记录功能
+  const addToWatchHistory = useCallback((mediaId: number, mediaType: 'movie' | 'tv', title: string, posterUrl: string | null, progress?: number, season?: number, episode?: number) => {
+    const existingIndex = watchHistory.findIndex(w => w.mediaId === mediaId && w.mediaType === mediaType);
+    
+    const newEntry: WatchHistory = {
+      mediaId,
+      mediaType,
+      title,
+      posterUrl,
+      watchedAt: new Date().toISOString(),
+      watchedBy: authState.user?.Name || 'Unknown',
+      progress,
+      season,
+      episode
+    };
+
+    let newHistory: WatchHistory[];
+    if (existingIndex >= 0) {
+      newHistory = [...watchHistory];
+      newHistory[existingIndex] = newEntry;
+    } else {
+      newHistory = [newEntry, ...watchHistory].slice(0, 100); // 最多保留100条
+    }
+
+    setWatchHistory(newHistory);
+    storage.set(STORAGE_KEYS.WATCH_HISTORY, newHistory);
+  }, [watchHistory, authState.user?.Name]);
+
+  const markAsWatched = useCallback((item: MediaItem) => {
+    addToWatchHistory(item.id, item.mediaType, item.title, item.posterUrl, 100);
+    toast.showToast(`已将 "${item.title}" 标记为看过`, 'success');
+  }, [addToWatchHistory, toast]);
+
   // 搜索历史功能
   const addToSearchHistory = useCallback((term: string) => {
     if (!term.trim()) return;
@@ -769,6 +913,14 @@ function AppContent() {
             quotaInfo={quotaInfo}
             isFavorite={isFavorite(selectedMedia.id, selectedMedia.mediaType)}
             onToggleFavorite={toggleFavorite}
+            userRating={getUserRating(selectedMedia.id, selectedMedia.mediaType)}
+            onRate={rateMedia}
+            customTags={customTags}
+            mediaTags={getMediaTags(selectedMedia.id, selectedMedia.mediaType)}
+            onAddTag={addCustomTag}
+            onRemoveTag={removeCustomTag}
+            onToggleMediaTag={toggleMediaTag}
+            onMarkAsWatched={markAsWatched}
           />
       )}
 
@@ -795,6 +947,16 @@ function AppContent() {
         onRemoveFavorite={removeFavorite}
         onMediaClick={(id, type) => {
             setShowMyList(false);
+            openModal(id, type);
+        }}
+      />
+
+      <CalendarModal
+        isOpen={showCalendar}
+        onClose={() => setShowCalendar(false)}
+        isDarkMode={isDarkMode}
+        onMediaClick={(id, type) => {
+            setShowCalendar(false);
             openModal(id, type);
         }}
       />
@@ -928,6 +1090,15 @@ function AppContent() {
             )}
 
             <div className="flex items-center gap-2 pl-2 border-l border-gray-200 dark:border-white/10">
+                {/* 日历按钮 */}
+                <button 
+                    onClick={() => setShowCalendar(true)}
+                    className={`p-1.5 md:p-2 rounded-full transition-all hover:scale-110 active:scale-95 shrink-0 ${isDarkMode ? 'bg-zinc-800 text-cyan-400 hover:bg-zinc-700' : 'bg-cyan-50 text-cyan-500 hover:bg-cyan-100'}`}
+                    title="上映日历"
+                >
+                    <Calendar size={16} className="md:w-[18px] md:h-[18px]" />
+                </button>
+                
                 {/* 我的列表按钮 */}
                 <button 
                     onClick={() => setShowMyList(true)}

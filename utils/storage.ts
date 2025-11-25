@@ -15,6 +15,11 @@ export const STORAGE_KEYS = {
   TMDB_CONFIG: 'tmdb_config',
   FAVORITES: 'streamhub_favorites', // 用户收藏夹
   SEARCH_HISTORY: 'streamhub_search_history', // 搜索历史
+  USER_RATINGS: 'streamhub_user_ratings', // 用户评分
+  CUSTOM_TAGS: 'streamhub_custom_tags', // 自定义标签
+  MEDIA_TAGS: 'streamhub_media_tags', // 媒体标签关联
+  WATCH_HISTORY: 'streamhub_watch_history', // 观影记录
+  SUBSCRIPTIONS: 'streamhub_subscriptions', // 订阅提醒
 } as const;
 
 class StorageManager {
