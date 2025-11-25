@@ -340,6 +340,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
         try {
             const key = tmdbApiKey || TMDB_API_KEY;
             const base = tmdbProxyUrl || TMDB_BASE_URL;
+
+            if (base.includes('www.themoviedb.org')) {
+                throw new Error('请使用 API 域名 (api.themoviedb.org) 而非官网域名');
+            }
+
             const result = await testTmdbConnection(key, base);
             toast.showToast(`TMDB 连接成功！延迟: ${result.latency}ms`, 'success');
         } catch (e: any) {
