@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Server, CheckCircle2, AlertCircle, Loader2, User, ShieldCheck, Database, List, Trash2, Bell, Send, MessageSquare, LayoutDashboard, Users, Mail, Check, XCircle, Clock, Filter, Download, AlertOctagon, MonitorPlay, Film } from 'lucide-react';
+import { X, Save, Server, CheckCircle2, AlertCircle, Loader2, User, ShieldCheck, Database, List, Trash2, Bell, Send, MessageSquare, LayoutDashboard, Users, Mail, Check, XCircle, Clock, Filter, Download, AlertOctagon, MonitorPlay, Film, BarChart3, TrendingUp, Activity } from 'lucide-react';
 import { checkForUpdates, UpdateInfo } from '../services/updateService';
 import { EmbyConfig, EmbyUser, NotificationConfig, RequestItem } from '../types';
 import { validateEmbyConnection, getEmbyUsers, fetchEmbyLibrary, fetchEmbyLibraries } from '../services/embyService';
@@ -21,7 +21,7 @@ interface SettingsModalProps {
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, currentConfig, isDarkMode, initialSelectedLibraries = [] }) => {
     const toast = useToast();
-    const [activeTab, setActiveTab] = useState<'library' | 'notifications' | 'requests' | 'users' | 'system'>('library');
+    const [activeTab, setActiveTab] = useState<'library' | 'notifications' | 'requests' | 'users' | 'system' | 'stats'>('library');
     
     // Library State
     const [url, setUrl] = useState(currentConfig.serverUrl);
@@ -480,6 +480,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
                         <TabButton id="notifications" icon={<Bell size={18} />} label="通知服务" />
                         <TabButton id="requests" icon={<List size={18} />} label="用户求片" />
                         <TabButton id="users" icon={<Users size={18} />} label="账号管理" />
+                        <TabButton id="stats" icon={<BarChart3 size={18} />} label="数据统计" />
                         <TabButton id="system" icon={<Server size={18} />} label="系统设置" />
                     </div>
 
@@ -502,6 +503,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
                             {activeTab === 'notifications' && '消息通知配置'}
                             {activeTab === 'requests' && `用户求片管理 (${requests.length})`}
                             {activeTab === 'users' && `用户账号管理 (${users.length})`}
+                            {activeTab === 'stats' && '数据统计与分析'}
                             {activeTab === 'system' && '系统设置与个性化'}
                         </h3>
                         <button onClick={onClose} className={`p-2 rounded-full transition-colors ${isDarkMode ? 'hover:bg-white/10 text-zinc-400' : 'hover:bg-slate-100 text-slate-400'}`}>
@@ -1229,6 +1231,258 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
                                             添加
                                         </button>
                                     </form>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Stats Tab */}
+                        {activeTab === 'stats' && (
+                            <div className="space-y-8">
+                                {/* Overview Cards */}
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <div className={`p-5 rounded-xl border ${isDarkMode ? 'bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border-indigo-500/20' : 'bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-100'}`}>
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-indigo-500/20' : 'bg-indigo-100'}`}>
+                                                <List size={18} className="text-indigo-500" />
+                                            </div>
+                                            <span className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>总求片</span>
+                                        </div>
+                                        <div className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{requests.length}</div>
+                                    </div>
+                                    
+                                    <div className={`p-5 rounded-xl border ${isDarkMode ? 'bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border-emerald-500/20' : 'bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-100'}`}>
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-emerald-500/20' : 'bg-emerald-100'}`}>
+                                                <CheckCircle2 size={18} className="text-emerald-500" />
+                                            </div>
+                                            <span className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>已完成</span>
+                                        </div>
+                                        <div className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{requests.filter(r => r.status === 'completed').length}</div>
+                                    </div>
+                                    
+                                    <div className={`p-5 rounded-xl border ${isDarkMode ? 'bg-gradient-to-br from-amber-500/10 to-orange-500/10 border-amber-500/20' : 'bg-gradient-to-br from-amber-50 to-orange-50 border-amber-100'}`}>
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-amber-500/20' : 'bg-amber-100'}`}>
+                                                <Clock size={18} className="text-amber-500" />
+                                            </div>
+                                            <span className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>待处理</span>
+                                        </div>
+                                        <div className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{requests.filter(r => r.status === 'pending').length}</div>
+                                    </div>
+                                    
+                                    <div className={`p-5 rounded-xl border ${isDarkMode ? 'bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border-blue-500/20' : 'bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-100'}`}>
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-blue-500/20' : 'bg-blue-100'}`}>
+                                                <Users size={18} className="text-blue-500" />
+                                            </div>
+                                            <span className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>活跃用户</span>
+                                        </div>
+                                        <div className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{new Set(requests.map(r => r.requestedBy)).size}</div>
+                                    </div>
+                                </div>
+
+                                {/* User Activity Ranking */}
+                                <div className={`p-6 rounded-xl border ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'}`}>
+                                    <h4 className={`font-bold mb-4 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                                        <TrendingUp size={18} className="text-indigo-500" /> 用户活跃度排行
+                                    </h4>
+                                    <div className="space-y-3">
+                                        {(() => {
+                                            const userStats: Record<string, number> = requests.reduce((acc, r) => {
+                                                acc[r.requestedBy] = (acc[r.requestedBy] || 0) + 1;
+                                                return acc;
+                                            }, {} as Record<string, number>);
+                                            const sortedUsers = Object.entries(userStats)
+                                                .sort((a, b) => (b[1] as number) - (a[1] as number))
+                                                .slice(0, 10);
+                                            const maxCount = (sortedUsers[0]?.[1] as number) || 1;
+                                            
+                                            if (sortedUsers.length === 0) {
+                                                return <p className={`text-sm ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`}>暂无数据</p>;
+                                            }
+                                            
+                                            return sortedUsers.map(([user, count], idx) => (
+                                                <div key={user} className="flex items-center gap-3">
+                                                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                                                        idx === 0 ? 'bg-yellow-500 text-white' :
+                                                        idx === 1 ? 'bg-slate-400 text-white' :
+                                                        idx === 2 ? 'bg-amber-600 text-white' :
+                                                        isDarkMode ? 'bg-zinc-700 text-zinc-400' : 'bg-slate-200 text-slate-500'
+                                                    }`}>
+                                                        {idx + 1}
+                                                    </span>
+                                                    <span className={`w-24 text-sm font-medium truncate ${isDarkMode ? 'text-zinc-300' : 'text-slate-700'}`}>{user}</span>
+                                                    <div className="flex-1 h-2 rounded-full overflow-hidden bg-slate-200 dark:bg-zinc-700">
+                                                        <div 
+                                                            className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-500"
+                                                            style={{ width: `${((count as number) / maxCount) * 100}%` }}
+                                                        />
+                                                    </div>
+                                                    <span className={`text-sm font-mono font-bold ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>{count}</span>
+                                                </div>
+                                            ));
+                                        })()}
+                                    </div>
+                                </div>
+
+                                {/* Popular Requests */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className={`p-6 rounded-xl border ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'}`}>
+                                        <h4 className={`font-bold mb-4 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                                            <Film size={18} className="text-blue-500" /> 热门电影请求
+                                        </h4>
+                                        <div className="space-y-2">
+                                            {(() => {
+                                                const movieRequests = requests.filter(r => r.mediaType === 'movie');
+                                                const movieCounts = movieRequests.reduce((acc, r) => {
+                                                    const key = `${r.id}-${r.title}`;
+                                                    if (!acc[key]) acc[key] = { title: r.title, year: r.year, count: 0, posterUrl: r.posterUrl };
+                                                    acc[key].count++;
+                                                    return acc;
+                                                }, {} as Record<string, any>);
+                                                const topMovies = Object.values(movieCounts).sort((a: any, b: any) => b.count - a.count).slice(0, 5);
+                                                
+                                                if (topMovies.length === 0) {
+                                                    return <p className={`text-sm ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`}>暂无电影请求</p>;
+                                                }
+                                                
+                                                return topMovies.map((movie: any, idx) => (
+                                                    <div key={idx} className={`flex items-center gap-3 p-2 rounded-lg ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-slate-50'}`}>
+                                                        <div className="w-8 h-12 rounded overflow-hidden bg-slate-200 dark:bg-zinc-700 shrink-0">
+                                                            {movie.posterUrl && <img src={movie.posterUrl} alt="" className="w-full h-full object-cover" />}
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className={`text-sm font-medium truncate ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{movie.title}</p>
+                                                            <p className={`text-xs ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`}>{movie.year}</p>
+                                                        </div>
+                                                        <span className={`text-xs font-bold px-2 py-1 rounded-full ${isDarkMode ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
+                                                            {movie.count}次
+                                                        </span>
+                                                    </div>
+                                                ));
+                                            })()}
+                                        </div>
+                                    </div>
+                                    
+                                    <div className={`p-6 rounded-xl border ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'}`}>
+                                        <h4 className={`font-bold mb-4 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                                            <MonitorPlay size={18} className="text-purple-500" /> 热门剧集请求
+                                        </h4>
+                                        <div className="space-y-2">
+                                            {(() => {
+                                                const tvRequests = requests.filter(r => r.mediaType === 'tv');
+                                                const tvCounts = tvRequests.reduce((acc, r) => {
+                                                    const key = `${r.id}-${r.title}`;
+                                                    if (!acc[key]) acc[key] = { title: r.title, year: r.year, count: 0, posterUrl: r.posterUrl };
+                                                    acc[key].count++;
+                                                    return acc;
+                                                }, {} as Record<string, any>);
+                                                const topTvs = Object.values(tvCounts).sort((a: any, b: any) => b.count - a.count).slice(0, 5);
+                                                
+                                                if (topTvs.length === 0) {
+                                                    return <p className={`text-sm ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`}>暂无剧集请求</p>;
+                                                }
+                                                
+                                                return topTvs.map((tv: any, idx) => (
+                                                    <div key={idx} className={`flex items-center gap-3 p-2 rounded-lg ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-slate-50'}`}>
+                                                        <div className="w-8 h-12 rounded overflow-hidden bg-slate-200 dark:bg-zinc-700 shrink-0">
+                                                            {tv.posterUrl && <img src={tv.posterUrl} alt="" className="w-full h-full object-cover" />}
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className={`text-sm font-medium truncate ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{tv.title}</p>
+                                                            <p className={`text-xs ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`}>{tv.year}</p>
+                                                        </div>
+                                                        <span className={`text-xs font-bold px-2 py-1 rounded-full ${isDarkMode ? 'bg-purple-500/20 text-purple-400' : 'bg-purple-100 text-purple-600'}`}>
+                                                            {tv.count}次
+                                                        </span>
+                                                    </div>
+                                                ));
+                                            })()}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Request Timeline */}
+                                <div className={`p-6 rounded-xl border ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'}`}>
+                                    <h4 className={`font-bold mb-4 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                                        <Activity size={18} className="text-emerald-500" /> 最近7天求片趋势
+                                    </h4>
+                                    <div className="flex items-end justify-between gap-2 h-32">
+                                        {(() => {
+                                            const last7Days = Array.from({ length: 7 }, (_, i) => {
+                                                const date = new Date();
+                                                date.setDate(date.getDate() - (6 - i));
+                                                return date.toISOString().split('T')[0];
+                                            });
+                                            
+                                            const dayCounts = last7Days.map(day => {
+                                                return requests.filter(r => r.requestDate?.startsWith(day)).length;
+                                            });
+                                            
+                                            const maxDayCount = Math.max(...dayCounts, 1);
+                                            
+                                            return last7Days.map((day, idx) => (
+                                                <div key={day} className="flex-1 flex flex-col items-center gap-2">
+                                                    <div className="w-full flex justify-center">
+                                                        <div 
+                                                            className={`w-full max-w-8 rounded-t-lg transition-all duration-500 ${
+                                                                isDarkMode ? 'bg-gradient-to-t from-emerald-600 to-emerald-400' : 'bg-gradient-to-t from-emerald-500 to-emerald-300'
+                                                            }`}
+                                                            style={{ height: `${Math.max((dayCounts[idx] / maxDayCount) * 100, 8)}px` }}
+                                                        />
+                                                    </div>
+                                                    <span className={`text-[10px] font-mono ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`}>
+                                                        {new Date(day).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })}
+                                                    </span>
+                                                </div>
+                                            ));
+                                        })()}
+                                    </div>
+                                </div>
+
+                                {/* Type Distribution */}
+                                <div className={`p-6 rounded-xl border ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'}`}>
+                                    <h4 className={`font-bold mb-4 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                                        <BarChart3 size={18} className="text-pink-500" /> 类型分布
+                                    </h4>
+                                    <div className="flex items-center gap-8">
+                                        <div className="flex items-center gap-4">
+                                            <div className="relative w-24 h-24">
+                                                <svg className="w-full h-full transform -rotate-90">
+                                                    <circle cx="48" cy="48" r="40" fill="none" stroke={isDarkMode ? '#27272a' : '#e2e8f0'} strokeWidth="12" />
+                                                    <circle 
+                                                        cx="48" cy="48" r="40" fill="none" 
+                                                        stroke="#3b82f6" strokeWidth="12"
+                                                        strokeDasharray={`${(requests.filter(r => r.mediaType === 'movie').length / Math.max(requests.length, 1)) * 251.2} 251.2`}
+                                                        strokeLinecap="round"
+                                                    />
+                                                </svg>
+                                                <div className="absolute inset-0 flex items-center justify-center">
+                                                    <span className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{requests.length}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex-1 space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-3 h-3 rounded-full bg-blue-500" />
+                                                    <span className={`text-sm ${isDarkMode ? 'text-zinc-300' : 'text-slate-600'}`}>电影</span>
+                                                </div>
+                                                <span className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                                                    {requests.filter(r => r.mediaType === 'movie').length} ({requests.length > 0 ? Math.round(requests.filter(r => r.mediaType === 'movie').length / requests.length * 100) : 0}%)
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-3 h-3 rounded-full bg-purple-500" />
+                                                    <span className={`text-sm ${isDarkMode ? 'text-zinc-300' : 'text-slate-600'}`}>剧集</span>
+                                                </div>
+                                                <span className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                                                    {requests.filter(r => r.mediaType === 'tv').length} ({requests.length > 0 ? Math.round(requests.filter(r => r.mediaType === 'tv').length / requests.length * 100) : 0}%)
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         )}
