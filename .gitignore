@@ -57,3 +57,8 @@ data/
 
 # Vite
 .vite/
+
+# 测试文件 (包含敏感信息)
+test-*.js
+test-*.ts
+*.test.local.js
