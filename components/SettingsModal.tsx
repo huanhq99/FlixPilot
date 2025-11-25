@@ -81,21 +81,41 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
             // Load requests
             setRequests(storage.get<RequestItem[]>(STORAGE_KEYS.REQUESTS, []));
 
-            // Load notifications
-            setNotifyConfig(storage.get(STORAGE_KEYS.NOTIFICATIONS, {}));
+            // Load notifications from localStorage first
+            const localNotify = storage.get(STORAGE_KEYS.NOTIFICATIONS, {});
+            setNotifyConfig(localNotify);
             
             // Load users
             setUsers(storage.get(STORAGE_KEYS.USERS, []));
             
-            // Fetch server version
+            // Fetch server config and merge with local
             fetch('/api/config')
                 .then(res => res.json())
                 .then(data => {
                     if (data.version) {
                         setServerVersion(data.version);
                     }
+                    
+                    // 合并服务器端 Telegram 配置 (优先使用服务器配置)
+                    if (data.telegram?.configured) {
+                        setNotifyConfig(prev => ({
+                            ...prev,
+                            telegramBotToken: data.telegram.botToken || prev.telegramBotToken,
+                            telegramChatId: data.telegram.chatId || prev.telegramChatId
+                        }));
+                    }
+                    
+                    // 合并服务器端 MoviePilot 配置
+                    if (data.moviepilot?.configured) {
+                        setNotifyConfig(prev => ({
+                            ...prev,
+                            moviePilotUrl: data.moviepilot.url || prev.moviePilotUrl,
+                            moviePilotUsername: data.moviepilot.username || prev.moviePilotUsername,
+                            moviePilotSubscribeUser: data.moviepilot.subscribeUser || prev.moviePilotSubscribeUser
+                        }));
+                    }
                 })
-                .catch(err => console.error('Failed to fetch server version:', err));
+                .catch(err => console.error('Failed to fetch server config:', err));
 
              // Load system settings
             try {

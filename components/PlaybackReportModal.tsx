@@ -265,77 +265,106 @@ const PlaybackReportModal: React.FC<PlaybackReportModalProps> = ({
                                     <p>暂无用户正在观看</p>
                                 </div>
                             ) : (
-                                <div className="space-y-3">
+                                <div className="space-y-4">
                                     {activeSessions.map((session, idx) => {
                                         const item = session.NowPlayingItem;
                                         const isEpisode = item?.Type === 'Episode';
-                                        const isSeries = item?.Type === 'Series';
+                                        const baseUrl = embyConfig.serverUrl?.replace(/\/$/, '');
                                         
-                                        // 构建海报 URL
-                                        let posterUrl = '';
-                                        if (item && embyConfig.serverUrl) {
-                                            const baseUrl = embyConfig.serverUrl.replace(/\/$/, '');
-                                            if (isEpisode) {
-                                                // 剧集：使用当前集的图片（Primary 或 Thumb）
-                                                posterUrl = `${baseUrl}/Items/${item.Id}/Images/Primary?maxHeight=120&api_key=${embyConfig.apiKey}`;
-                                            } else {
-                                                // 电影：使用横图（Backdrop）
-                                                posterUrl = `${baseUrl}/Items/${item.Id}/Images/Backdrop?maxWidth=200&api_key=${embyConfig.apiKey}`;
-                                            }
-                                        }
+                                        // 海报URL (竖图)
+                                        const posterUrl = item && baseUrl 
+                                            ? `${baseUrl}/Items/${isEpisode && item.SeriesId ? item.SeriesId : item.Id}/Images/Primary?maxHeight=200&api_key=${embyConfig.apiKey}`
+                                            : '';
+                                        
+                                        // 背景图URL (横图)
+                                        const backdropUrl = item && baseUrl
+                                            ? `${baseUrl}/Items/${isEpisode && item.SeriesId ? item.SeriesId : item.Id}/Images/Backdrop?maxWidth=600&api_key=${embyConfig.apiKey}`
+                                            : '';
+                                        
+                                        const title = item?.SeriesName || item?.Name || '未知内容';
+                                        const subtitle = isEpisode && item?.Name ? item.Name : '';
+                                        const year = item?.ProductionYear || '';
                                         
                                         return (
                                             <div
                                                 key={idx}
-                                                className={`p-4 rounded-xl ${isDarkMode ? 'bg-zinc-800' : 'bg-slate-100'} overflow-hidden`}
+                                                className={`relative rounded-2xl overflow-hidden ${isDarkMode ? 'bg-zinc-800' : 'bg-slate-100'}`}
+                                                style={{ minHeight: '120px' }}
                                             >
-                                                <div className="flex items-center gap-4">
-                                                    {/* 用户头像 */}
-                                                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold shrink-0">
-                                                        {session.UserName?.[0]?.toUpperCase() || '?'}
+                                                {/* 背景横图 */}
+                                                {backdropUrl && (
+                                                    <div className="absolute inset-0">
+                                                        <img 
+                                                            src={backdropUrl} 
+                                                            alt=""
+                                                            className="w-full h-full object-cover"
+                                                            onError={(e) => {
+                                                                (e.target as HTMLImageElement).style.display = 'none';
+                                                            }}
+                                                        />
+                                                        {/* 渐变遮罩 */}
+                                                        <div className={`absolute inset-0 ${isDarkMode 
+                                                            ? 'bg-gradient-to-r from-zinc-900 via-zinc-900/95 to-zinc-900/60' 
+                                                            : 'bg-gradient-to-r from-white via-white/95 to-white/60'}`} 
+                                                        />
                                                     </div>
-                                                    
-                                                    {/* 内容信息 */}
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                                                            {session.UserName || '未知用户'}
-                                                        </div>
-                                                        <div className={`text-sm truncate ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
-                                                            {item?.SeriesName 
-                                                                ? `${item.SeriesName} - ${item.Name}`
-                                                                : item?.Name || '未知内容'
-                                                            }
-                                                        </div>
-                                                        <div className={`text-xs ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`}>
-                                                            {session.DeviceName} • {session.Client}
-                                                        </div>
-                                                    </div>
-                                                    
-                                                    {/* 海报图片 */}
-                                                    {posterUrl && (
-                                                        <div className={`shrink-0 ${isEpisode ? 'w-16 h-24' : 'w-28 h-16'} rounded-lg overflow-hidden bg-zinc-700`}>
+                                                )}
+                                                
+                                                {/* 内容区域 */}
+                                                <div className="relative flex items-center gap-4 p-4">
+                                                    {/* 左侧海报 */}
+                                                    <div className="w-16 h-24 rounded-lg overflow-hidden shadow-lg shrink-0 bg-zinc-700">
+                                                        {posterUrl && (
                                                             <img 
                                                                 src={posterUrl} 
-                                                                alt={item?.Name}
+                                                                alt={title}
                                                                 className="w-full h-full object-cover"
                                                                 onError={(e) => {
-                                                                    // 如果加载失败，尝试使用 Primary 图片
                                                                     const target = e.target as HTMLImageElement;
-                                                                    if (!target.dataset.fallback) {
-                                                                        target.dataset.fallback = 'true';
-                                                                        const baseUrl = embyConfig.serverUrl?.replace(/\/$/, '');
-                                                                        target.src = `${baseUrl}/Items/${item?.Id}/Images/Primary?maxHeight=120&api_key=${embyConfig.apiKey}`;
-                                                                    }
+                                                                    target.style.display = 'none';
                                                                 }}
                                                             />
-                                                        </div>
-                                                    )}
+                                                        )}
+                                                    </div>
                                                     
-                                                    {/* 播放状态 */}
-                                                    <div className="text-right shrink-0">
-                                                        <div className="flex items-center gap-1 text-emerald-500">
-                                                            <Play size={14} fill="currentColor" />
-                                                            <span className="text-sm font-medium">播放中</span>
+                                                    {/* 中间信息 */}
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <h3 className={`font-bold text-lg truncate ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                                                                {title}
+                                                            </h3>
+                                                            {year && (
+                                                                <span className={`text-sm shrink-0 ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+                                                                    ({year})
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        
+                                                        {subtitle && (
+                                                            <div className={`text-sm mb-2 truncate ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+                                                                {subtitle}
+                                                            </div>
+                                                        )}
+                                                        
+                                                        {/* 播放状态标签 */}
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-400">
+                                                                <Play size={10} fill="currentColor" />
+                                                                播放中
+                                                            </span>
+                                                        </div>
+                                                        
+                                                        {/* 用户信息 */}
+                                                        <div className="flex items-center gap-2 mt-2">
+                                                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                                                                {session.UserName?.[0]?.toUpperCase() || '?'}
+                                                            </div>
+                                                            <span className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                                                                {session.UserName || '未知用户'}
+                                                            </span>
+                                                            <span className={`text-xs ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`}>
+                                                                {session.DeviceName} • {session.Client}
+                                                            </span>
                                                         </div>
                                                     </div>
                                                 </div>
