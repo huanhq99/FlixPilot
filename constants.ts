@@ -1,5 +1,5 @@
 // App Version
-export const APP_VERSION = '2.1.10';
+export const APP_VERSION = 'v2.1.11';
 
 // TMDB Configuration
 export const TMDB_API_KEY = (window as any).env?.TMDB_API_KEY || import.meta.env.VITE_TMDB_API_KEY || '';

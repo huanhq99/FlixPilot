@@ -274,7 +274,6 @@ export const subscribeToMoviePilot = async (config: NotificationConfig, item: Me
 
     const baseUrl = config.moviePilotUrl.replace(/\/$/, '');
     const endpoint = '/api/v1/subscribe/';
-    
     const cleanToken = config.moviePilotToken.trim();
 
     const payload = {
@@ -285,75 +284,111 @@ export const subscribeToMoviePilot = async (config: NotificationConfig, item: Me
         season: item.mediaType === 'tv' ? 1 : 0,
     };
 
-    console.log('Subscribing to MP:', `${baseUrl}${endpoint}`, payload);
-
-    // 优先使用 apikey 参数，这是 MoviePilot v2 API Key 的标准用法
-    const targetUrl = `${baseUrl}${endpoint}?apikey=${encodeURIComponent(cleanToken)}`;
-
-    // 1. 尝试直连
-    try {
-        console.log('尝试直连订阅...');
-        const response = await fetch(targetUrl, {
-            method: 'POST',
+    // 定义多种认证策略，按顺序尝试
+    const strategies = [
+        {
+            name: 'Bearer Auth',
+            url: `${baseUrl}${endpoint}`,
             headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'Authorization': `Bearer ${cleanToken}`,
+                'Authorization': `Bearer ${cleanToken}`
+            }
+        },
+        {
+            name: 'Query Param (apikey)',
+            url: `${baseUrl}${endpoint}?apikey=${encodeURIComponent(cleanToken)}`,
+            headers: {}
+        },
+        {
+            name: 'Query Param (token)',
+            url: `${baseUrl}${endpoint}?token=${encodeURIComponent(cleanToken)}`,
+            headers: {}
+        },
+        {
+            name: 'X-API-KEY Header',
+            url: `${baseUrl}${endpoint}`,
+            headers: {
                 'X-API-KEY': cleanToken
-            },
-            body: JSON.stringify(payload)
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-            if (data.success || data.code === 0 || data.message?.includes('success')) {
-                return { success: true, message: '已添加到 MoviePilot 订阅 (直连)' };
             }
         }
-    } catch (e) {
-        console.log('直连订阅失败，尝试代理...', e);
-    }
+    ];
 
-    // 2. 尝试代理
-    try {
-        // Try with token in query param first (most reliable based on logs)
-        const response = await fetch(PROXY_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                target_url: targetUrl,
+    let lastError = '';
+
+    console.log('Starting MoviePilot subscription attempt...');
+
+    for (const strategy of strategies) {
+        console.log(`Trying MP Subscription with strategy: ${strategy.name}`);
+        
+        // 1. 尝试直连
+        try {
+            const response = await fetch(strategy.url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
-                    'Authorization': `Bearer ${cleanToken}`,
-                    'X-API-KEY': cleanToken
+                    ...strategy.headers
                 },
-                body: payload
-            })
-        });
+                body: JSON.stringify(payload)
+            });
 
-        if (response.ok) {
-            const data = await response.json();
-            if (data.success || data.code === 0) {
-                return { success: true, message: '已成功添加到 MoviePilot 订阅' };
-            } else {
-                return { success: false, message: data.message || data.detail || 'MoviePilot 返回错误' };
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success || data.code === 0 || data.message?.includes('success')) {
+                    return { success: true, message: '已添加到 MoviePilot 订阅 (直连)' };
+                }
             }
-        } else {
-            const text = await response.text();
-            console.error('Proxy Error Response:', text);
-            try {
-                const json = JSON.parse(text);
-                return { success: false, message: `代理请求失败: ${json.details || json.error || json.message || 'Unknown Error'}` };
-            } catch {
-                return { success: false, message: `代理请求失败 (Status ${response.status})` };
-            }
+        } catch (e) {
+            // 直连失败，继续尝试代理
         }
-    } catch (e: any) {
-        console.error('MoviePilot Subscription Failed:', e);
-        return { success: false, message: `订阅失败: ${e.message}` };
+
+        // 2. 尝试代理
+        try {
+            const response = await fetch(PROXY_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    target_url: strategy.url,
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        ...strategy.headers
+                    },
+                    body: payload
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success || data.code === 0) {
+                    return { success: true, message: '已成功添加到 MoviePilot 订阅' };
+                } else {
+                    lastError = data.message || data.detail || 'MoviePilot 返回错误';
+                    // 如果是认证错误，继续尝试下一个策略
+                    if (response.status === 401 || response.status === 403) {
+                        console.log(`Strategy ${strategy.name} failed with auth error: ${lastError}`);
+                        continue;
+                    }
+                    // 如果是其他业务错误（如已存在），则直接返回
+                    return { success: false, message: lastError };
+                }
+            } else {
+                const text = await response.text();
+                try {
+                    const json = JSON.parse(text);
+                    lastError = json.detail || json.message || text;
+                } catch {
+                    lastError = `Status ${response.status}`;
+                }
+                console.log(`Strategy ${strategy.name} failed: ${lastError}`);
+            }
+        } catch (e: any) {
+            console.error(`Strategy ${strategy.name} exception:`, e);
+            lastError = e.message;
+        }
     }
+
+    return { success: false, message: `订阅失败: ${lastError}` };
 };
