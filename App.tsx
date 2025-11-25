@@ -525,6 +525,20 @@ function AppContent() {
       </div>
   );
 
+  // Load data from server on mount
+  useEffect(() => {
+    const initData = async () => {
+      await storage.loadFromServer();
+      // Force re-render or update state if needed, but since we use storage.get() in initial state,
+      // we might need to reload the page or update state.
+      // For simplicity, we just load it. The user might need to refresh if it's the very first load on a new device.
+      // Better: Update critical states after load.
+      setAuthState(storage.get(STORAGE_KEYS.AUTH, { isAuthenticated: false, user: null, serverUrl: '' }));
+      setIsDarkMode(storage.get(STORAGE_KEYS.DARK_MODE, false));
+    };
+    initData();
+  }, []);
+
   if (!authState.isAuthenticated) {
       return <Login onLogin={handleLogin} isDarkMode={isDarkMode} />;
   }
