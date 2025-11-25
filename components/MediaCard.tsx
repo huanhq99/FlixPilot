@@ -58,7 +58,8 @@ const MediaCard: React.FC<MediaCardProps> = React.memo(({ item, viewMode, onClic
                         <img 
                             src={item.posterUrl} 
                             alt="" 
-                            className="w-full h-full object-cover" 
+                            className="w-full h-full object-cover"
+                            loading="lazy"
                             onError={() => setImgError(true)} 
                         />
                     )}
@@ -122,6 +123,7 @@ const MediaCard: React.FC<MediaCardProps> = React.memo(({ item, viewMode, onClic
                         <img 
                             src={item.posterUrl} 
                             alt={item.title}
+                            loading="lazy"
                             className={`w-full h-full object-cover transition-opacity duration-700 ${loaded ? 'opacity-100' : 'opacity-0'}`}
                             onLoad={() => setLoaded(true)}
                             onError={() => setImgError(true)}

@@ -13,6 +13,7 @@ export const STORAGE_KEYS = {
   USERS: 'streamhub_users',
   SYNC_INTERVAL: 'sync_interval',
   TMDB_CONFIG: 'tmdb_config',
+  FAVORITES: 'streamhub_favorites', // 用户收藏夹
 } as const;
 
 class StorageManager {

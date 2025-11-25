@@ -14,10 +14,11 @@ import {
   LogOut,
   User as UserIcon,
   ScrollText,
-  X
+  X,
+  Heart
 } from 'lucide-react';
 import { TMDB_API_KEY, TMDB_BASE_URL } from './constants';
-import { MediaItem, FilterState, EmbyConfig, AuthState, RequestItem } from './types';
+import { MediaItem, FilterState, EmbyConfig, AuthState, RequestItem, FavoriteItem } from './types';
 import { processMediaItem, fetchDetails, fetchPersonDetails, getTmdbConfig } from './services/tmdbService';
 import { fetchEmbyLibrary } from './services/embyService';
 import { sendTelegramNotification } from './services/notificationService';
@@ -30,6 +31,7 @@ import DetailModal from './components/DetailModal';
 import SettingsModal from './components/SettingsModal';
 import Login from './components/Login';
 import PersonModal from './components/PersonModal';
+import MyListModal from './components/MyListModal';
 
 function AppContent() {
   const toast = useToast();
@@ -60,6 +62,7 @@ function AppContent() {
   // Emby State
   const [showSettings, setShowSettings] = useState(false);
   const [showLogs, setShowLogs] = useState(false);
+  const [showMyList, setShowMyList] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
 
   const handleOpenLogs = () => {
@@ -88,6 +91,11 @@ function AppContent() {
   );
   const [syncingEmby, setSyncingEmby] = useState(false);
   const [syncInterval, setSyncInterval] = useState(() => storage.get(STORAGE_KEYS.SYNC_INTERVAL, 15));
+
+  // 收藏夹状态
+  const [favorites, setFavorites] = useState<FavoriteItem[]>(() => 
+    storage.get(STORAGE_KEYS.FAVORITES, [])
+  );
 
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -423,6 +431,43 @@ function AppContent() {
       return 'success';
   }, [authState.user, toast, systemSettings.movieRequestLimit, systemSettings.tvRequestLimit]);
 
+  // 收藏功能
+  const isFavorite = useCallback((id: number, mediaType: 'movie' | 'tv') => {
+    return favorites.some(f => f.id === id && f.mediaType === mediaType);
+  }, [favorites]);
+
+  const toggleFavorite = useCallback((item: MediaItem) => {
+    const isAlreadyFavorite = favorites.some(f => f.id === item.id && f.mediaType === item.mediaType);
+    
+    if (isAlreadyFavorite) {
+      const newFavorites = favorites.filter(f => !(f.id === item.id && f.mediaType === item.mediaType));
+      setFavorites(newFavorites);
+      storage.set(STORAGE_KEYS.FAVORITES, newFavorites);
+      toast.showToast('已从收藏夹移除', 'info');
+    } else {
+      const newFavorite: FavoriteItem = {
+        id: item.id,
+        mediaType: item.mediaType,
+        title: item.title,
+        posterUrl: item.posterUrl,
+        year: item.year,
+        addedAt: new Date().toISOString(),
+        addedBy: authState.user?.Name || 'Unknown'
+      };
+      const newFavorites = [...favorites, newFavorite];
+      setFavorites(newFavorites);
+      storage.set(STORAGE_KEYS.FAVORITES, newFavorites);
+      toast.showToast('已添加到收藏夹', 'success');
+    }
+  }, [favorites, authState.user?.Name, toast]);
+
+  const removeFavorite = useCallback((id: number, mediaType: 'movie' | 'tv') => {
+    const newFavorites = favorites.filter(f => !(f.id === id && f.mediaType === mediaType));
+    setFavorites(newFavorites);
+    storage.set(STORAGE_KEYS.FAVORITES, newFavorites);
+    toast.showToast('已从收藏夹移除', 'info');
+  }, [favorites, toast]);
+
   useEffect(() => {
     const timer = setTimeout(() => {
         setDebouncedSearchTerm(searchTerm);
@@ -676,6 +721,8 @@ function AppContent() {
             onRequest={handleRequest}
             onPersonClick={openPersonModal}
             quotaInfo={quotaInfo}
+            isFavorite={isFavorite(selectedMedia.id, selectedMedia.mediaType)}
+            onToggleFavorite={toggleFavorite}
           />
       )}
 
@@ -691,6 +738,20 @@ function AppContent() {
             isDarkMode={isDarkMode}
           />
       )}
+
+      <MyListModal
+        isOpen={showMyList}
+        onClose={() => setShowMyList(false)}
+        isDarkMode={isDarkMode}
+        requests={storage.get(STORAGE_KEYS.REQUESTS, [])}
+        favorites={favorites}
+        currentUser={authState.user?.Name}
+        onRemoveFavorite={removeFavorite}
+        onMediaClick={(id, type) => {
+            setShowMyList(false);
+            openModal(id, type);
+        }}
+      />
 
       <SettingsModal 
         isOpen={showSettings} 
@@ -766,6 +827,19 @@ function AppContent() {
             )}
 
             <div className="flex items-center gap-2 pl-2 border-l border-gray-200 dark:border-white/10">
+                {/* 我的列表按钮 */}
+                <button 
+                    onClick={() => setShowMyList(true)}
+                    className={`p-1.5 md:p-2 rounded-full transition-all hover:scale-110 active:scale-95 shrink-0 relative ${isDarkMode ? 'bg-zinc-800 text-pink-400 hover:bg-zinc-700' : 'bg-pink-50 text-pink-500 hover:bg-pink-100'}`}
+                    title="我的列表"
+                >
+                    <Heart size={16} className="md:w-[18px] md:h-[18px]" fill={favorites.length > 0 ? 'currentColor' : 'none'} />
+                    {favorites.length > 0 && (
+                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-pink-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                            {favorites.length > 9 ? '9+' : favorites.length}
+                        </span>
+                    )}
+                </button>
                 <div className="hidden md:flex flex-col items-end mr-1">
                     <span className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                         {authState.user?.Name || 'Guest'}

@@ -158,3 +158,14 @@ export interface EmbyItem {
   ParentIndexNumber?: number; // Season Number
   IndexNumber?: number; // Episode Number
 }
+
+// 收藏项目
+export interface FavoriteItem {
+  id: number;
+  mediaType: 'movie' | 'tv';
+  title: string;
+  posterUrl: string | null;
+  year: string;
+  addedAt: string;
+  addedBy: string;
+}

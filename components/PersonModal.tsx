@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { X, MapPin, Calendar, User, Film } from 'lucide-react';
 import { MediaItem } from '../types';
 import { IMAGE_BASE_URL } from '../constants';
@@ -12,6 +12,17 @@ interface PersonModalProps {
 }
 
 const PersonModal: React.FC<PersonModalProps> = ({ person, credits, onClose, onMediaClick, isDarkMode }) => {
+    // ESC 键关闭模态框
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                onClose();
+            }
+        };
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [onClose]);
+
     const sortedCredits = credits
         .filter(c => c.poster_path)
         .sort((a, b) => {

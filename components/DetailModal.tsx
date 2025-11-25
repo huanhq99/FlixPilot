@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-    ArrowLeft, Star, Clock, CheckCircle2, Film, PlayCircle, Youtube, User, Terminal, HelpCircle, Calendar, X, Tv, Layers, LayoutList, Disc, MonitorPlay, Globe, Languages, Library, Send, AlertCircle, MessageSquare
+    ArrowLeft, Star, Clock, CheckCircle2, Film, PlayCircle, Youtube, User, Terminal, HelpCircle, Calendar, X, Tv, Layers, LayoutList, Disc, MonitorPlay, Globe, Languages, Library, Send, AlertCircle, MessageSquare, Heart
 } from 'lucide-react';
 import { MediaItem, Episode, AuthState } from '../types';
 import { IMAGE_BASE_URL, PROFILE_BASE_URL } from '../constants';
@@ -22,9 +22,11 @@ interface DetailModalProps {
     onRequest?: (item: MediaItem, options?: { resolution: string; note: string }) => void;
     onPersonClick?: (personId: number) => void;
     quotaInfo?: QuotaInfo;
+    isFavorite?: boolean;
+    onToggleFavorite?: (item: MediaItem) => void;
 }
 
-const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDarkMode, embyLibrary, authState, onRequest, onPersonClick, quotaInfo }) => {
+const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDarkMode, embyLibrary, authState, onRequest, onPersonClick, quotaInfo, isFavorite, onToggleFavorite }) => {
     const isStreaming = selectedMedia.status === 'streaming';
     const isReleased = selectedMedia.status === 'released';
     const isTV = selectedMedia.mediaType === 'tv';
@@ -46,6 +48,21 @@ const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDar
     const [showRequestForm, setShowRequestForm] = useState(false);
     const [resolution, setResolution] = useState('Any');
     const [requestNote, setRequestNote] = useState('');
+
+    // ESC 键关闭模态框
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                if (showRequestForm) {
+                    setShowRequestForm(false);
+                } else {
+                    onClose();
+                }
+            }
+        };
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [onClose, showRequestForm]);
 
     let statusText = selectedMedia.badgeLabel;
     let statusIcon = <Clock size={14}/>;
@@ -355,6 +372,23 @@ const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDar
                             <Youtube size={20} />
                             预告片
                         </button>
+
+                        {/* 收藏按钮 */}
+                        {authState?.isAuthenticated && onToggleFavorite && (
+                            <button 
+                                onClick={() => onToggleFavorite(selectedMedia)}
+                                className={`px-4 py-2.5 rounded-xl font-bold border transition-all flex items-center gap-2 ${
+                                    isFavorite 
+                                        ? 'bg-pink-500 border-pink-500 text-white hover:bg-pink-600' 
+                                        : isDarkMode 
+                                            ? 'border-zinc-700 hover:bg-zinc-800 text-zinc-300' 
+                                            : 'border-slate-200 hover:bg-slate-50 text-slate-600'
+                                }`}
+                            >
+                                <Heart size={20} fill={isFavorite ? 'currentColor' : 'none'} />
+                                {isFavorite ? '已收藏' : '收藏'}
+                            </button>
+                        )}
                         
                         {/* 配额显示 - 仅对非管理员显示 */}
                         {authState?.isAuthenticated && !authState?.isAdmin && quotaInfo && (
