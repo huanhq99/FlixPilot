@@ -15,7 +15,11 @@ import {
   User as UserIcon,
   ScrollText,
   X,
-  Heart
+  Heart,
+  Dices,
+  History,
+  Share2,
+  Sparkles
 } from 'lucide-react';
 import { TMDB_API_KEY, TMDB_BASE_URL } from './constants';
 import { MediaItem, FilterState, EmbyConfig, AuthState, RequestItem, FavoriteItem } from './types';
@@ -103,6 +107,11 @@ function AppContent() {
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [showSearchHistory, setShowSearchHistory] = useState(false);
+  const [searchHistory, setSearchHistory] = useState<string[]>(() => 
+    storage.get(STORAGE_KEYS.SEARCH_HISTORY, [])
+  );
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // System Settings
   const [systemSettings, setSystemSettings] = useState(() => {
@@ -468,6 +477,43 @@ function AppContent() {
     toast.showToast('已从收藏夹移除', 'info');
   }, [favorites, toast]);
 
+  // 搜索历史功能
+  const addToSearchHistory = useCallback((term: string) => {
+    if (!term.trim()) return;
+    const newHistory = [term, ...searchHistory.filter(h => h !== term)].slice(0, 10);
+    setSearchHistory(newHistory);
+    storage.set(STORAGE_KEYS.SEARCH_HISTORY, newHistory);
+  }, [searchHistory]);
+
+  const clearSearchHistory = useCallback(() => {
+    setSearchHistory([]);
+    storage.set(STORAGE_KEYS.SEARCH_HISTORY, []);
+  }, []);
+
+  // 随机发现功能
+  const handleRandomDiscover = useCallback(async () => {
+    toast.showToast('正在随机挑选...', 'info');
+    try {
+      const { baseUrl } = getTmdbConfig();
+      const randomPage = Math.floor(Math.random() * 100) + 1;
+      const types = ['movie', 'tv'];
+      const randomType = types[Math.floor(Math.random() * types.length)];
+      
+      const response = await fetch(`${baseUrl}/discover/${randomType}?page=${randomPage}&language=zh-CN&sort_by=popularity.desc&vote_count.gte=100`);
+      const data = await response.json();
+      
+      if (data.results && data.results.length > 0) {
+        const randomIndex = Math.floor(Math.random() * data.results.length);
+        const randomItem = data.results[randomIndex];
+        openModal(randomItem.id, randomType as 'movie' | 'tv');
+        toast.showToast(`为你推荐: ${randomItem.title || randomItem.name}`, 'success');
+      }
+    } catch (err) {
+      console.error('Random discover failed:', err);
+      toast.showToast('随机推荐失败，请重试', 'error');
+    }
+  }, [toast]);
+
   useEffect(() => {
     const timer = setTimeout(() => {
         setDebouncedSearchTerm(searchTerm);
@@ -784,16 +830,71 @@ function AppContent() {
           </div>
           
           <div className="flex items-center gap-2 md:gap-4 flex-1 justify-end min-w-0">
+            {/* 搜索框 - 带历史记录 */}
             <div className="relative group w-full max-w-[200px] sm:max-w-xs md:max-w-md transition-all focus-within:max-w-full md:focus-within:w-96">
-              <Search size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`} />
+              <Search size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 z-10 ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`} />
               <input 
+                ref={searchInputRef}
                 type="text" 
                 placeholder="搜索..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className={`w-full rounded-full pl-9 pr-4 py-1.5 md:py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all border ${isDarkMode ? 'bg-zinc-900 border-zinc-800 text-white placeholder-zinc-600 focus:bg-zinc-800' : 'bg-slate-100 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white'}`}
+                onFocus={() => setShowSearchHistory(true)}
+                onBlur={() => setTimeout(() => setShowSearchHistory(false), 200)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && searchTerm.trim()) {
+                    addToSearchHistory(searchTerm.trim());
+                    setShowSearchHistory(false);
+                  }
+                }}
+                className={`w-full rounded-full pl-9 pr-10 py-1.5 md:py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all border ${isDarkMode ? 'bg-zinc-900 border-zinc-800 text-white placeholder-zinc-600 focus:bg-zinc-800' : 'bg-slate-100 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white'}`}
               />
+              {searchTerm && (
+                <button
+                  onClick={() => { setSearchTerm(''); searchInputRef.current?.focus(); }}
+                  className={`absolute right-3 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-zinc-500 hover:text-zinc-300' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                  <X size={14} />
+                </button>
+              )}
+              
+              {/* 搜索历史下拉 */}
+              {showSearchHistory && searchHistory.length > 0 && !searchTerm && (
+                <div className={`absolute top-full left-0 right-0 mt-2 rounded-xl border shadow-xl overflow-hidden z-50 ${isDarkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-slate-200'}`}>
+                  <div className={`flex items-center justify-between px-3 py-2 border-b ${isDarkMode ? 'border-zinc-800' : 'border-slate-100'}`}>
+                    <span className={`text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`}>
+                      <History size={12} /> 搜索历史
+                    </span>
+                    <button 
+                      onClick={clearSearchHistory}
+                      className="text-[10px] text-red-500 hover:underline"
+                    >
+                      清除
+                    </button>
+                  </div>
+                  <div className="max-h-48 overflow-y-auto">
+                    {searchHistory.map((term, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => { setSearchTerm(term); setShowSearchHistory(false); }}
+                        className={`w-full text-left px-3 py-2 text-xs transition-colors ${isDarkMode ? 'hover:bg-zinc-800 text-zinc-300' : 'hover:bg-slate-50 text-slate-700'}`}
+                      >
+                        {term}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
+
+            {/* 随机发现按钮 */}
+            <button
+              onClick={handleRandomDiscover}
+              className={`p-1.5 md:p-2 rounded-full transition-all hover:scale-110 active:scale-95 shrink-0 ${isDarkMode ? 'bg-gradient-to-br from-purple-600 to-pink-600 text-white hover:from-purple-500 hover:to-pink-500' : 'bg-gradient-to-br from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600'} shadow-lg shadow-purple-500/20`}
+              title="随机发现"
+            >
+              <Dices size={16} className="md:w-[18px] md:h-[18px]" />
+            </button>
             
             <div className={`hidden sm:flex p-1 rounded-lg border ${isDarkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-slate-100 border-slate-200'}`}>
               <button onClick={() => setViewMode('grid')} className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? (isDarkMode ? 'bg-zinc-700 text-white' : 'bg-white text-slate-900 shadow-sm') : (isDarkMode ? 'text-zinc-500' : 'text-slate-400')}`}>
@@ -898,29 +999,39 @@ function AppContent() {
           ) : (
             <>
               {viewMode === 'grid' ? (
-                <div className="grid grid-cols-3 min-[450px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6 md:gap-8">
-                  {mediaList.map((item) => (
-                    <MediaCard 
-                        key={`${item.id}-${item.mediaType}`} 
-                        item={item} 
-                        viewMode="grid" 
-                        onClick={openModal} 
-                        isDarkMode={isDarkMode}
-                        isInLibrary={embyLibrary.has(`${item.mediaType}_${item.id}`)}
-                    />
+                <div className="grid grid-cols-3 min-[450px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6 md:gap-8 animate-fade-in">
+                  {mediaList.map((item, index) => (
+                    <div 
+                      key={`${item.id}-${item.mediaType}`} 
+                      className="animate-fade-in-up"
+                      style={{ animationDelay: `${Math.min(index * 30, 300)}ms` }}
+                    >
+                      <MediaCard 
+                          item={item} 
+                          viewMode="grid" 
+                          onClick={openModal} 
+                          isDarkMode={isDarkMode}
+                          isInLibrary={embyLibrary.has(`${item.mediaType}_${item.id}`)}
+                      />
+                    </div>
                   ))}
                 </div>
               ) : (
-                <div className="flex flex-col gap-3">
-                  {mediaList.map((item) => (
-                    <MediaCard 
-                        key={`${item.id}-${item.mediaType}`} 
-                        item={item} 
-                        viewMode="list" 
-                        onClick={openModal} 
-                        isDarkMode={isDarkMode}
-                        isInLibrary={embyLibrary.has(`${item.mediaType}_${item.id}`)}
-                    />
+                <div className="flex flex-col gap-3 animate-fade-in">
+                  {mediaList.map((item, index) => (
+                    <div 
+                      key={`${item.id}-${item.mediaType}`}
+                      className="animate-fade-in-up"
+                      style={{ animationDelay: `${Math.min(index * 20, 200)}ms` }}
+                    >
+                      <MediaCard 
+                          item={item} 
+                          viewMode="list" 
+                          onClick={openModal} 
+                          isDarkMode={isDarkMode}
+                          isInLibrary={embyLibrary.has(`${item.mediaType}_${item.id}`)}
+                      />
+                    </div>
                   ))}
                 </div>
               )}
@@ -940,11 +1051,19 @@ function AppContent() {
         </div>
       </main>
       
+      {/* 返回顶部按钮 - 优化动画 */}
       <button 
         onClick={scrollToTop}
-        className={`fixed bottom-8 right-8 p-3 rounded-full shadow-lg backdrop-blur-md transition-all duration-300 z-30 ${showScrollTop ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0'} ${isDarkMode ? 'bg-indigo-600 text-white hover:bg-indigo-500' : 'bg-white text-indigo-600 hover:bg-slate-50'}`}
+        className={`fixed bottom-8 right-8 p-3.5 rounded-full shadow-xl backdrop-blur-md transition-all duration-500 z-30 group ${
+          showScrollTop 
+            ? 'translate-y-0 opacity-100 scale-100' 
+            : 'translate-y-24 opacity-0 scale-75 pointer-events-none'
+        } ${isDarkMode 
+            ? 'bg-gradient-to-br from-indigo-600 to-purple-600 text-white hover:from-indigo-500 hover:to-purple-500 shadow-indigo-500/30' 
+            : 'bg-white text-indigo-600 hover:bg-indigo-50 shadow-slate-200/50 border border-slate-200'
+        }`}
       >
-        <ArrowUp size={20} />
+        <ArrowUp size={20} className="group-hover:-translate-y-0.5 transition-transform" />
       </button>
 
       {/* Log Modal */}

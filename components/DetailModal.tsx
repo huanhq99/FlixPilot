@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-    ArrowLeft, Star, Clock, CheckCircle2, Film, PlayCircle, Youtube, User, Terminal, HelpCircle, Calendar, X, Tv, Layers, LayoutList, Disc, MonitorPlay, Globe, Languages, Library, Send, AlertCircle, MessageSquare, Heart
+    ArrowLeft, Star, Clock, CheckCircle2, Film, PlayCircle, Youtube, User, Terminal, HelpCircle, Calendar, X, Tv, Layers, LayoutList, Disc, MonitorPlay, Globe, Languages, Library, Send, AlertCircle, MessageSquare, Heart, Share2
 } from 'lucide-react';
 import { MediaItem, Episode, AuthState } from '../types';
 import { IMAGE_BASE_URL, PROFILE_BASE_URL } from '../constants';
@@ -389,6 +389,22 @@ const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDar
                                 {isFavorite ? '已收藏' : '收藏'}
                             </button>
                         )}
+
+                        {/* 分享按钮 */}
+                        <button 
+                            onClick={() => {
+                                const url = `${window.location.origin}?${selectedMedia.mediaType}=${selectedMedia.id}`;
+                                navigator.clipboard.writeText(url).then(() => {
+                                    alert('链接已复制到剪贴板！');
+                                }).catch(() => {
+                                    prompt('复制以下链接分享:', url);
+                                });
+                            }}
+                            className={`px-4 py-2.5 rounded-xl font-bold border transition-all flex items-center gap-2 ${isDarkMode ? 'border-zinc-700 hover:bg-zinc-800 text-zinc-300' : 'border-slate-200 hover:bg-slate-50 text-slate-600'}`}
+                        >
+                            <Share2 size={20} />
+                            分享
+                        </button>
                         
                         {/* 配额显示 - 仅对非管理员显示 */}
                         {authState?.isAuthenticated && !authState?.isAdmin && quotaInfo && (

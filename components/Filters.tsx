@@ -1,7 +1,16 @@
 import React, { useState } from 'react';
-import { Layers, MapPin, Calendar, Filter, X, Tv, Tag, ChevronDown, ChevronUp } from 'lucide-react';
+import { Layers, MapPin, Calendar, Filter, X, Tv, Tag, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
 import { TYPES, REGIONS, YEARS, SORTS, PLATFORMS, GENRES } from '../constants';
 import { FilterState } from '../types';
+
+// 快速筛选预设
+const QUICK_PRESETS = [
+    { label: '高分电影', icon: '🏆', filters: { type: 'movie', sort: 'vote_average.desc', genre: '', region: '', platform: '', year: '全部' } },
+    { label: '热门剧集', icon: '🔥', filters: { type: 'tv', sort: 'popularity.desc', genre: '', region: '', platform: '', year: '全部' } },
+    { label: '新番动画', icon: '🎌', filters: { type: 'tv', genre: '16', region: 'ja', sort: 'primary_release_date.desc', platform: '', year: '全部' } },
+    { label: '华语新片', icon: '🇨🇳', filters: { type: 'movie', region: 'zh', sort: 'primary_release_date.desc', genre: '', platform: '', year: '全部' } },
+    { label: '经典恐怖', icon: '👻', filters: { type: 'movie', genre: '27', sort: 'vote_average.desc', region: '', platform: '', year: '全部' } },
+];
 
 interface FiltersProps {
     filters: FilterState;
@@ -119,6 +128,27 @@ const Filters: React.FC<FiltersProps> = ({ filters, setFilters, debouncedSearchT
 
     return (
         <div className={`rounded-2xl p-5 backdrop-blur-sm border transition-colors duration-300 ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-white border-slate-200/60 shadow-sm'}`}>
+            {/* 快速筛选预设 */}
+            <div className={`flex items-center gap-2 pb-4 mb-4 border-b overflow-x-auto scrollbar-none ${isDarkMode ? 'border-white/5' : 'border-slate-100'}`}>
+                <span className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider shrink-0 ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`}>
+                    <Sparkles size={12} /> 快速筛选
+                </span>
+                {QUICK_PRESETS.map((preset, idx) => (
+                    <button
+                        key={idx}
+                        onClick={() => setFilters(prev => ({ ...prev, ...preset.filters }))}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium whitespace-nowrap transition-all border ${
+                            isDarkMode 
+                                ? 'bg-zinc-800/50 border-zinc-700/50 text-zinc-300 hover:bg-zinc-700 hover:border-zinc-600' 
+                                : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 hover:border-slate-300'
+                        }`}
+                    >
+                        <span>{preset.icon}</span>
+                        {preset.label}
+                    </button>
+                ))}
+            </div>
+
             <div className={`flex flex-col gap-1 divide-y ${isDarkMode ? 'divide-white/5' : 'divide-slate-100'}`}>
                 <FilterRow label="分类" icon={Layers} options={TYPES} current={filters.type} onChange={(v: string) => updateFilter('type', v)} valueKey="val" />
                 <GenreFilterRow />
