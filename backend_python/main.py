@@ -1,8 +1,10 @@
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from typing import List
+import httpx
 from app.services import get_trending
-from app.schemas import MediaItem
+from app.schemas import MediaItem, ProxyRequest
 
 app = FastAPI(title="StreamHub Backend", version="2.0.0")
 
@@ -26,7 +28,42 @@ async def trending(
 ):
     return await get_trending(media_type, time_window)
 
+@app.post("/api/proxy/moviepilot")
+async def proxy_moviepilot(request: ProxyRequest):
+    """
+    Proxy requests to MoviePilot to bypass CORS and manage connectivity.
+    """
+    async with httpx.AsyncClient(verify=False) as client:
+        try:
+            # Prepare headers - remove host to avoid conflicts
+            headers = request.headers.copy() if request.headers else {}
+            if 'host' in headers:
+                del headers['host']
+                
+            response = await client.request(
+                method=request.method,
+                url=request.target_url,
+                headers=headers,
+                json=request.body if request.body else None,
+                timeout=10.0
+            )
+            
+            # Forward response
+            try:
+                content = response.json()
+            except:
+                content = response.text
+                
+            return JSONResponse(
+                content=content,
+                status_code=response.status_code
+            )
+            
+        except httpx.RequestError as exc:
+            raise HTTPException(status_code=500, detail=f"Proxy request failed: {str(exc)}")
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"Proxy error: {str(exc)}")
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
-
+    uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True)

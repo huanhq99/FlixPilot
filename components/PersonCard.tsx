@@ -52,3 +52,4 @@ const PersonCard: React.FC<PersonCardProps> = ({ person, onClick, isDarkMode }) 
 
 export default PersonCard;
 
+

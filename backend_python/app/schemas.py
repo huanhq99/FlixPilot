@@ -1,6 +1,12 @@
 from typing import List, Optional, Dict, Any, Union
 from pydantic import BaseModel
 
+class ProxyRequest(BaseModel):
+    target_url: str
+    method: str = "GET"
+    headers: Optional[Dict[str, str]] = None
+    body: Optional[Any] = None
+
 class Episode(BaseModel):
     id: int
     name: str
@@ -71,4 +77,3 @@ class EmbyUser(BaseModel):
     HasPassword: Optional[bool] = None
     PrimaryImageTag: Optional[str] = None
     Policy: Optional[Dict[str, Any]] = None
-

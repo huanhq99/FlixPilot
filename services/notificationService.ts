@@ -131,261 +131,139 @@ ${tagLine}
 
 // --- MoviePilot Integration ---
 
+const PROXY_URL = '/api/proxy/moviepilot';
+
 export const testMoviePilotConnection = async (config: NotificationConfig): Promise<{ success: boolean, message: string, method?: string }> => {
     if (!config.moviePilotUrl || !config.moviePilotToken) {
         return { success: false, message: '请先配置 MoviePilot 地址和 Token' };
     }
 
     const baseUrl = config.moviePilotUrl.replace(/\/$/, '');
-    
-    // Try common endpoints - 优先使用 /api/v1/* 路径（反代通常配置了这个路径）
-    // 注意：从错误日志看，/v2/* 和 /v1/* 路径（没有 /api/ 前缀）会被 CORS 阻止
-    // 但是从错误看，/api/v1/plugin/plugin_list 能到达服务器，说明路径是对的
-    // 根据 MoviePilot 实际使用的 API 端点
-    // 从用户提供的日志看，MoviePilot 使用 ?token= 作为查询参数
-    // 优先使用实际存在的端点（从用户日志中看到的）
-    const endpoints = [
-        '/api/v1/plugin/remotes', // 插件列表（从日志看确实使用了 ?token=，优先尝试）
-        '/api/v1/system/message', // 系统消息（不需要特殊权限）
-        '/api/v1/dashboard/statistic', // 仪表板统计（可能不需要特殊权限）
-        '/api/v1/system/info', // 系统信息
-    ];
-
-    const authMethods = [
-        // MoviePilot 可能使用的认证方式（根据常见 API 模式）
-        { name: 'Authorization (raw)', header: 'Authorization', value: config.moviePilotToken }, // 直接使用 Token，不加 Bearer
-        { name: 'X-Api-Key', header: 'X-Api-Key', value: config.moviePilotToken }, // 注意大小写
-        { name: 'X-API-Key', header: 'X-API-Key', value: config.moviePilotToken },
-        { name: 'Bearer Token', header: 'Authorization', value: `Bearer ${config.moviePilotToken}` },
-        { name: 'token Header', header: 'token', value: config.moviePilotToken },
-        { name: 'apikey Header', header: 'apikey', value: config.moviePilotToken },
-    ];
-
-    // Clean token - remove any whitespace
     const cleanToken = config.moviePilotToken.trim();
-
-    // 0. Check if service is reachable (try root path, might be reverse proxy)
-    let serviceReachable = false;
-    try {
-        console.log(`Checking service connectivity: ${baseUrl}`);
-        const rootCheck = await fetch(`${baseUrl}/`, { 
-            method: 'GET',
-            signal: AbortSignal.timeout(5000)
-        });
-        // Any response means service is reachable
-        serviceReachable = true;
-        console.log(`Service is reachable (status: ${rootCheck.status})`);
-    } catch (e) {
-        console.warn('Service connectivity check failed:', e);
-    }
+    
+    // Endpoints to test (优先测试 MCP 端点，因为它支持 API Key)
+    const endpoints = [
+        '/api/v1/mcp/tools', // MCP 工具列表 (支持 API Key)
+        '/api/v1/site', // 站点列表
+        '/api/v1/system/env', // 系统环境
+    ];
 
     let connectionError = '';
-    let lastStatusCode = 0;
-    let lastErrorUrl = '';
 
-    // 🎯 首先尝试查询参数方式（MoviePilot 实际使用的方式，从用户日志确认）
-    console.log('🎯 ========== 优先尝试查询参数认证方式（MoviePilot 实际使用的方式）==========');
-    console.log(`Token: ${cleanToken.substring(0, 10)}...`);
-    console.log(`Base URL: ${baseUrl}`);
+    console.log('🎯 ========== 测试 MoviePilot 连接 ==========');
     
+    // 构造多种认证头组合
+    const authHeadersList = [
+        { 'Authorization': `Bearer ${cleanToken}` },
+        { 'X-API-KEY': cleanToken },
+        { 'Authorization': cleanToken },
+        { 'token': cleanToken }
+    ];
+
     for (const endpoint of endpoints) {
-        if (!endpoint.startsWith('/api/v1/')) {
-            console.log(`跳过非 /api/v1/ 端点: ${endpoint}`);
-            continue;
-        }
-        
-        try {
-            const url = `${baseUrl}${endpoint}?token=${encodeURIComponent(cleanToken)}`;
-            console.log(`\n📡 [查询参数方式] 尝试端点: ${endpoint}`);
-            console.log(`📡 [查询参数方式] 完整 URL: ${url.replace(cleanToken, '***')}`);
-            
-            const response = await fetch(url, {
-                method: 'GET',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                credentials: 'omit'
-            });
-            
-                console.log(`📡 [查询参数方式] 响应状态: ${response.status} ${response.statusText}`);
+        // 尝试不同的 Query Param (token vs apikey)
+        const targetUrls = [
+            `${baseUrl}${endpoint}?token=${encodeURIComponent(cleanToken)}`,
+            `${baseUrl}${endpoint}?apikey=${encodeURIComponent(cleanToken)}`
+        ];
+
+        for (const targetUrl of targetUrls) {
+            // 1. 尝试直连 (Direct Connection)
+            try {
+                console.log(`\n📡 [直连] 尝试连接: ${targetUrl.replace(cleanToken, '***')}`);
                 
-                // 尝试读取响应详情（无论成功或失败）
+                // 尝试不同的 Header 组合
+                for (const authHeaders of authHeadersList) {
+                    try {
+                        const response = await fetch(targetUrl, {
+                            method: 'GET',
+                            headers: { 
+                                'Accept': 'application/json',
+                                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                                ...authHeaders
+                            }
+                        });
+
+                        if (response.ok) {
+                            console.log(`✅✅✅ 连接成功！(直连)`);
+                            return { 
+                                success: true, 
+                                message: `连接成功！\n(直连模式)\n端点: ${endpoint}`,
+                                method: 'Direct'
+                            };
+                        } else {
+                            console.log(`❌ [直连] 响应状态: ${response.status} (Headers: ${JSON.stringify(Object.keys(authHeaders))})`);
+                        }
+                    } catch (innerE) {
+                        // ignore
+                    }
+                }
+            } catch (e) {
+                console.log(`❌ [直连] 请求异常 (可能是CORS或网络不通)，尝试代理...`);
+            }
+
+            // 2. 尝试代理 (Proxy Connection)
+            try {
+                console.log(`\n📡 [代理] 尝试连接: ${targetUrl.replace(cleanToken, '***')}`);
+                
+                const response = await fetch(PROXY_URL, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        target_url: targetUrl,
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json',
+                            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                            'Authorization': `Bearer ${cleanToken}`,
+                            'X-API-KEY': cleanToken
+                        }
+                    })
+                });
+            
+            console.log(`📡 [代理] 响应状态: ${response.status} ${response.statusText}`);
+            
                 let responseData: any = null;
                 try {
                     responseData = await response.json();
-                    console.log(`📡 [查询参数方式] 响应数据:`, responseData);
+                console.log(`📡 [代理] 响应数据:`, responseData);
                 } catch {
                     const text = await response.text().catch(() => '');
-                    console.log(`📡 [查询参数方式] 响应文本:`, text);
+                console.log(`📡 [代理] 响应文本:`, text);
                 }
             
             if (response.ok) {
-                console.log(`✅✅✅ 连接成功！使用查询参数方式，端点: ${endpoint}`);
+                console.log(`✅✅✅ 连接成功！(通过代理)`);
                 return { 
                     success: true, 
-                    message: `连接成功！\n端点: ${endpoint}\n认证方式: 查询参数 (?token=...)`,
-                    method: 'Query Parameter'
+                    message: `连接成功！\n(通过后端代理转发)\n端点: ${endpoint}`,
+                    method: 'Backend Proxy'
                 };
             } else {
-                console.log(`❌ [查询参数方式] 失败，端点: ${endpoint}, 状态: ${response.status}`);
-                
-                // 尝试读取错误详情
                 let errorDetail = '';
                 if (responseData) {
-                    // 如果 detail 是数组，提取第一个元素
-                    if (Array.isArray(responseData.detail)) {
-                        errorDetail = responseData.detail[0]?.msg || responseData.detail[0] || JSON.stringify(responseData.detail);
-                    } else {
-                        errorDetail = responseData.detail || responseData.message || responseData.msg || '';
-                    }
-                    console.log(`❌ 错误详情:`, responseData);
+                    errorDetail = responseData.detail || responseData.message || JSON.stringify(responseData);
                 }
                 
-                lastStatusCode = response.status;
-                lastErrorUrl = `${baseUrl}${endpoint}`;
-                
-                // 对于 422，可能是参数格式问题，但不一定是 Token 问题
-                if (response.status === 422) {
-                    console.log(`⚠️ 422 错误 - 可能是请求格式问题，但不一定是认证问题`);
-                    // 422 可能是端点需要特定参数，继续尝试
-                } else if (response.status === 401 || response.status === 403) {
-                    // 只有明确是认证错误时才设置错误信息
-                    if (errorDetail && (errorDetail.includes('token') || errorDetail.includes('authenticated') || errorDetail.includes('Forbidden'))) {
+                if (response.status === 401 || response.status === 403) {
                         connectionError = `认证失败 (${response.status}): ${errorDetail}`;
-                    }
-                } else if (response.status === 404) {
-                    console.log(`⚠️ 端点不存在 (404)，继续尝试下一个端点`);
+                } else {
+                     connectionError = `服务器错误 (${response.status}): ${errorDetail}`;
                 }
+                console.log(`❌ [代理] 失败: ${connectionError}`);
             }
         } catch (e: any) {
-            console.error(`❌ [查询参数方式] 请求异常，端点: ${endpoint}`, e);
-            console.error(`❌ 错误类型: ${e.name}, 消息: ${e.message}`);
-            if (e.name === 'TypeError' && e.message.includes('Failed to fetch')) {
-                connectionError = '无法连接到服务器（可能是 CORS 问题）';
-                console.error(`⚠️ 可能是 CORS 问题，请求被浏览器阻止`);
-            }
+             console.error(`❌ [代理] 请求异常`, e);
+             connectionError = `代理请求失败: ${e.message}`;
         }
-    }
-    
-    console.log('\n🔄 ========== 查询参数方式全部失败，尝试 Header 认证方式 ==========\n');
-
-    // 如果查询参数方式失败，再尝试 Header 方式
-    console.log('🔄 查询参数方式失败，尝试 Header 认证方式');
-    for (const endpoint of endpoints) {
-        for (const authMethod of authMethods) {
-            try {
-                const headers: Record<string, string> = {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                };
-                
-                // 根据认证方式设置 Header
-                if (authMethod.header === 'Authorization') {
-                    if (authMethod.name === 'Bearer Token') {
-                        headers[authMethod.header] = `Bearer ${cleanToken}`;
-                    } else {
-                        headers[authMethod.header] = cleanToken; // 直接使用 Token，不加 Bearer
-                    }
-                } else {
-                    headers[authMethod.header] = cleanToken;
-                }
-
-                console.log(`Testing MP connection: ${baseUrl}${endpoint} with ${authMethod.name}`);
-                console.log(`Request headers:`, headers);
-
-                const response = await fetch(`${baseUrl}${endpoint}`, {
-                    method: 'GET',
-                    headers,
-                    credentials: 'omit' // 不发送 cookie，避免干扰
-                });
-
-                if (response.ok) {
-                    const data = await response.json().catch(() => ({}));
-                    return { 
-                        success: true, 
-                        message: `连接成功！\n端点: ${endpoint}\n认证方式: ${authMethod.name}`,
-                        method: authMethod.name
-                    };
-                } else {
-                    // 记录最后一次错误状态
-                    lastStatusCode = response.status;
-                    lastErrorUrl = `${baseUrl}${endpoint}`;
-                    
-                    // 尝试读取错误详情
-                    let errorDetail = '';
-                    try {
-                        const errorData = await response.json();
-                        errorDetail = errorData.detail || errorData.message || errorData.msg || errorData.error || '';
-                        console.log(`API Error Response:`, errorData);
-                    } catch {
-                        const text = await response.text().catch(() => '');
-                        errorDetail = text;
-                        console.log(`API Error Response (text):`, text);
-                    }
-                    
-                    // 记录响应头，可能有有用的信息
-                    console.log(`Response headers for ${endpoint}:`, Object.fromEntries(response.headers.entries()));
-                    
-                    if (response.status === 401 || response.status === 403) {
-                        // 记录详细的认证错误信息
-                        if (!connectionError || connectionError.includes('所有尝试均失败') || !connectionError.includes('认证失败')) {
-                            connectionError = `认证失败 (${response.status})${errorDetail ? ': ' + errorDetail : ''}\n\n使用的 Token: ${cleanToken.substring(0, 10)}...\n\n请检查：\n1. Token 是否完整（复制时不要遗漏）\n2. Token 是否已过期或失效\n3. 在 MoviePilot 中重新生成 Token`;
-                        }
-                        console.log(`认证失败 - 端点: ${endpoint}, 方式: ${authMethod.name}, 状态: ${response.status}, 详情: ${errorDetail}`);
-                    } else if (response.status === 404) {
-                        // 404 可能是路径不对，继续尝试其他路径
-                        console.log(`Path not found (404): ${endpoint}`);
-                    } else {
-                        if (!connectionError || connectionError.includes('所有尝试均失败')) {
-                            connectionError = `服务器返回错误: ${response.status} ${response.statusText}${errorDetail ? '\n详情: ' + errorDetail : ''}`;
-                        }
-                    }
-                }
-            } catch (e: any) {
-                console.error(`MP Test failed for ${endpoint} ${authMethod.name}`, e);
-                if (e.name === 'TypeError' && e.message.includes('Failed to fetch')) {
-                    // 这通常是 CORS 或网络问题
-                    connectionError = `无法连接到服务器。\n\n可能原因：\n1. 跨域(CORS)限制：浏览器阻止了请求\n2. 网络连接问题\n3. 反代配置问题\n\n解决方案：\n- 检查浏览器控制台 (F12) 查看 CORS 错误\n- 确认反代服务器允许跨域请求\n- 或在 MoviePilot 配置中允许 StreamHub 的域名`;
-                } else if (e.name === 'AbortError') {
-                    connectionError = '请求超时。请检查网络连接或服务响应速度。';
-                } else {
-                    connectionError = `请求出错: ${e.message}`;
-                }
-            }
-        }
-    }
-
-
-    // 如果所有尝试都失败，给出详细诊断信息
-    let diagnosticMessage = '';
-    
-    // 检查是否是 CORS 错误（从错误消息判断）
-    const isCorsError = connectionError.includes('跨域') || connectionError.includes('CORS') || connectionError.includes('Failed to fetch');
-    
-    if (serviceReachable || isCorsError) {
-        // 服务可达或可能是 CORS 问题
-        if (isCorsError || (!lastStatusCode && connectionError.includes('Failed to fetch'))) {
-            diagnosticMessage = `⚠️ 跨域(CORS)限制问题\n\n从浏览器直接访问 MoviePilot 会被跨域策略阻止。\n\n解决方案：\n1. 在 MoviePilot 的反代配置中添加 CORS 头：\n   add_header 'Access-Control-Allow-Origin' '*' always;\n   add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;\n   add_header 'Access-Control-Allow-Headers' 'Authorization, X-API-Key, Content-Type' always;\n\n2. 或者在 MoviePilot 设置中配置允许跨域的域名\n\n3. 或者通过后端代理访问（需要后端支持）\n\n💡 提示：按 F12 打开浏览器控制台，查看 Network 标签的具体错误信息`;
-        } else if (lastStatusCode === 401 || lastStatusCode === 403) {
-            // 能返回 401/403，说明请求能到达服务器，CORS 没问题，但 Token 认证失败
-            const errorDetails = connectionError || '所有认证方式均失败';
-            const hasTokenError = errorDetails.includes('token') || errorDetails.includes('Token');
-            
-            diagnosticMessage = `🔐 Token 认证失败 (${lastStatusCode})\n\n${errorDetails}\n\n📝 诊断：\n✅ 请求能到达 MoviePilot 服务器（网络连接正常）\n❌ 但 Token 验证失败\n\n🔍 从错误信息看：\n${hasTokenError ? '- Token 可能无效、已过期或格式不正确\n- 或者 Token 不是用于 API 认证（可能是其他用途）' : '- 认证方式可能不正确'}\n\n✅ 解决步骤：\n1. 登录 MoviePilot (${baseUrl})\n2. 进入"设置" → "基础设置" → 查看"API令牌"字段\n3. 确认你复制的是正确的 API Token\n4. 重新生成 API Token（如果可能）\n5. 完整复制新 Token（不要有空格或换行）\n6. 粘贴到 StreamHub 设置中\n\n💡 提示：\n- MoviePilot 的 API Token 可能在"基础设置"中的"API令牌"字段\n- 如果设置中有多个 Token，确保使用正确的那个\n- 查看 MoviePilot 的 API 文档确认 Token 的正确使用方式`;
-        } else if (lastStatusCode === 404) {
-            diagnosticMessage = `服务在线，但 API 路径未找到 (404)。\n\n可能原因：\n1. 反代配置中 API 路径未正确配置\n2. MoviePilot 的 API 路径可能与预期不同\n3. 建议检查反代服务器配置，确保 /api/* 路径正确转发到 MoviePilot 服务\n\n尝试的路径: ${lastErrorUrl || '未知'}`;
-        } else {
-            diagnosticMessage = `服务在线，但连接失败。\n\n${connectionError || '所有尝试均失败'}\n\n最后错误状态: ${lastStatusCode || '未知'}\n\n建议：\n1. 检查反代服务器配置\n2. 查看浏览器控制台 (F12) 的 Network 标签\n3. 确认 MoviePilot 服务正常运行`;
-        }
-    } else {
-        // 服务不可达
-        diagnosticMessage = `无法连接到服务器。\n\n请检查：\n1. 地址是否正确 (${baseUrl})\n2. 服务是否正常运行\n3. 网络是否畅通\n4. 如果是反代，确认反代服务正常运行\n\n💡 提示：虽然你能在浏览器中访问 ${baseUrl}，但从代码中 fetch 可能被阻止。\n按 F12 打开浏览器控制台，查看 Network 标签的具体错误。`;
+      }
     }
 
     return { 
         success: false, 
-        message: diagnosticMessage
+        message: `连接失败: ${connectionError}\n\n请检查:\n1. MoviePilot 地址是否正确\n2. Token 是否正确\n3. MoviePilot 是否正常运行\n4. 后端服务是否正常运行`
     };
 };
 
@@ -395,55 +273,69 @@ export const subscribeToMoviePilot = async (config: NotificationConfig, item: Me
     }
 
     const baseUrl = config.moviePilotUrl.replace(/\/$/, '');
-    // Determine endpoint based on type
     const endpoint = item.mediaType === 'movie' 
         ? '/api/v1/subscribe/movie' 
         : '/api/v1/subscribe/tv';
     
     const cleanToken = config.moviePilotToken.trim();
 
-    // MoviePilot Payload Structure
     const payload = {
         name: item.title,
         year: item.year,
         tmdbid: item.id,
-        season: item.mediaType === 'tv' ? 1 : undefined, // Default to Season 1
+        season: item.mediaType === 'tv' ? 1 : undefined,
     };
 
     console.log('Subscribing to MP:', `${baseUrl}${endpoint}`, payload);
 
+    // 优先使用 apikey 参数，这是 MoviePilot v2 API Key 的标准用法
+    const targetUrl = `${baseUrl}${endpoint}?apikey=${encodeURIComponent(cleanToken)}`;
+
+    // 1. 尝试直连
     try {
-        // Try multiple authentication methods in sequence
-        // This is a bit brute-force but ensures compatibility
+        console.log('尝试直连订阅...');
+        const response = await fetch(targetUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${cleanToken}`,
+                'X-API-KEY': cleanToken
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success || data.code === 0 || data.message?.includes('success')) {
+                return { success: true, message: '已添加到 MoviePilot 订阅 (直连)' };
+            }
+        }
+    } catch (e) {
+        console.log('直连订阅失败，尝试代理...', e);
+    }
+
+    // 2. 尝试代理
+    try {
+        // Try with token in query param first (most reliable based on logs)
         
-        const methods = [
-            { headers: { 'Authorization': `Bearer ${cleanToken}` } },
-            { headers: { 'Authorization': cleanToken } },
-            { headers: { 'token': cleanToken } },
-            { param: `token=${cleanToken}` } // Fallback to query param
-        ];
-
-        let lastError = 'Unknown error';
-
-        for (const method of methods) {
-            try {
-                let url = `${baseUrl}${endpoint}`;
-                let options: RequestInit = {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...(method.headers || {})
-                    },
-                    body: JSON.stringify(payload)
-                };
-
-                if (method.param) {
-                    url += `?${method.param}`;
-                }
-
-                const response = await fetch(url, options);
-
-                if (response.ok) {
+        const response = await fetch(PROXY_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                target_url: targetUrl,
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'Authorization': `Bearer ${cleanToken}`,
+                    'X-API-KEY': cleanToken
+                },
+                body: payload
+            })
+        });                if (response.ok) {
                     const data = await response.json();
                     if (data.success || data.code === 0) {
                         return { success: true, message: '已成功添加到 MoviePilot 订阅' };
@@ -454,20 +346,11 @@ export const subscribeToMoviePilot = async (config: NotificationConfig, item: Me
                     const text = await response.text();
                     try {
                         const json = JSON.parse(text);
-                        lastError = json.detail || json.message || `HTTP ${response.status}`;
+                return { success: false, message: `订阅失败: ${json.detail || json.message || 'Unknown Error'}` };
                     } catch {
-                        lastError = `HTTP ${response.status}: ${text.substring(0, 50)}`;
-                    }
-                    // Don't throw, try next method
-                    console.warn(`MP Subscribe failed with method ${JSON.stringify(method)}: ${lastError}`);
-                }
-            } catch (e: any) {
-                lastError = e.message;
-                console.error(`MP Subscribe network error with method ${JSON.stringify(method)}:`, e);
+                return { success: false, message: `订阅失败 (${response.status}): ${text}` };
             }
         }
-
-        return { success: false, message: `订阅失败: ${lastError}` };
 
     } catch (e: any) {
         console.error('MoviePilot Subscription Failed:', e);

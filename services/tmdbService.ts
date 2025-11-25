@@ -1,5 +1,27 @@
 import { TMDB_API_KEY, TMDB_BASE_URL, IMAGE_BASE_URL, BACKDROP_BASE_URL, PROVIDER_MAP, POSTER_COLORS, PLATFORM_BADGE_STYLES } from '../constants';
 import { MediaItem, Episode, Season } from '../types';
+import { storage, STORAGE_KEYS } from '../utils/storage';
+
+const getTmdbConfig = () => {
+    const stored = storage.get(STORAGE_KEYS.TMDB_CONFIG, {});
+    return {
+        apiKey: stored.apiKey || TMDB_API_KEY,
+        baseUrl: stored.baseUrl || TMDB_BASE_URL
+    };
+};
+
+export const testTmdbConnection = async (apiKey: string, baseUrl: string) => {
+    try {
+        const url = `${baseUrl}/configuration?api_key=${apiKey}`;
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return await response.json();
+    } catch (error) {
+        throw error;
+    }
+};
 
 // Helper to check regions
 const checkRegions = ['CN', 'US', 'HK', 'TW', 'JP', 'KR', 'SG', 'GB'];
@@ -198,16 +220,18 @@ export const processMediaItem = (baseItem: any, detailData: any, mediaType: 'mov
 };
 
 export const fetchDetails = async (id: number, mediaType: 'movie' | 'tv') => {
+    const { apiKey, baseUrl } = getTmdbConfig();
     const response = await fetch(
-        `${TMDB_BASE_URL}/${mediaType}/${id}?api_key=${TMDB_API_KEY}&language=zh-CN&append_to_response=credits,videos,release_dates`
+        `${baseUrl}/${mediaType}/${id}?api_key=${apiKey}&language=zh-CN&append_to_response=credits,videos,release_dates`
     );
     return response.json();
 };
 
 export const fetchCollectionDetails = async (collectionId: number) => {
     try {
+        const { apiKey, baseUrl } = getTmdbConfig();
         const response = await fetch(
-            `${TMDB_BASE_URL}/collection/${collectionId}?api_key=${TMDB_API_KEY}&language=zh-CN`
+            `${baseUrl}/collection/${collectionId}?api_key=${apiKey}&language=zh-CN`
         );
         return response.json();
     } catch (e) {
@@ -218,8 +242,9 @@ export const fetchCollectionDetails = async (collectionId: number) => {
 
 export const fetchRecommendations = async (id: number, mediaType: 'movie' | 'tv') => {
     try {
+        const { apiKey, baseUrl } = getTmdbConfig();
         const response = await fetch(
-            `${TMDB_BASE_URL}/${mediaType}/${id}/recommendations?api_key=${TMDB_API_KEY}&language=zh-CN&page=1`
+            `${baseUrl}/${mediaType}/${id}/recommendations?api_key=${apiKey}&language=zh-CN&page=1`
         );
         const data = await response.json();
         return data.results || [];
@@ -231,8 +256,9 @@ export const fetchRecommendations = async (id: number, mediaType: 'movie' | 'tv'
 
 export const fetchSeasonDetails = async (tvId: number, seasonNumber: number) => {
     try {
+        const { apiKey, baseUrl } = getTmdbConfig();
         const response = await fetch(
-            `${TMDB_BASE_URL}/tv/${tvId}/season/${seasonNumber}?api_key=${TMDB_API_KEY}&language=zh-CN`
+            `${baseUrl}/tv/${tvId}/season/${seasonNumber}?api_key=${apiKey}&language=zh-CN`
         );
         const data = await response.json();
         return data.episodes || [];
@@ -246,8 +272,9 @@ export const fetchSeasonDetails = async (tvId: number, seasonNumber: number) => 
 
 export const fetchTrending = async (mediaType: 'all' | 'movie' | 'tv' = 'all', timeWindow: 'day' | 'week' = 'week') => {
     try {
+        const { apiKey, baseUrl } = getTmdbConfig();
         const response = await fetch(
-            `${TMDB_BASE_URL}/trending/${mediaType}/${timeWindow}?api_key=${TMDB_API_KEY}&language=zh-CN`
+            `${baseUrl}/trending/${mediaType}/${timeWindow}?api_key=${apiKey}&language=zh-CN`
         );
         const data = await response.json();
         const processed = data.results.map((item: any) => {
@@ -262,7 +289,8 @@ export const fetchTrending = async (mediaType: 'all' | 'movie' | 'tv' = 'all', t
 
 export const fetchDiscover = async (mediaType: 'movie' | 'tv', sortBy: string = 'popularity.desc', year?: string) => {
     try {
-        let url = `${TMDB_BASE_URL}/discover/${mediaType}?api_key=${TMDB_API_KEY}&language=zh-CN&sort_by=${sortBy}&page=1`;
+        const { apiKey, baseUrl } = getTmdbConfig();
+        let url = `${baseUrl}/discover/${mediaType}?api_key=${apiKey}&language=zh-CN&sort_by=${sortBy}&page=1`;
         if (year) {
             if (mediaType === 'movie') url += `&primary_release_year=${year}`;
             else url += `&first_air_date_year=${year}`;
@@ -279,8 +307,9 @@ export const fetchDiscover = async (mediaType: 'movie' | 'tv', sortBy: string = 
 
 export const fetchPersonDetails = async (personId: number) => {
     try {
+        const { apiKey, baseUrl } = getTmdbConfig();
         const response = await fetch(
-            `${TMDB_BASE_URL}/person/${personId}?api_key=${TMDB_API_KEY}&language=zh-CN&append_to_response=combined_credits`
+            `${baseUrl}/person/${personId}?api_key=${apiKey}&language=zh-CN&append_to_response=combined_credits`
         );
         return await response.json();
     } catch (e) {

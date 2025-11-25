@@ -2,7 +2,7 @@
 
 StreamHub 是一个优雅、现代化的影视媒体发现与追踪平台。它不仅仅是一个海报墙，更是一个连接 Emby 媒体库与全球热门影视的桥梁。
 
-![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)
+![Version](https://img.shields.io/badge/version-2.0.1-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![React](https://img.shields.io/badge/React-19-61DAFB.svg)
 ![Vite](https://img.shields.io/badge/Vite-6.0-646CFF.svg)
@@ -102,16 +102,19 @@ services:
 - [x] 用户管理 (多用户支持)
 - [x] 数据备份与恢复
 - [x] **版本号显示** (v2.0.0 新增)
+- [x] **TMDB 前端配置** (v2.0.1 新增)
 
 ## 📝 更新日志
 
-### v2.0.0 (最新)
-- ✨ 新增演员搜索功能，支持查看演员作品列表
-- ✨ 集成 MoviePilot API，支持自动订阅 PT 站资源
-- 🐛 修复演员详情页点击作品无反应的问题
-- 🎨 添加版本号显示（设置界面和页面头部）
-- 🔧 优化 Docker 配置，添加数据持久化映射
-- 🔧 更新 Nginx 配置，支持后端 API 代理
+### v2.0.1 (2025-11-25)
+- **新增**: 设置面板新增 TMDB 配置功能，支持直接在前端配置 API Key 和 代理地址。
+- **优化**: TMDB 连接测试功能，配置保存即生效。
+- **修复**: 修复了 MoviePilot 连接认证问题，支持 v2 API Key。
+
+### v2.0.0
+- **新增**: 演员搜索功能。
+- **新增**: MoviePilot 自动订阅集成。
+- **重构**: 全新 UI 设计。
 
 ### v1.0.0
 - 🎉 初始版本发布

@@ -1,7 +1,8 @@
 version: "3.8"
 services:
   streamhub:
-    image: ghcr.io/huanhq99/streamhub:latest
+    build: .
+    image: streamhub:local
     container_name: streamhub
     ports:
       - "3000:3000"
@@ -11,7 +12,17 @@ services:
       - EMBY_API_KEY=${EMBY_API_KEY}
       - HTTP_PROXY=${HTTP_PROXY}
       - HTTPS_PROXY=${HTTPS_PROXY}
+    depends_on:
+      - backend
     volumes:
       - ./config:/app/backend/config
       - ./data:/app/backend/data
     restart: always
+
+  backend:
+    build: ./backend_python
+    container_name: streamhub-backend
+    expose:
+      - "8000"
+    restart: always
+

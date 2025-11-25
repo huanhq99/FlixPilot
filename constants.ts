@@ -1,9 +1,12 @@
 // App Version
-export const APP_VERSION = '2.0.0';
+export const APP_VERSION = '2.0.1';
 
 // TMDB Configuration
 export const TMDB_API_KEY = (window as any).env?.TMDB_API_KEY || import.meta.env.VITE_TMDB_API_KEY || '';
-export const TMDB_BASE_URL = (window as any).env?.TMDB_API_URL || 'https://api.themoviedb.org/3';
+export const TMDB_BASE_URL = import.meta.env.DEV 
+    ? '/tmdb' 
+    : ((window as any).env?.TMDB_API_URL || import.meta.env.VITE_TMDB_API_URL || 'https://api.themoviedb.org/3');
+
 export const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
 export const BACKDROP_BASE_URL = 'https://image.tmdb.org/t/p/original';
 export const PROFILE_BASE_URL = 'https://image.tmdb.org/t/p/w185';

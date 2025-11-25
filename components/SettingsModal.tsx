@@ -3,9 +3,10 @@ import { X, Save, Server, CheckCircle2, AlertCircle, Loader2, User, ShieldCheck,
 import { EmbyConfig, EmbyUser, NotificationConfig, RequestItem } from '../types';
 import { validateEmbyConnection, getEmbyUsers, fetchEmbyLibrary, fetchEmbyLibraries } from '../services/embyService';
 import { sendTelegramTest, sendTelegramNotification, testMoviePilotConnection } from '../services/notificationService';
+import { testTmdbConnection } from '../services/tmdbService';
 import { storage, STORAGE_KEYS } from '../utils/storage';
 import { useToast } from './Toast';
-import { APP_VERSION } from '../constants';
+import { APP_VERSION, TMDB_API_KEY, TMDB_BASE_URL } from '../constants';
 
 interface SettingsModalProps {
     isOpen: boolean;
@@ -52,6 +53,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
     const [websiteTitle, setWebsiteTitle] = useState('StreamHub - Global Media Monitor');
     const [faviconUrl, setFaviconUrl] = useState('');
     const [requestLimit, setRequestLimit] = useState(0); // 0 = Unlimited
+    
+    // TMDB Settings
+    const [tmdbApiKey, setTmdbApiKey] = useState('');
+    const [tmdbProxyUrl, setTmdbProxyUrl] = useState('');
+    const [testingTmdb, setTestingTmdb] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
@@ -83,6 +89,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
                     if (parsed.faviconUrl) setFaviconUrl(parsed.faviconUrl);
                     if (parsed.requestLimit) setRequestLimit(parsed.requestLimit);
                 }
+                
+                // Load TMDB settings
+                const tmdbConfig = storage.get(STORAGE_KEYS.TMDB_CONFIG, {}) as any;
+                setTmdbApiKey(tmdbConfig.apiKey || '');
+                setTmdbProxyUrl(tmdbConfig.baseUrl || '');
             } catch (e) { /* ignore */ }
 
             // Try fetch libraries if already configured
@@ -319,9 +330,29 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
         }
     };
     
+    const handleTestTmdb = async () => {
+        setTestingTmdb(true);
+        try {
+            const key = tmdbApiKey || TMDB_API_KEY;
+            const base = tmdbProxyUrl || TMDB_BASE_URL;
+            await testTmdbConnection(key, base);
+            toast.showToast('TMDB 连接成功！', 'success');
+        } catch (e: any) {
+            toast.showToast('TMDB 连接失败: ' + e.message, 'error');
+        } finally {
+            setTestingTmdb(false);
+        }
+    };
+
     const handleSaveSystem = () => {
         const settings = { scanInterval: syncInterval, websiteTitle, faviconUrl, requestLimit };
         localStorage.setItem('streamhub_settings', JSON.stringify(settings));
+        
+        storage.set(STORAGE_KEYS.TMDB_CONFIG, {
+            apiKey: tmdbApiKey,
+            baseUrl: tmdbProxyUrl
+        });
+
         toast.showToast('系统设置已保存 (请刷新页面生效)', 'success');
     };
 
@@ -845,7 +876,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
                                                         ) : (
                                                             <div className="w-full h-full flex items-center justify-center bg-zinc-800 text-zinc-600">
                                                                 <List size={20} />
-                                        </div>
+                                                            </div>
                                                         )}
                                                     </div>
 
@@ -1100,6 +1131,45 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
                                 </div>
 
                                 <div className="space-y-6">
+                                    <div className="space-y-4">
+                                        <h4 className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>TMDB 设置</h4>
+                                        
+                                        <div className="space-y-2">
+                                            <label className={`text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
+                                                <Database size={14} /> API Key
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={tmdbApiKey}
+                                                onChange={(e) => setTmdbApiKey(e.target.value)}
+                                                placeholder={TMDB_API_KEY || "Enter TMDB API Key"}
+                                                className={`w-full p-3 rounded-xl border outline-none transition-all font-mono text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className={`text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
+                                                <Server size={14} /> API Base URL / Proxy
+                                            </label>
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={tmdbProxyUrl}
+                                                    onChange={(e) => setTmdbProxyUrl(e.target.value)}
+                                                    placeholder={TMDB_BASE_URL}
+                                                    className={`flex-1 p-3 rounded-xl border outline-none transition-all font-mono text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
+                                                />
+                                                <button
+                                                    onClick={handleTestTmdb}
+                                                    disabled={testingTmdb}
+                                                    className={`px-4 rounded-xl font-bold text-sm transition-colors ${isDarkMode ? 'bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'}`}
+                                                >
+                                                    {testingTmdb ? <Loader2 size={18} className="animate-spin" /> : '测试'}
+                                                </button>
+                                            </div>
+                                            <p className="text-xs opacity-60">留空则使用默认值。如需使用代理，请输入完整的 URL (例如: https://api.tmdb.org/3)</p>
+                                        </div>
+                                    </div>
+
                                     <div className="space-y-4">
                                         <h4 className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>个性化设置</h4>
                                         

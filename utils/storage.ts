@@ -12,6 +12,7 @@ export const STORAGE_KEYS = {
   NOTIFICATIONS: 'streamhub_notifications',
   USERS: 'streamhub_users',
   SYNC_INTERVAL: 'sync_interval',
+  TMDB_CONFIG: 'tmdb_config',
 } as const;
 
 class StorageManager {
