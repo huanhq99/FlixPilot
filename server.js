@@ -158,10 +158,12 @@ app.get('/api/config', (req, res) => {
             tmdb: {
                 configured: !!config.tmdb.apiKey && config.tmdb.apiKey !== 'your_tmdb_api_key_here'
             },
-            // 返回 Emby 配置给前端使用
+            // 返回 Emby 完整配置给前端使用
             emby: isEmbyConfigured ? {
                 configured: true,
                 serverUrl: config.emby.serverUrl,
+                serverUrlInternal: config.emby.serverUrlInternal || '',
+                serverUrlExternal: config.emby.serverUrlExternal || '',
                 apiKey: config.emby.apiKey
             } : { configured: false },
             // 返回 MoviePilot 配置给前端使用 (不返回密码)
