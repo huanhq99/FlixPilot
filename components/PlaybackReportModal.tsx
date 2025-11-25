@@ -36,6 +36,31 @@ const PlaybackReportModal: React.FC<PlaybackReportModalProps> = ({
     const [sending, setSending] = useState(false);
     const [sendSuccess, setSendSuccess] = useState(false);
     const [activeSessions, setActiveSessions] = useState<any[]>([]);
+    const [telegramConfig, setTelegramConfig] = useState<{botToken?: string; chatId?: string}>({});
+
+    // 加载 Telegram 配置
+    useEffect(() => {
+        if (isOpen) {
+            // 先用 props 的配置
+            setTelegramConfig({
+                botToken: notificationConfig.telegramBotToken,
+                chatId: notificationConfig.telegramChatId
+            });
+            
+            // 再从服务器获取最新配置
+            fetch('/api/config')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.telegram?.configured) {
+                        setTelegramConfig({
+                            botToken: data.telegram.botToken,
+                            chatId: data.telegram.chatId
+                        });
+                    }
+                })
+                .catch(err => console.error('获取 Telegram 配置失败:', err));
+        }
+    }, [isOpen, notificationConfig]);
 
     useEffect(() => {
         if (isOpen) {
@@ -78,10 +103,24 @@ const PlaybackReportModal: React.FC<PlaybackReportModalProps> = ({
 
     const handleSendToTelegram = async () => {
         if (!report) return;
+        
+        // 检查 Telegram 配置
+        if (!telegramConfig.botToken || !telegramConfig.chatId) {
+            console.warn('Telegram 未配置');
+            return;
+        }
+        
         setSending(true);
         setSendSuccess(false);
         
-        const success = await sendReportToTelegram(notificationConfig, report);
+        // 使用最新的 Telegram 配置
+        const configToUse = {
+            ...notificationConfig,
+            telegramBotToken: telegramConfig.botToken,
+            telegramChatId: telegramConfig.chatId
+        };
+        
+        const success = await sendReportToTelegram(configToUse, report);
         
         setSending(false);
         setSendSuccess(success);
@@ -184,17 +223,22 @@ const PlaybackReportModal: React.FC<PlaybackReportModalProps> = ({
                                 <>
                                     <button
                                         onClick={handleSendToTelegram}
-                                        disabled={sending}
+                                        disabled={sending || !telegramConfig.botToken || !telegramConfig.chatId}
                                         className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                                             sendSuccess
                                                 ? 'bg-emerald-500 text-white'
-                                                : 'bg-blue-500 hover:bg-blue-600 text-white'
+                                                : (!telegramConfig.botToken || !telegramConfig.chatId)
+                                                    ? 'bg-gray-400 text-white cursor-not-allowed'
+                                                    : 'bg-blue-500 hover:bg-blue-600 text-white'
                                         } disabled:opacity-50`}
+                                        title={(!telegramConfig.botToken || !telegramConfig.chatId) ? '请先在设置中配置 Telegram' : ''}
                                     >
                                         {sending ? (
                                             <RefreshCw size={14} className="animate-spin" />
                                         ) : sendSuccess ? (
                                             '✓ 已发送'
+                                        ) : (!telegramConfig.botToken || !telegramConfig.chatId) ? (
+                                            'TG 未配置'
                                         ) : (
                                             <>
                                                 <Send size={14} />
