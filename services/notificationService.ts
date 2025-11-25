@@ -368,7 +368,7 @@ export const subscribeToMoviePilot = async (config: NotificationConfig, item: Me
                     lastError = data.message || data.detail || 'MoviePilot 返回错误';
                     // 如果是认证错误，继续尝试下一个策略
                     if (response.status === 401 || response.status === 403) {
-                        console.log(`Strategy ${strategy.name} failed with auth error: ${lastError}`);
+                        console.log(`Strategy ${strategy.name} failed with auth error: ${lastError}`, data);
                         continue;
                     }
                     // 如果是其他业务错误（如已存在），则直接返回
@@ -379,8 +379,10 @@ export const subscribeToMoviePilot = async (config: NotificationConfig, item: Me
                 try {
                     const json = JSON.parse(text);
                     lastError = json.detail || json.message || text;
+                    console.log(`Strategy ${strategy.name} failed response body:`, json);
                 } catch {
-                    lastError = `Status ${response.status}`;
+                    lastError = `Status ${response.status} - ${text}`;
+                    console.log(`Strategy ${strategy.name} failed response text:`, text);
                 }
                 console.log(`Strategy ${strategy.name} failed: ${lastError}`);
             }
