@@ -128,9 +128,45 @@ const Filters: React.FC<FiltersProps> = ({ filters, setFilters, debouncedSearchT
             </div>
 
             <div className={`flex items-center justify-between mt-4 pt-4 border-t ${isDarkMode ? 'border-white/5' : 'border-slate-100'}`}>
-                <div className={`flex items-center gap-2 text-[10px] ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
-                    <Filter size={10} />
-                    <span>模式: {filters.type !== 'all' || filters.genre || filters.region || filters.platform || filters.year !== '全部' ? '筛选中' : '本周热门'}</span>
+                <div className={`flex items-center gap-2 text-[10px] flex-wrap ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
+                    <Filter size={10} className="shrink-0" />
+                    {filters.type !== 'all' || filters.genre || filters.region || filters.platform || filters.year !== '全部' ? (
+                        <>
+                            <span className="shrink-0">已选:</span>
+                            {filters.type !== 'all' && (
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full ${isDarkMode ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-50 text-indigo-600'}`}>
+                                    {TYPES.find(t => t.val === filters.type)?.label}
+                                    <X size={10} className="cursor-pointer hover:text-red-500" onClick={() => updateFilter('type', 'all')} />
+                                </span>
+                            )}
+                            {filters.genre && (
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full ${isDarkMode ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-50 text-indigo-600'}`}>
+                                    {GENRES.find(g => g.id === filters.genre)?.label}
+                                    <X size={10} className="cursor-pointer hover:text-red-500" onClick={() => updateFilter('genre', '')} />
+                                </span>
+                            )}
+                            {filters.region && (
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full ${isDarkMode ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-50 text-indigo-600'}`}>
+                                    {REGIONS.find(r => r.code === filters.region)?.label}
+                                    <X size={10} className="cursor-pointer hover:text-red-500" onClick={() => updateFilter('region', '')} />
+                                </span>
+                            )}
+                            {filters.platform && (
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full ${isDarkMode ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-50 text-indigo-600'}`}>
+                                    {PLATFORMS.find(p => p.id === filters.platform)?.label}
+                                    <X size={10} className="cursor-pointer hover:text-red-500" onClick={() => updateFilter('platform', '')} />
+                                </span>
+                            )}
+                            {filters.year !== '全部' && (
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full ${isDarkMode ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-50 text-indigo-600'}`}>
+                                    {filters.year}
+                                    <X size={10} className="cursor-pointer hover:text-red-500" onClick={() => updateFilter('year', '全部')} />
+                                </span>
+                            )}
+                        </>
+                    ) : (
+                        <span>本周热门</span>
+                    )}
                 </div>
 
                 <div className={`flex items-center gap-2 rounded-lg p-1 border ${isDarkMode ? 'bg-zinc-800/50 border-white/5' : 'bg-slate-100 border-slate-200'}`}>

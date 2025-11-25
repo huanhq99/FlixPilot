@@ -141,10 +141,17 @@ function AppContent() {
       storage.set(STORAGE_KEYS.AUTH, auth);
       
       if (!auth.isGuest) {
-          const newConfig = { serverUrl: auth.serverUrl, apiKey: auth.accessToken };
+          // 优先使用后端配置的 Emby，其次使用登录时获取的
+          const currentEmbyConfig = storage.get(STORAGE_KEYS.EMBY_CONFIG, { serverUrl: '', apiKey: '' });
+          const newConfig = currentEmbyConfig.apiKey 
+              ? currentEmbyConfig  // 使用后端配置
+              : { serverUrl: auth.serverUrl, apiKey: auth.accessToken }; // 使用登录获取的
+          
           setEmbyConfig(newConfig);
-          // Trigger sync only if server is configured
-          if (newConfig.serverUrl) {
+          
+          // Trigger sync if server is configured
+          if (newConfig.serverUrl && newConfig.apiKey) {
+              console.log('🔄 登录成功，开始同步 Emby 媒体库...');
               syncEmbyLibrary(newConfig);
           }
       }
@@ -600,7 +607,31 @@ function AppContent() {
     setSearchTerm('');
   };
 
+  // 清除单个筛选
+  const clearSingleFilter = (key: keyof FilterState) => {
+    const defaultValues: Record<string, string> = {
+      type: 'all',
+      genre: '',
+      region: '',
+      platform: '',
+      year: '全部',
+      sort: 'popularity.desc'
+    };
+    setFilters(prev => ({ ...prev, [key]: defaultValues[key] }));
+  };
+
   const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  // 根据屏幕宽度计算骨架屏数量
+  const getSkeletonCount = () => {
+    if (typeof window === 'undefined') return 14;
+    const width = window.innerWidth;
+    if (width < 640) return 6;      // 3 cols * 2 rows
+    if (width < 768) return 8;      // 4 cols * 2 rows
+    if (width < 1024) return 10;    // 5 cols * 2 rows
+    if (width < 1280) return 12;    // 6 cols * 2 rows
+    return 14;                       // 7 cols * 2 rows
+  };
 
   const SkeletonCard = () => (
       <div className={`rounded-xl overflow-hidden ${isDarkMode ? 'bg-zinc-800' : 'bg-slate-200'} animate-pulse`}>
@@ -774,7 +805,7 @@ function AppContent() {
 
           {loading && !loadingMore ? (
              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-4">
-                {[...Array(14)].map((_, i) => <SkeletonCard key={i} />)}
+                {[...Array(getSkeletonCount())].map((_, i) => <SkeletonCard key={i} />)}
              </div>
           ) : error ? (
             <div className="flex flex-col items-center justify-center h-64 text-center">
