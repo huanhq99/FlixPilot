@@ -1,5 +1,5 @@
-import React from 'react';
-import { Layers, MapPin, Calendar, Filter, X, Tv, Tag } from 'lucide-react';
+import React, { useState } from 'react';
+import { Layers, MapPin, Calendar, Filter, X, Tv, Tag, ChevronDown, ChevronUp } from 'lucide-react';
 import { TYPES, REGIONS, YEARS, SORTS, PLATFORMS, GENRES } from '../constants';
 import { FilterState } from '../types';
 
@@ -12,6 +12,7 @@ interface FiltersProps {
 }
 
 const Filters: React.FC<FiltersProps> = ({ filters, setFilters, debouncedSearchTerm, clearSearch, isDarkMode }) => {
+    const [showAllGenres, setShowAllGenres] = useState(false);
     
     const updateFilter = (key: keyof FilterState, value: string) => {
         setFilters(prev => ({ ...prev, [key]: value }));
@@ -47,6 +48,58 @@ const Filters: React.FC<FiltersProps> = ({ filters, setFilters, debouncedSearchT
         </div>
     );
 
+    // 类型筛选 - 支持折叠展开
+    const GenreFilterRow = () => {
+        const VISIBLE_COUNT = 8; // 默认显示8个
+        const visibleGenres = showAllGenres ? GENRES : GENRES.slice(0, VISIBLE_COUNT);
+        const hasMore = GENRES.length > VISIBLE_COUNT;
+        
+        return (
+            <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4 py-2">
+                <div className={`flex items-center gap-2 w-full sm:w-16 shrink-0 pt-1 sm:pt-0 ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
+                    <Tag size={14} />
+                    <span className="text-xs font-bold opacity-80">类型</span>
+                </div>
+                <div className="flex-1">
+                    <div className="flex flex-wrap gap-2">
+                        {visibleGenres.map((opt) => {
+                            const isActive = filters.genre === opt.id;
+                            return (
+                                <button
+                                    key={opt.id}
+                                    onClick={() => updateFilter('genre', opt.id)}
+                                    className={`px-3 py-1 rounded-full text-[11px] font-medium transition-all duration-200 border whitespace-nowrap ${
+                                        isActive
+                                            ? (isDarkMode ? 'bg-white text-black border-transparent' : 'bg-slate-900 text-white border-transparent')
+                                            : (isDarkMode ? 'text-zinc-500 border-transparent hover:text-zinc-300 hover:bg-white/5' : 'text-slate-500 border-transparent hover:text-slate-900 hover:bg-slate-100')
+                                    }`}
+                                >
+                                    {opt.label}
+                                </button>
+                            );
+                        })}
+                        {hasMore && (
+                            <button
+                                onClick={() => setShowAllGenres(!showAllGenres)}
+                                className={`px-3 py-1 rounded-full text-[11px] font-medium transition-all duration-200 flex items-center gap-1 ${
+                                    isDarkMode 
+                                        ? 'text-indigo-400 hover:bg-indigo-500/10' 
+                                        : 'text-indigo-600 hover:bg-indigo-50'
+                                }`}
+                            >
+                                {showAllGenres ? (
+                                    <>收起 <ChevronUp size={12} /></>
+                                ) : (
+                                    <>更多 <ChevronDown size={12} /></>
+                                )}
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     if (debouncedSearchTerm) {
         return (
             <div className={`flex items-center justify-between px-2 py-4 animate-fade-in ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
@@ -68,7 +121,7 @@ const Filters: React.FC<FiltersProps> = ({ filters, setFilters, debouncedSearchT
         <div className={`rounded-2xl p-5 backdrop-blur-sm border transition-colors duration-300 ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-white border-slate-200/60 shadow-sm'}`}>
             <div className={`flex flex-col gap-1 divide-y ${isDarkMode ? 'divide-white/5' : 'divide-slate-100'}`}>
                 <FilterRow label="分类" icon={Layers} options={TYPES} current={filters.type} onChange={(v: string) => updateFilter('type', v)} valueKey="val" />
-                <FilterRow label="类型" icon={Tag} options={GENRES} current={filters.genre} onChange={(v: string) => updateFilter('genre', v)} valueKey="id" />
+                <GenreFilterRow />
                 <FilterRow label="地区" icon={MapPin} options={REGIONS} current={filters.region} onChange={(v: string) => updateFilter('region', v)} valueKey="code" />
                 <FilterRow label="平台" icon={Tv} options={PLATFORMS} current={filters.platform} onChange={(v: string) => updateFilter('platform', v)} valueKey="id" />
                 <FilterRow label="年份" icon={Calendar} options={YEARS} current={filters.year} onChange={(v: string) => updateFilter('year', v)} />
