@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, Server, CheckCircle2, AlertCircle, Loader2, User, ShieldCheck, Database, List, Trash2, Bell, Send, MessageSquare, LayoutDashboard, Users, Mail, Check, XCircle, Clock, Filter, Download, AlertOctagon, MonitorPlay, Film } from 'lucide-react';
+import { checkForUpdates, UpdateInfo } from '../services/updateService';
 import { EmbyConfig, EmbyUser, NotificationConfig, RequestItem } from '../types';
 import { validateEmbyConnection, getEmbyUsers, fetchEmbyLibrary, fetchEmbyLibraries } from '../services/embyService';
 import { sendTelegramTest, sendTelegramNotification, testMoviePilotConnection } from '../services/notificationService';
@@ -58,6 +59,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
     const [tmdbApiKey, setTmdbApiKey] = useState('');
     const [tmdbProxyUrl, setTmdbProxyUrl] = useState('');
     const [testingTmdb, setTestingTmdb] = useState(false);
+
+    // Update Check State
+    const [checkingUpdate, setCheckingUpdate] = useState(false);
+    const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
 
     useEffect(() => {
         if (isOpen) {
@@ -354,6 +359,23 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
         });
 
         toast.showToast('系统设置已保存 (请刷新页面生效)', 'success');
+    };
+
+    const handleCheckUpdate = async () => {
+        setCheckingUpdate(true);
+        try {
+            const info = await checkForUpdates();
+            setUpdateInfo(info);
+            if (info.hasUpdate) {
+                toast.showToast(`发现新版本 v${info.latestVersion}！`, 'success');
+            } else {
+                toast.showToast('当前已是最新版本', 'success');
+            }
+        } catch (e) {
+            toast.showToast('检查更新失败，请稍后重试', 'error');
+        } finally {
+            setCheckingUpdate(false);
+        }
     };
 
     const timeAgo = (dateString: string) => {
@@ -1124,10 +1146,45 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
                                             <h4 className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>StreamHub Monitor</h4>
                                             <p className={`text-xs mt-1 ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>当前版本</p>
                                         </div>
-                                        <div className={`text-2xl font-bold font-mono ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>
-                                            v{APP_VERSION}
+                                        <div className="flex items-center gap-4">
+                                            <div className={`text-2xl font-bold font-mono ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>
+                                                v{APP_VERSION}
+                                            </div>
+                                            <button
+                                                onClick={handleCheckUpdate}
+                                                disabled={checkingUpdate}
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-2 ${
+                                                    isDarkMode 
+                                                    ? 'bg-white/10 hover:bg-white/20 text-white' 
+                                                    : 'bg-white hover:bg-slate-50 text-slate-700 shadow-sm border border-slate-200'
+                                                }`}
+                                            >
+                                                {checkingUpdate ? <Loader2 size={14} className="animate-spin" /> : <Clock size={14} />}
+                                                检查更新
+                                            </button>
                                         </div>
                                     </div>
+                                    
+                                    {updateInfo && updateInfo.hasUpdate && (
+                                        <div className={`mt-4 p-3 rounded-lg text-sm ${isDarkMode ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-green-50 text-green-700 border border-green-200'}`}>
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className="font-bold flex items-center gap-2">
+                                                    <CheckCircle2 size={16} /> 发现新版本: v{updateInfo.latestVersion}
+                                                </span>
+                                                <a 
+                                                    href={updateInfo.downloadUrl} 
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer"
+                                                    className="underline opacity-80 hover:opacity-100"
+                                                >
+                                                    前往下载
+                                                </a>
+                                            </div>
+                                            <div className="opacity-80 text-xs whitespace-pre-wrap max-h-32 overflow-y-auto">
+                                                {updateInfo.releaseNotes}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="space-y-6">
