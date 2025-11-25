@@ -1,5 +1,16 @@
 # Build stage
-FROM node:20-alpine as build
+FROM node:20-alpine AS build
+
+# Install canvas dependencies for build
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    cairo-dev \
+    pango-dev \
+    jpeg-dev \
+    giflib-dev \
+    librsvg-dev
 
 WORKDIR /app
 
@@ -12,10 +23,31 @@ RUN npm run build
 # Production stage
 FROM node:20-alpine
 
+# Install canvas runtime dependencies
+RUN apk add --no-cache \
+    cairo \
+    pango \
+    jpeg \
+    giflib \
+    librsvg \
+    font-noto-cjk
+
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install --production
+
+# Install canvas build dependencies, install packages, then remove build deps
+RUN apk add --no-cache --virtual .build-deps \
+    python3 \
+    make \
+    g++ \
+    cairo-dev \
+    pango-dev \
+    jpeg-dev \
+    giflib-dev \
+    librsvg-dev \
+    && npm install --production \
+    && apk del .build-deps
 
 COPY --from=build /app/dist ./dist
 COPY server.js .
