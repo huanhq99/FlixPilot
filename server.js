@@ -4,8 +4,8 @@ import fs from 'fs';
 import cors from 'cors';
 import compression from 'compression';
 import { fileURLToPath } from 'url';
-import axios from 'axios';
 import https from 'https';
+import http from 'http';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -76,12 +76,12 @@ app.post('/api/proxy/moviepilot', async (req, res) => {
         // Parse the URL
         const urlObj = new URL(target_url);
         const isHttps = urlObj.protocol === 'https:';
-        const requestModule = isHttps ? https : await import('http');
+        const requestModule = isHttps ? https : http;
         
         const requestOptions = {
             method: method || 'POST',
             headers: headers || { 'Content-Type': 'application/json' },
-            rejectUnauthorized: false, // CRITICAL: Ignore SSL errors
+            rejectUnauthorized: false, // CRITICAL: Ignore SSL errors for HTTPS
             agent: false // Create a new agent for this request
         };
 
