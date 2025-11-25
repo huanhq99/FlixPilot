@@ -108,6 +108,7 @@ function AppContent() {
 
   const [filters, setFilters] = useState<FilterState>({
       type: 'all',
+      genre: '',
       region: '',
       platform: '',
       year: '全部',
@@ -351,11 +352,23 @@ function AppContent() {
   const handleRequest = useCallback((item: MediaItem, options?: { resolution: string; note: string }) => {
       const existingRequests = storage.get<RequestItem[]>(STORAGE_KEYS.REQUESTS, []);
       
-      // Check limit
+      // Check limit - 电影和剧集分开计算
       const userRequests = existingRequests.filter(r => r.requestedBy === authState.user?.Name);
-      if (!authState.isAdmin && systemSettings.requestLimit > 0 && userRequests.length >= systemSettings.requestLimit) {
-          toast.showToast(`求片数量已达上限 (${systemSettings.requestLimit})`, 'error');
-          return 'limit_reached';
+      const userMovieRequests = userRequests.filter(r => r.mediaType === 'movie');
+      const userTvRequests = userRequests.filter(r => r.mediaType === 'tv');
+      
+      const movieLimit = systemSettings.movieRequestLimit || 0;
+      const tvLimit = systemSettings.tvRequestLimit || 0;
+      
+      if (!authState.isAdmin) {
+          if (item.mediaType === 'movie' && movieLimit > 0 && userMovieRequests.length >= movieLimit) {
+              toast.showToast(`电影求片数量已达上限 (${movieLimit})`, 'error');
+              return 'limit_reached';
+          }
+          if (item.mediaType === 'tv' && tvLimit > 0 && userTvRequests.length >= tvLimit) {
+              toast.showToast(`剧集求片数量已达上限 (${tvLimit})`, 'error');
+              return 'limit_reached';
+          }
       }
 
       const isRequested = existingRequests.some((r) => r.id === item.id && r.mediaType === item.mediaType);
@@ -387,7 +400,7 @@ function AppContent() {
 
       toast.showToast('请求已提交！管理员审核后将自动下载', 'success');
       return 'success';
-  }, [authState.user, toast, systemSettings.requestLimit]);
+  }, [authState.user, toast, systemSettings.movieRequestLimit, systemSettings.tvRequestLimit]);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearchTerm(searchTerm), 800);
@@ -436,7 +449,7 @@ function AppContent() {
             endpoint = '/search/multi';
             params += `&query=${encodeURIComponent(debouncedSearchTerm)}`;
         } else {
-            const isDefaultTrending = filters.type === 'all' && filters.region === '' && filters.platform === '' && filters.year === '全部' && filters.sort === 'popularity.desc';
+            const isDefaultTrending = filters.type === 'all' && filters.genre === '' && filters.region === '' && filters.platform === '' && filters.year === '全部' && filters.sort === 'popularity.desc';
             if (isDefaultTrending) {
                 endpoint = '/trending/all/week';
             } else {
@@ -450,6 +463,9 @@ function AppContent() {
                 }
                 
                 if (filters.region) params += `&with_original_language=${filters.region}`;
+                
+                // Genre (类型) 筛选
+                if (filters.genre) params += `&with_genres=${filters.genre}`;
 
                 // Platform Logic
                 if (filters.platform) {
@@ -593,7 +609,7 @@ function AppContent() {
   }, []);
 
   if (!authState.isAuthenticated) {
-      return <Login onLogin={handleLogin} isDarkMode={isDarkMode} />;
+      return <Login onLogin={handleLogin} isDarkMode={isDarkMode} embyConfig={embyConfig} />;
   }
 
   return (

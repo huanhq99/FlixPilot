@@ -1,6 +1,6 @@
 import React from 'react';
-import { Layers, MapPin, Calendar, Filter, X, Tv } from 'lucide-react';
-import { TYPES, REGIONS, YEARS, SORTS, PLATFORMS } from '../constants';
+import { Layers, MapPin, Calendar, Filter, X, Tv, Tag } from 'lucide-react';
+import { TYPES, REGIONS, YEARS, SORTS, PLATFORMS, GENRES } from '../constants';
 import { FilterState } from '../types';
 
 interface FiltersProps {
@@ -68,6 +68,7 @@ const Filters: React.FC<FiltersProps> = ({ filters, setFilters, debouncedSearchT
         <div className={`rounded-2xl p-5 backdrop-blur-sm border transition-colors duration-300 ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-white border-slate-200/60 shadow-sm'}`}>
             <div className={`flex flex-col gap-1 divide-y ${isDarkMode ? 'divide-white/5' : 'divide-slate-100'}`}>
                 <FilterRow label="分类" icon={Layers} options={TYPES} current={filters.type} onChange={(v: string) => updateFilter('type', v)} valueKey="val" />
+                <FilterRow label="类型" icon={Tag} options={GENRES} current={filters.genre} onChange={(v: string) => updateFilter('genre', v)} valueKey="id" />
                 <FilterRow label="地区" icon={MapPin} options={REGIONS} current={filters.region} onChange={(v: string) => updateFilter('region', v)} valueKey="code" />
                 <FilterRow label="平台" icon={Tv} options={PLATFORMS} current={filters.platform} onChange={(v: string) => updateFilter('platform', v)} valueKey="id" />
                 <FilterRow label="年份" icon={Calendar} options={YEARS} current={filters.year} onChange={(v: string) => updateFilter('year', v)} />
@@ -76,7 +77,7 @@ const Filters: React.FC<FiltersProps> = ({ filters, setFilters, debouncedSearchT
             <div className={`flex items-center justify-between mt-4 pt-4 border-t ${isDarkMode ? 'border-white/5' : 'border-slate-100'}`}>
                 <div className={`flex items-center gap-2 text-[10px] ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
                     <Filter size={10} />
-                    <span>模式: {filters.type !== 'all' || filters.region || filters.platform || filters.year !== '全部' ? '筛选中' : '本周热门'}</span>
+                    <span>模式: {filters.type !== 'all' || filters.genre || filters.region || filters.platform || filters.year !== '全部' ? '筛选中' : '本周热门'}</span>
                 </div>
 
                 <div className={`flex items-center gap-2 rounded-lg p-1 border ${isDarkMode ? 'bg-zinc-800/50 border-white/5' : 'bg-slate-100 border-slate-200'}`}>

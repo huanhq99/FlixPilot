@@ -54,7 +54,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
     // System Settings
     const [websiteTitle, setWebsiteTitle] = useState('StreamHub - Global Media Monitor');
     const [faviconUrl, setFaviconUrl] = useState('');
-    const [requestLimit, setRequestLimit] = useState(0); // 0 = Unlimited
+    const [movieRequestLimit, setMovieRequestLimit] = useState(0); // 0 = Unlimited
+    const [tvRequestLimit, setTvRequestLimit] = useState(0); // 0 = Unlimited
     
     // TMDB Settings
     const [tmdbApiKey, setTmdbApiKey] = useState('');
@@ -104,7 +105,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
                     if (parsed.scanInterval) setSyncInterval(parsed.scanInterval); // Legacy support?
                     if (parsed.websiteTitle) setWebsiteTitle(parsed.websiteTitle);
                     if (parsed.faviconUrl) setFaviconUrl(parsed.faviconUrl);
-                    if (parsed.requestLimit) setRequestLimit(parsed.requestLimit);
+                    if (parsed.movieRequestLimit !== undefined) setMovieRequestLimit(parsed.movieRequestLimit);
+                    if (parsed.tvRequestLimit !== undefined) setTvRequestLimit(parsed.tvRequestLimit);
+                    // 向后兼容旧配置
+                    if (parsed.requestLimit && !parsed.movieRequestLimit) {
+                        setMovieRequestLimit(parsed.requestLimit);
+                        setTvRequestLimit(parsed.requestLimit);
+                    }
                 }
                 
                 // Load TMDB settings
@@ -375,14 +382,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
     const handleTestTmdb = async () => {
         setTestingTmdb(true);
         try {
-            const key = tmdbApiKey || TMDB_API_KEY;
-            const base = tmdbProxyUrl || TMDB_BASE_URL;
-
-            if (base.includes('www.themoviedb.org')) {
-                throw new Error('请使用 API 域名 (api.themoviedb.org) 而非官网域名');
-            }
-
-            const result = await testTmdbConnection(key, base);
+            // TMDB 现在通过后端代理，直接测试
+            const result = await testTmdbConnection();
             toast.showToast(`TMDB 连接成功！延迟: ${result.latency}ms`, 'success');
         } catch (e: any) {
             toast.showToast('TMDB 连接失败: ' + e.message, 'error');
@@ -392,7 +393,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
     };
 
     const handleSaveSystem = () => {
-        const settings = { scanInterval: syncInterval, websiteTitle, faviconUrl, requestLimit };
+        const settings = { scanInterval: syncInterval, websiteTitle, faviconUrl, movieRequestLimit, tvRequestLimit };
         localStorage.setItem('streamhub_settings', JSON.stringify(settings));
         
         storage.set(STORAGE_KEYS.TMDB_CONFIG, {
@@ -1356,21 +1357,35 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
 
                                     <div className="pt-6 border-t border-dashed border-gray-200 dark:border-white/10 space-y-4">
                                         <h4 className={`font-bold flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                                            <AlertOctagon size={18} className="text-red-500" /> 限制策略
+                                            <AlertOctagon size={18} className="text-red-500" /> 求片限制策略
                                         </h4>
-                                        <div className="space-y-2">
-                                            <label className={`text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
-                                                每用户最大求片数量 (0 为不限)
-                                            </label>
-                                            <input
-                                                type="number"
-                                                value={requestLimit}
-                                                onChange={(e) => setRequestLimit(parseInt(e.target.value))}
-                                                min={0}
-                                                className={`w-full p-3 rounded-xl border outline-none transition-all font-mono text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
-                                            />
-                                            <p className="text-xs opacity-60">仅针对普通用户生效，管理员不受限制。</p>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className={`text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
+                                                    🎬 电影限额 (0 为不限)
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    value={movieRequestLimit}
+                                                    onChange={(e) => setMovieRequestLimit(parseInt(e.target.value) || 0)}
+                                                    min={0}
+                                                    className={`w-full p-3 rounded-xl border outline-none transition-all font-mono text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className={`text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
+                                                    📺 剧集限额 (0 为不限)
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    value={tvRequestLimit}
+                                                    onChange={(e) => setTvRequestLimit(parseInt(e.target.value) || 0)}
+                                                    min={0}
+                                                    className={`w-full p-3 rounded-xl border outline-none transition-all font-mono text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
+                                                />
+                                            </div>
                                         </div>
+                                        <p className="text-xs opacity-60">仅针对普通用户生效，管理员不受限制。电影和剧集分开计算配额。</p>
                                     </div>
 
                                     <div className="pt-6 border-t border-dashed border-gray-200 dark:border-white/10">

@@ -1,5 +1,5 @@
 // App Version
-export const APP_VERSION = '2.1.19';
+export const APP_VERSION = '2.1.20';
 
 // TMDB Configuration - 所有请求通过后端代理,不暴露 API Key
 export const TMDB_API_KEY = ''; // 已弃用,使用后端代理
@@ -55,6 +55,29 @@ export const TYPES = [
     { val: 'all', label: '全部' },
     { val: 'movie', label: '电影' },
     { val: 'tv', label: '剧集' }
+];
+
+// TMDB Genre IDs - https://developer.themoviedb.org/reference/genre-movie-list
+export const GENRES = [
+    { id: '', label: '全部' },
+    { id: '28', label: '动作' },
+    { id: '12', label: '冒险' },
+    { id: '16', label: '动画' },
+    { id: '35', label: '喜剧' },
+    { id: '80', label: '犯罪' },
+    { id: '99', label: '纪录' },
+    { id: '18', label: '剧情' },
+    { id: '10751', label: '家庭' },
+    { id: '14', label: '奇幻' },
+    { id: '36', label: '历史' },
+    { id: '27', label: '恐怖' },
+    { id: '10402', label: '音乐' },
+    { id: '9648', label: '悬疑' },
+    { id: '10749', label: '爱情' },
+    { id: '878', label: '科幻' },
+    { id: '53', label: '惊悚' },
+    { id: '10752', label: '战争' },
+    { id: '37', label: '西部' },
 ];
 
 export const REGIONS = [

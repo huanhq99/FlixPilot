@@ -71,6 +71,7 @@ export interface LogEntry {
 
 export interface FilterState {
   type: string;
+  genre: string;
   region: string;
   platform: string;
   year: string;

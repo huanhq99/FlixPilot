@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Server, User, Lock, LogIn, Shield, Ghost, Loader2, AlertCircle, CheckCircle2, Settings2 } from 'lucide-react';
+import { Server, User, Lock, LogIn, Shield, Ghost, Loader2, AlertCircle, CheckCircle2, Settings2, Tv } from 'lucide-react';
 import { loginEmby } from '../services/embyService';
-import { AuthState } from '../types';
+import { AuthState, EmbyConfig } from '../types';
 import { storage, STORAGE_KEYS } from '../utils/storage';
 
 interface LoginProps {
     onLogin: (auth: AuthState) => void;
     isDarkMode: boolean;
+    embyConfig?: EmbyConfig; // 从后端配置传入
 }
 
-const Login: React.FC<LoginProps> = ({ onLogin, isDarkMode }) => {
+const Login: React.FC<LoginProps> = ({ onLogin, isDarkMode, embyConfig }) => {
     const [mode, setMode] = useState<'login' | 'setup'>('login');
+    const [loginMethod, setLoginMethod] = useState<'local' | 'emby'>('local');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     
@@ -24,6 +26,9 @@ const Login: React.FC<LoginProps> = ({ onLogin, isDarkMode }) => {
     const [embyUrl, setEmbyUrl] = useState('');
     const [embyUser, setEmbyUser] = useState('');
     const [embyPass, setEmbyPass] = useState('');
+    
+    // 检查后端是否配置了 Emby
+    const isEmbyConfigured = !!(embyConfig?.serverUrl && embyConfig?.apiKey);
 
     // Check if system is initialized
     useEffect(() => {
@@ -123,7 +128,30 @@ const Login: React.FC<LoginProps> = ({ onLogin, isDarkMode }) => {
         setError('');
 
         try {
-            // 1. Check Local Users
+            // Emby 账号登录
+            if (loginMethod === 'emby' && isEmbyConfigured) {
+                const serverUrl = embyConfig!.serverUrl;
+                const result = await loginEmby(serverUrl, username, password);
+                
+                if (result) {
+                    const authState: AuthState = {
+                        isAuthenticated: true,
+                        user: result.user,
+                        serverUrl: serverUrl,
+                        accessToken: result.accessToken,
+                        isAdmin: result.user.Policy?.IsAdministrator || false,
+                        isGuest: false
+                    };
+                    onLogin(authState);
+                    return;
+                } else {
+                    setError('Emby 用户名或密码错误');
+                    setLoading(false);
+                    return;
+                }
+            }
+
+            // 本地账户登录
             const users = storage.get<any[]>(STORAGE_KEYS.USERS, []);
             
             const localUser = users.find((u: any) => u.username === username && u.password === password);
@@ -177,12 +205,42 @@ const Login: React.FC<LoginProps> = ({ onLogin, isDarkMode }) => {
                     </p>
                 </div>
 
+                {/* 登录方式选择 - 仅当后端配置了 Emby 且处于登录模式时显示 */}
+                {mode === 'login' && isEmbyConfigured && (
+                    <div className={`flex rounded-xl p-1 mb-6 ${isDarkMode ? 'bg-zinc-800' : 'bg-slate-100'}`}>
+                        <button
+                            type="button"
+                            onClick={() => setLoginMethod('local')}
+                            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                                loginMethod === 'local'
+                                    ? (isDarkMode ? 'bg-indigo-600 text-white' : 'bg-white text-indigo-600 shadow-sm')
+                                    : (isDarkMode ? 'text-zinc-400 hover:text-white' : 'text-slate-500 hover:text-slate-900')
+                            }`}
+                        >
+                            <User size={16} />
+                            本地账户
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setLoginMethod('emby')}
+                            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                                loginMethod === 'emby'
+                                    ? (isDarkMode ? 'bg-indigo-600 text-white' : 'bg-white text-indigo-600 shadow-sm')
+                                    : (isDarkMode ? 'text-zinc-400 hover:text-white' : 'text-slate-500 hover:text-slate-900')
+                            }`}
+                        >
+                            <Tv size={16} />
+                            Emby 账户
+                        </button>
+                    </div>
+                )}
+
                 <form onSubmit={mode === 'setup' ? handleSetup : handleLogin} className="space-y-4">
                     
                     {/* Common Fields */}
                     <div className="space-y-2">
                         <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
-                            用户名
+                            {mode === 'login' && loginMethod === 'emby' ? 'Emby 用户名' : '用户名'}
                         </label>
                         <div className="relative">
                             <User className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`} size={18} />
@@ -191,14 +249,14 @@ const Login: React.FC<LoginProps> = ({ onLogin, isDarkMode }) => {
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
                                 className={`w-full pl-10 pr-4 py-3 rounded-xl border outline-none transition-all font-mono text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
-                                placeholder="admin"
+                                placeholder={mode === 'login' && loginMethod === 'emby' ? 'Emby 用户名' : 'admin'}
                             />
                         </div>
                     </div>
 
                     <div className="space-y-2">
                         <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
-                            密码
+                            {mode === 'login' && loginMethod === 'emby' ? 'Emby 密码' : '密码'}
                         </label>
                         <div className="relative">
                             <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`} size={18} />
