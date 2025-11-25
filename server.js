@@ -4,12 +4,16 @@ import fs from 'fs';
 import cors from 'cors';
 import compression from 'compression';
 import { fileURLToPath } from 'url';
+import axios from 'axios';
+import https from 'https';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Allow self-signed certificates for proxy requests
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+// Create an HTTPS agent that ignores SSL errors
+const httpsAgent = new https.Agent({  
+  rejectUnauthorized: false
+});
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -69,30 +73,30 @@ app.post('/api/proxy/moviepilot', async (req, res) => {
 
         console.log(`[Proxy] ${method} -> ${target_url}`);
 
-        const response = await fetch(target_url, {
+        const response = await axios({
             method: method || 'POST',
+            url: target_url,
             headers: headers || { 'Content-Type': 'application/json' },
-            body: body ? JSON.stringify(body) : undefined
+            data: body,
+            httpsAgent: httpsAgent, // Ignore SSL errors
+            validateStatus: () => true // Resolve promise for all status codes
         });
 
-        // Try to parse JSON, fallback to text if failed
-        const contentType = response.headers.get('content-type');
-        let responseData;
-        if (contentType && contentType.includes('application/json')) {
-            responseData = await response.json();
-        } else {
-            const text = await response.text();
-            try {
-                responseData = JSON.parse(text);
-            } catch (e) {
-                responseData = { message: text };
-            }
-        }
+        console.log(`[Proxy] Response Status: ${response.status}`);
 
-        res.status(response.status).json(responseData);
+        res.status(response.status).json(response.data);
     } catch (error) {
-        console.error('[Proxy] Error:', error);
-        res.status(500).json({ error: 'Proxy request failed', details: error.message });
+        console.error('[Proxy] Error:', error.message);
+        if (error.cause) console.error('[Proxy] Cause:', error.cause);
+        if (error.response) {
+             console.error('[Proxy] Response Data:', error.response.data);
+        }
+        
+        res.status(500).json({ 
+            error: 'Proxy request failed', 
+            details: error.message,
+            cause: error.cause ? String(error.cause) : undefined
+        });
     }
 });
 
