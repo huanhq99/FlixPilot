@@ -349,6 +349,20 @@ function AppContent() {
       }
   }, [authState, checkRequestsStatus, syncEmbyLibrary]);
 
+  // 计算用户配额信息
+  const quotaInfo = React.useMemo(() => {
+      const existingRequests = storage.get<RequestItem[]>(STORAGE_KEYS.REQUESTS, []);
+      const userRequests = existingRequests.filter(r => r.requestedBy === authState.user?.Name);
+      const movieUsed = userRequests.filter(r => r.mediaType === 'movie').length;
+      const tvUsed = userRequests.filter(r => r.mediaType === 'tv').length;
+      return {
+          movieUsed,
+          movieLimit: systemSettings.movieRequestLimit || 0,
+          tvUsed,
+          tvLimit: systemSettings.tvRequestLimit || 0
+      };
+  }, [authState.user?.Name, systemSettings.movieRequestLimit, systemSettings.tvRequestLimit]);
+
   const handleRequest = useCallback((item: MediaItem, options?: { resolution: string; note: string }) => {
       const existingRequests = storage.get<RequestItem[]>(STORAGE_KEYS.REQUESTS, []);
       
@@ -623,6 +637,7 @@ function AppContent() {
             authState={authState}
             onRequest={handleRequest}
             onPersonClick={openPersonModal}
+            quotaInfo={quotaInfo}
           />
       )}
 

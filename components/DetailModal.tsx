@@ -6,6 +6,13 @@ import { MediaItem, Episode, AuthState } from '../types';
 import { IMAGE_BASE_URL, PROFILE_BASE_URL } from '../constants';
 import { fetchSeasonDetails, fetchCollectionDetails, fetchRecommendations, processMediaItem } from '../services/tmdbService';
 
+interface QuotaInfo {
+    movieUsed: number;
+    movieLimit: number;
+    tvUsed: number;
+    tvLimit: number;
+}
+
 interface DetailModalProps {
     selectedMedia: MediaItem;
     onClose: () => void;
@@ -14,9 +21,10 @@ interface DetailModalProps {
     authState?: AuthState;
     onRequest?: (item: MediaItem, options?: { resolution: string; note: string }) => void;
     onPersonClick?: (personId: number) => void;
+    quotaInfo?: QuotaInfo;
 }
 
-const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDarkMode, embyLibrary, authState, onRequest, onPersonClick }) => {
+const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDarkMode, embyLibrary, authState, onRequest, onPersonClick, quotaInfo }) => {
     const isStreaming = selectedMedia.status === 'streaming';
     const isReleased = selectedMedia.status === 'released';
     const isTV = selectedMedia.mediaType === 'tv';
@@ -315,7 +323,7 @@ const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDar
                     <div className="p-6 md:p-8 flex flex-col gap-6">
                     
                     {/* Action Buttons */}
-                    <div className="flex flex-wrap gap-3">
+                    <div className="flex flex-wrap gap-3 items-center">
                         {isInLibrary ? (
                             <button className="px-6 py-2.5 rounded-xl bg-emerald-500 text-white font-bold shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 active:scale-95 transition-all flex items-center gap-2">
                                 <PlayCircle size={20} />
@@ -347,6 +355,21 @@ const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDar
                             <Youtube size={20} />
                             预告片
                         </button>
+                        
+                        {/* 配额显示 - 仅对非管理员显示 */}
+                        {authState?.isAuthenticated && !authState?.isAdmin && quotaInfo && (
+                            <div className={`text-xs px-3 py-1.5 rounded-lg ${isDarkMode ? 'bg-zinc-800 text-zinc-400' : 'bg-slate-100 text-slate-500'}`}>
+                                {isTV ? (
+                                    quotaInfo.tvLimit > 0 
+                                        ? `剧集额度: ${quotaInfo.tvUsed}/${quotaInfo.tvLimit}`
+                                        : '剧集: 不限'
+                                ) : (
+                                    quotaInfo.movieLimit > 0 
+                                        ? `电影额度: ${quotaInfo.movieUsed}/${quotaInfo.movieLimit}`
+                                        : '电影: 不限'
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     {/* Action Buttons & Info Grid */}
