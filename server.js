@@ -34,46 +34,57 @@ let config = {
   }
 };
 
-const configPath = path.join(__dirname, 'config.json');
-const configExamplePath = path.join(__dirname, 'config.example.json');
+// 配置文件路径 - 优先使用 data 目录下的配置 (方便 Docker 挂载)
+const DATA_DIR_ENV = process.env.DATA_DIR || path.join(__dirname, 'data');
+
+// Ensure data directory exists first
+if (!fs.existsSync(DATA_DIR_ENV)) {
+    fs.mkdirSync(DATA_DIR_ENV, { recursive: true });
+}
+
+// 配置文件查找顺序: data/config.json > ./config.json
+const configInData = path.join(DATA_DIR_ENV, 'config.json');
+const configInRoot = path.join(__dirname, 'config.json');
+const configPath = fs.existsSync(configInData) ? configInData : 
+                   fs.existsSync(configInRoot) ? configInRoot : configInData; // 默认生成到 data 目录
+
 let isFirstRun = false;
 
 // Auto-generate default config.json if not exists
-if (!fs.existsSync(configPath)) {
+if (!fs.existsSync(configInData) && !fs.existsSync(configInRoot)) {
   isFirstRun = true;
   console.log('\n🔧 首次运行检测到，正在生成默认配置文件...');
   
   const defaultConfig = {
+    "_说明": "StreamHub 配置文件 - 修改后需重启服务",
     "tmdb": {
       "apiKey": "your_tmdb_api_key_here",
-      "baseUrl": "https://api.themoviedb.org/3"
+      "_获取地址": "https://www.themoviedb.org/settings/api"
     },
     "emby": {
       "serverUrl": "http://your-emby-server:8096",
-      "apiKey": "your_emby_api_key_here"
+      "apiKey": "your_emby_api_key_here",
+      "_说明": "可选配置"
     },
     "moviepilot": {
       "url": "https://your-moviepilot-server.com",
       "username": "your_username",
       "password": "your_password",
-      "subscribeUser": "hub"
+      "subscribeUser": "hub",
+      "_说明": "可选配置"
     },
     "server": {
-      "port": 3000,
-      "dataDir": "./data"
-    },
-    "proxy": {
-      "http": "",
-      "https": ""
+      "port": 3000
     }
   };
   
   try {
-    fs.writeFileSync(configPath, JSON.stringify(defaultConfig, null, 2), 'utf-8');
-    console.log('✅ 已生成默认配置文件: config.json');
-    console.log('📝 请编辑 config.json 填入您的配置信息');
-    console.log('🔑 必需配置: tmdb.apiKey (从 https://www.themoviedb.org/settings/api 获取)');
-    console.log('\n⏸️  服务器将使用默认配置启动，建议修改配置后重启服务\n');
+    // 生成到 data 目录,方便 Docker 挂载持久化
+    fs.writeFileSync(configInData, JSON.stringify(defaultConfig, null, 2), 'utf-8');
+    console.log('✅ 已生成配置文件: data/config.json');
+    console.log('📝 请编辑 data/config.json 填入您的配置');
+    console.log('🔑 必需: tmdb.apiKey');
+    console.log('⏸️  修改后重启服务生效\n');
   } catch (err) {
     console.error('❌ 生成配置文件失败:', err.message);
   }
@@ -82,6 +93,7 @@ if (!fs.existsSync(configPath)) {
 // Load configuration
 if (fs.existsSync(configPath)) {
   try {
+    console.log(`📂 加载配置: ${configPath}`);
     const configFile = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
     
     // Check if using default values
@@ -100,15 +112,13 @@ if (fs.existsSync(configPath)) {
     };
     
     if (isFirstRun || hasDefaultValues) {
-      console.log('⚠️  检测到默认配置值，请修改 config.json 中的配置');
+      console.log('⚠️  检测到默认配置，请编辑 data/config.json');
     } else {
-      console.log('✅ 已加载 config.json 配置文件');
+      console.log('✅ 配置加载成功');
     }
   } catch (err) {
-    console.error('⚠️  config.json 解析失败，使用默认配置:', err.message);
+    console.error('⚠️  config.json 解析失败:', err.message);
   }
-} else {
-  console.log('ℹ️  未找到 config.json，使用 .env 或默认配置');
 }
 
 // Create an HTTPS agent that ignores SSL errors
