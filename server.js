@@ -136,6 +136,28 @@ app.use(compression());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'dist')));
 
+// API: Get server configuration (for frontend)
+app.get('/api/config', (req, res) => {
+    try {
+        // Return safe configuration (no sensitive data)
+        res.json({
+            version: VERSION,
+            tmdb: {
+                configured: !!config.tmdb.apiKey && config.tmdb.apiKey !== 'your_tmdb_api_key_here'
+            },
+            emby: {
+                configured: !!config.emby?.serverUrl && config.emby?.serverUrl !== 'http://your-emby-server:8096'
+            },
+            moviepilot: {
+                configured: !!config.moviepilot?.url && config.moviepilot?.url !== 'https://your-moviepilot-server.com'
+            }
+        });
+    } catch (error) {
+        console.error('Get Config Error:', error);
+        res.status(500).json({ error: 'Failed to get configuration' });
+    }
+});
+
 // API: Get Data
 app.get('/api/db', (req, res) => {
     try {

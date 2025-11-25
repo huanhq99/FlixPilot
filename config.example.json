@@ -1,24 +1,55 @@
 {
+  "_comment": "StreamHub 配置文件 - 详细说明请查看 CONFIG.md",
+  
   "tmdb": {
+    "_comment": "TMDB 影视数据库配置 (必需)",
     "apiKey": "your_tmdb_api_key_here",
-    "baseUrl": "https://api.themoviedb.org/3"
+    "_apiKey_help": "获取地址: https://www.themoviedb.org/settings/api",
+    "baseUrl": "https://api.themoviedb.org/3",
+    "_baseUrl_help": "默认值即可，需要代理才修改"
   },
+  
   "emby": {
+    "_comment": "Emby 媒体服务器配置 (可选)",
     "serverUrl": "http://your-emby-server:8096",
-    "apiKey": "your_emby_api_key_here"
+    "_serverUrl_help": "例如: http://192.168.1.100:8096 或 https://emby.yourdomain.com",
+    "apiKey": "your_emby_api_key_here",
+    "_apiKey_help": "在 Emby 设置 → API 密钥中生成"
   },
+  
   "moviepilot": {
+    "_comment": "MoviePilot 自动化工具配置 (可选)",
     "url": "https://your-moviepilot-server.com",
+    "_url_help": "MoviePilot 服务器地址",
     "username": "your_username",
+    "_username_help": "MoviePilot 登录用户名",
     "password": "your_password",
-    "subscribeUser": "hub"
+    "_password_help": "MoviePilot 登录密码",
+    "subscribeUser": "hub",
+    "_subscribeUser_help": "订阅时使用的用户名 (可选，默认为登录用户名)"
   },
+  
   "server": {
+    "_comment": "服务器运行配置",
     "port": 3000,
-    "dataDir": "./data"
+    "_port_help": "服务器监听端口",
+    "dataDir": "./data",
+    "_dataDir_help": "数据存储目录"
   },
+  
   "proxy": {
+    "_comment": "HTTP/HTTPS 代理配置 (可选)",
     "http": "",
-    "https": ""
-  }
+    "_http_help": "例如: http://proxy.example.com:8080",
+    "https": "",
+    "_https_help": "例如: http://proxy.example.com:8080"
+  },
+  
+  "_usage_notes": [
+    "1. 必需配置: tmdb.apiKey",
+    "2. 可选配置: emby, moviepilot, proxy",
+    "3. 修改配置后需重启服务器: Ctrl+C 然后 node server.js",
+    "4. 详细说明请查看 CONFIG.md 文档",
+    "5. 安全提示: config.json 不会被提交到 Git"
+  ]
 }

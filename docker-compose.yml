@@ -6,25 +6,40 @@ services:
     ports:
       - "3000:3000"
     
-    # 推荐方式: 使用 config.json (自动生成)
+    # 推荐方式: 使用 config.json (首次运行自动生成)
     volumes:
       - ./data:/app/data              # 数据持久化 (必需)
-      - ./config.json:/app/config.json # 配置文件 (推荐)
+      # 注意: 首次运行前请确保 config.json 不存在，否则 Docker 会创建文件夹
+      # 如果已经生成了文件夹，请删除: rm -rf config.json
+      # - ./config.json:/app/config.json:ro # 只读挂载，防止容器修改
     
-    # 可选方式: 使用环境变量
-    # environment:
-    #   - TMDB_API_KEY=your_tmdb_api_key
-    #   - PORT=3000
-    #   - DATA_DIR=/app/data
-    #   # Proxy Settings (Optional)
-    #   - HTTP_PROXY=http://host.docker.internal:7890
-    #   - HTTPS_PROXY=http://host.docker.internal:7890
+    environment:
+      # 方式1: 在容器内自动生成 config.json (推荐)
+      # 首次运行会生成到 /app/config.json
+      # 然后进入容器编辑: docker exec -it streamhub sh
+      # 或者复制出来: docker cp streamhub:/app/config.json ./config.json
+      
+      # 方式2: 使用环境变量 (备用)
+      - TMDB_API_KEY=${TMDB_API_KEY:-}
+      - PORT=3000
+      - DATA_DIR=/app/data
+      # Proxy Settings (Optional)
+      # - HTTP_PROXY=http://host.docker.internal:7890
+      # - HTTPS_PROXY=http://host.docker.internal:7890
     
     restart: unless-stopped
 
 # 使用说明:
-# 1. 首次运行会自动生成 config.json
-# 2. 停止容器: docker-compose down
-# 3. 编辑 ./config.json 填入配置
-# 4. 重启容器: docker-compose up -d
+# 方案A: 容器内配置 (最简单)
+# 1. docker-compose up -d
+# 2. docker exec -it streamhub vi /app/config.json  # 编辑配置
+# 3. docker-compose restart
+#
+# 方案B: 外部配置文件
+# 1. 创建空文件: touch config.json
+# 2. 启动容器: docker-compose up -d
+# 3. 复制默认配置: docker cp streamhub:/app/config.json ./
+# 4. 编辑: nano config.json
+# 5. 取消注释 volumes 中的 config.json 行
+# 6. 重启: docker-compose up -d --force-recreate
 

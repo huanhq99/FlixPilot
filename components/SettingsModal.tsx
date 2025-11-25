@@ -64,6 +64,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
     // Update Check State
     const [checkingUpdate, setCheckingUpdate] = useState(false);
     const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+    const [serverVersion, setServerVersion] = useState<string>(APP_VERSION);
 
     useEffect(() => {
         if (isOpen) {
@@ -84,6 +85,16 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
             
             // Load users
             setUsers(storage.get(STORAGE_KEYS.USERS, []));
+            
+            // Fetch server version
+            fetch('/api/config')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.version) {
+                        setServerVersion(data.version);
+                    }
+                })
+                .catch(err => console.error('Failed to fetch server version:', err));
 
              // Load system settings
             try {
@@ -1229,11 +1240,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
                                     <div className="flex items-center justify-between">
                                         <div>
                                             <h4 className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>StreamHub Monitor</h4>
-                                            <p className={`text-xs mt-1 ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>当前版本</p>
+                                            <p className={`text-xs mt-1 ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+                                                前端: v{APP_VERSION} | 后端: {serverVersion}
+                                            </p>
                                         </div>
                                         <div className="flex items-center gap-4">
                                             <div className={`text-2xl font-bold font-mono ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>
-                                                v{APP_VERSION}
+                                                v{serverVersion}
                                             </div>
                                             <button
                                                 onClick={handleCheckUpdate}

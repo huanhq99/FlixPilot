@@ -1,5 +1,5 @@
 // App Version
-export const APP_VERSION = 'v2.1.17';
+export const APP_VERSION = '2.1.18';
 
 // TMDB Configuration - 所有请求通过后端代理,不暴露 API Key
 export const TMDB_API_KEY = ''; // 已弃用,使用后端代理
