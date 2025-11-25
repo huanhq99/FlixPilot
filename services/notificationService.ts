@@ -344,10 +344,14 @@ export const subscribeToMoviePilot = async (config: NotificationConfig, item: Me
                     }
                 } else {
                     const text = await response.text();
+                    console.error('Proxy Error Response:', text);
                     try {
                         const json = JSON.parse(text);
-                return { success: false, message: `订阅失败: ${json.detail || json.message || 'Unknown Error'}` };
+                        return { success: false, message: `代理请求失败: ${json.details || json.error || json.message || 'Unknown Error'}` };
                     } catch {
+                        return { success: false, message: `代理请求失败 (Status ${response.status})` };
+                    }
+                }
                 return { success: false, message: `订阅失败 (${response.status}): ${text}` };
             }
         }
