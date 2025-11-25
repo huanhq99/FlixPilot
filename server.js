@@ -10,14 +10,50 @@ import http from 'http';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Load configuration from config.json (fallback to .env)
+let config = {
+  tmdb: {
+    apiKey: process.env.TMDB_API_KEY || '',
+    baseUrl: 'https://api.themoviedb.org/3'
+  },
+  server: {
+    port: parseInt(process.env.PORT) || 3000,
+    dataDir: process.env.DATA_DIR || path.join(__dirname, 'data')
+  },
+  proxy: {
+    http: process.env.HTTP_PROXY || '',
+    https: process.env.HTTPS_PROXY || ''
+  }
+};
+
+const configPath = path.join(__dirname, 'config.json');
+if (fs.existsSync(configPath)) {
+  try {
+    const configFile = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    // Merge config.json with defaults, config.json takes priority
+    config = {
+      ...config,
+      ...configFile,
+      tmdb: { ...config.tmdb, ...configFile.tmdb },
+      server: { ...config.server, ...configFile.server },
+      proxy: { ...config.proxy, ...configFile.proxy }
+    };
+    console.log('✅ 已加载 config.json 配置文件');
+  } catch (err) {
+    console.error('⚠️  config.json 解析失败，使用默认配置:', err.message);
+  }
+} else {
+  console.log('ℹ️  未找到 config.json，使用 .env 或默认配置');
+}
+
 // Create an HTTPS agent that ignores SSL errors
 const httpsAgent = new https.Agent({  
   rejectUnauthorized: false
 });
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
+const PORT = config.server.port;
+const DATA_DIR = config.server.dataDir;
 const DB_FILE = path.join(DATA_DIR, 'db.json');
 
 // Ensure data directory exists
@@ -142,10 +178,17 @@ app.post('/api/proxy/moviepilot', async (req, res) => {
 app.use('/tmdb', async (req, res) => {
     try {
         const tmdbPath = req.path.replace(/^\//, ''); // Remove leading slash
-        const apiKey = '83020de488099117460a41251fcb64a8'; // From .env
+        const apiKey = config.tmdb.apiKey; // From config.json or .env
+        
+        if (!apiKey) {
+            return res.status(500).json({ 
+                error: 'TMDB API Key not configured', 
+                message: '请在 config.json 中配置 tmdb.apiKey' 
+            });
+        }
         
         // Add API key to query params
-        const url = new URL(`https://api.themoviedb.org/3/${tmdbPath}`);
+        const url = new URL(`${config.tmdb.baseUrl}/${tmdbPath}`);
         url.searchParams.append('api_key', apiKey);
         
         // Forward other query params
@@ -171,6 +214,17 @@ app.get(/.*/, (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log(`Data directory: ${DATA_DIR}`);
+    console.log(`
+╔════════════════════════════════════════════════════════╗
+║  🚀 StreamHub Monitor Server                          ║
+╠════════════════════════════════════════════════════════╣
+║  📡 Port:         ${PORT.toString().padEnd(35)}║
+║  📂 Data Dir:     ${path.basename(DATA_DIR).padEnd(35)}║
+║  🔧 Config:       ${fs.existsSync(configPath) ? 'config.json'.padEnd(35) : '.env / defaults'.padEnd(35)}║
+╚════════════════════════════════════════════════════════╝
+    `);
+    
+    if (!config.tmdb.apiKey) {
+        console.log('⚠️  警告: TMDB API Key 未配置，请创建 config.json 文件');
+    }
 });

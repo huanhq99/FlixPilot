@@ -1,0 +1,24 @@
+{
+  "tmdb": {
+    "apiKey": "your_tmdb_api_key_here",
+    "baseUrl": "https://api.themoviedb.org/3"
+  },
+  "emby": {
+    "serverUrl": "http://your-emby-server:8096",
+    "apiKey": "your_emby_api_key_here"
+  },
+  "moviepilot": {
+    "url": "https://your-moviepilot-server.com",
+    "username": "your_username",
+    "password": "your_password",
+    "subscribeUser": "hub"
+  },
+  "server": {
+    "port": 3000,
+    "dataDir": "./data"
+  },
+  "proxy": {
+    "http": "",
+    "https": ""
+  }
+}

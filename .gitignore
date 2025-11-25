@@ -47,6 +47,7 @@ htmlcov/
 .env.production
 env-config.js
 config.local.js
+config.json
 
 # Data directory (contains user data and configurations)
 data/

@@ -72,7 +72,12 @@
 git clone https://github.com/huanhq99/StreamHub.git
 cd StreamHub
 
-# 2. 配置环境变量
+# 2. 配置 (二选一)
+# 方式 A: 使用 config.json (推荐 ✨)
+cp config.example.json config.json
+nano config.json  # 填入你的配置
+
+# 方式 B: 使用 .env (传统方式)
 cp .env.example .env
 nano .env  # 填入你的 TMDB_API_KEY
 
@@ -89,11 +94,14 @@ services:
     container_name: streamhub
     ports:
       - "3000:3000"
-    env_file:
-      - .env
     volumes:
-      - ./data:/app/data  # 数据持久化
+      - ./config.json:/app/config.json  # 推荐: 使用配置文件
+      - ./data:/app/data                # 数据持久化
     restart: unless-stopped
+    
+    # 可选: 使用环境变量替代 config.json
+    # env_file:
+    #   - .env
 ```
 
 访问 `http://localhost:3000` 开始使用!
@@ -101,20 +109,29 @@ services:
 ### 方式二：手动部署
 
 ```bash
-# 安装依赖
+# 1. 安装依赖
 npm install
 
-# 配置环境变量
-cp .env.example .env
-# 编辑 .env 文件
+# 2. 配置 (二选一)
+# 方式 A: 使用 config.json (推荐 ✨)
+cp config.example.json config.json
+nano config.json  # 编辑配置文件
 
-# 开发模式
+# 方式 B: 使用 .env (传统方式)
+cp .env.example .env
+nano .env  # 编辑环境变量
+
+# 3. 开发模式
 npm run dev
 
-# 生产构建
+# 4. 生产构建
 npm run build
 node server.js
 ```
+
+**配置文件优先级**: `config.json` > `.env` > 默认值
+
+📚 详细配置说明请查看 [CONFIG.md](CONFIG.md)
 
 ### 方式三：Cloudflare Pages
 
@@ -134,19 +151,22 @@ node server.js
 
 </details>
 
-## 🛠️ 配置指南
+## ⚙️ 配置指南
 
 ### 必需配置
 
-1. **TMDB API Key** (必需)
-   - 注册地址: https://www.themoviedb.org/settings/api
-   - 配置方式: 
-     - 推荐: `.env` 文件中设置 `TMDB_API_KEY`
-     - 或: 前端设置面板配置
+1. **TMDB API Key** (必需 🔑)
+   - 获取地址: https://www.themoviedb.org/settings/api
+   - 配置方式 (三选一):
+     - ✨ 推荐: `config.json` 文件中设置
+     - 📝 传统: `.env` 文件中设置 `TMDB_API_KEY`
+     - ⚙️ 手动: 前端设置面板配置 (不推荐,有安全风险)
 
 2. **管理员账号** (首次访问自动创建)
    - 设置用户名和密码
    - 用于管理求片请求和系统设置
+
+📚 **详细配置说明**: 请查看 [CONFIG.md](CONFIG.md) 获取完整的配置文档
 
 ### 可选配置
 
@@ -211,13 +231,26 @@ StreamHub v2.1.17+ 实施了企业级安全措施:
 
 ### 安全检查清单
 
-- [ ] `.env` 文件已创建并配置
-- [ ] `.env` 已添加到 `.gitignore`
+- [ ] 配置文件已创建 (`config.json` 或 `.env`)
+- [ ] 配置文件已添加到 `.gitignore` ✅ (已自动配置)
 - [ ] 生产环境使用 HTTPS
 - [ ] Emby API Key 使用受限权限账户
 - [ ] 定期更换 API Keys
 
 ## 📝 更新日志
+
+### v2.1.18 (2025-01-25) 📦 配置系统优化
+
+**✨ 新功能**
+- ✨ 新增 `config.json` 配置方式 (推荐)
+- ✨ JSON 格式更清晰,支持结构化配置
+- ✨ 配置优先级: config.json > .env > 默认值
+- 📚 新增完整配置文档 [CONFIG.md](CONFIG.md)
+
+**🔧 改进**
+- 🎨 美化服务器启动日志
+- 📝 更新 README 配置说明
+- 🔒 config.json 已加入 .gitignore
 
 ### v2.1.17 (2025-01-25) 🔒 重大安全更新
 
@@ -233,7 +266,7 @@ StreamHub v2.1.17+ 实施了企业级安全措施:
 - 📚 全面更新部署和安全文档
 
 **⚠️ 破坏性变更**
-- TMDB API Key 必须配置在后端 `.env` 文件
+- TMDB API Key 必须配置在后端 `.env` 或 `config.json` 文件
 - 前端 `VITE_TMDB_API_KEY` 已废弃
 
 ### v2.1.16 (2025-01-25)
