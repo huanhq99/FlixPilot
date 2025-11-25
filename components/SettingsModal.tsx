@@ -340,8 +340,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
         try {
             const key = tmdbApiKey || TMDB_API_KEY;
             const base = tmdbProxyUrl || TMDB_BASE_URL;
-            await testTmdbConnection(key, base);
-            toast.showToast('TMDB 连接成功！', 'success');
+            const result = await testTmdbConnection(key, base);
+            toast.showToast(`TMDB 连接成功！延迟: ${result.latency}ms`, 'success');
         } catch (e: any) {
             toast.showToast('TMDB 连接失败: ' + e.message, 'error');
         } finally {

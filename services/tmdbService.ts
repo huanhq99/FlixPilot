@@ -11,13 +11,17 @@ const getTmdbConfig = () => {
 };
 
 export const testTmdbConnection = async (apiKey: string, baseUrl: string) => {
+    const start = Date.now();
     try {
         const url = `${baseUrl}/configuration?api_key=${apiKey}`;
         const response = await fetch(url);
+        const end = Date.now();
+        
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        return await response.json();
+        await response.json();
+        return { success: true, latency: end - start };
     } catch (error) {
         throw error;
     }
