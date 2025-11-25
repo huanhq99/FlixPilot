@@ -1,7 +1,7 @@
 {
   "name": "streamhub-monitor",
   "private": true,
-  "version": "2.1.18",
+  "version": "2.1.31",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,9 +11,11 @@
   "dependencies": {
     "axios": "^1.13.2",
     "body-parser": "^2.2.1",
+    "canvas": "^3.2.0",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
     "express": "^5.1.0",
+    "form-data": "^4.0.5",
     "lucide-react": "^0.554.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
