@@ -2,7 +2,7 @@
 
 StreamHub 是一个优雅、现代化的影视媒体发现与追踪平台。它不仅仅是一个海报墙，更是一个连接 Emby 媒体库与全球热门影视的桥梁。
 
-![Version](https://img.shields.io/badge/version-2.0.1-blue.svg)
+![Version](https://img.shields.io/badge/version-2.0.2-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![React](https://img.shields.io/badge/React-19-61DAFB.svg)
 ![Vite](https://img.shields.io/badge/Vite-6.0-646CFF.svg)
