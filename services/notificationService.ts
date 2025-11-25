@@ -273,17 +273,16 @@ export const subscribeToMoviePilot = async (config: NotificationConfig, item: Me
     }
 
     const baseUrl = config.moviePilotUrl.replace(/\/$/, '');
-    const endpoint = item.mediaType === 'movie' 
-        ? '/api/v1/subscribe/movie' 
-        : '/api/v1/subscribe/tv';
+    const endpoint = '/api/v1/subscribe/';
     
     const cleanToken = config.moviePilotToken.trim();
 
     const payload = {
         name: item.title,
         year: item.year,
+        type: item.mediaType,
         tmdbid: item.id,
-        season: item.mediaType === 'tv' ? 1 : undefined,
+        season: item.mediaType === 'tv' ? 1 : 0,
     };
 
     console.log('Subscribing to MP:', `${baseUrl}${endpoint}`, payload);
