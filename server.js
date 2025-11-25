@@ -149,18 +149,29 @@ app.use(express.static(path.join(__dirname, 'dist')));
 // API: Get server configuration (for frontend)
 app.get('/api/config', (req, res) => {
     try {
-        // Return safe configuration (no sensitive data)
+        // Return configuration for frontend (hide passwords)
+        const isEmbyConfigured = !!config.emby?.serverUrl && config.emby?.serverUrl !== 'http://your-emby-server:8096';
+        const isMPConfigured = !!config.moviepilot?.url && config.moviepilot?.url !== 'https://your-moviepilot-server.com';
+        
         res.json({
             version: VERSION,
             tmdb: {
                 configured: !!config.tmdb.apiKey && config.tmdb.apiKey !== 'your_tmdb_api_key_here'
             },
-            emby: {
-                configured: !!config.emby?.serverUrl && config.emby?.serverUrl !== 'http://your-emby-server:8096'
-            },
-            moviepilot: {
-                configured: !!config.moviepilot?.url && config.moviepilot?.url !== 'https://your-moviepilot-server.com'
-            }
+            // 返回 Emby 配置给前端使用
+            emby: isEmbyConfigured ? {
+                configured: true,
+                serverUrl: config.emby.serverUrl,
+                apiKey: config.emby.apiKey
+            } : { configured: false },
+            // 返回 MoviePilot 配置给前端使用 (不返回密码)
+            moviepilot: isMPConfigured ? {
+                configured: true,
+                url: config.moviepilot.url,
+                username: config.moviepilot.username,
+                // password 不返回,前端需要时单独请求
+                subscribeUser: config.moviepilot.subscribeUser
+            } : { configured: false }
         });
     } catch (error) {
         console.error('Get Config Error:', error);

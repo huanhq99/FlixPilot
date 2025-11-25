@@ -170,6 +170,45 @@ function AppContent() {
       }
   }, []); 
 
+  // 从后端加载配置 (config.json)
+  useEffect(() => {
+      fetch('/api/config')
+          .then(res => res.json())
+          .then(serverConfig => {
+              console.log('📦 后端配置:', serverConfig);
+              
+              // 如果后端配置了 Emby 且本地没有配置,使用后端配置
+              if (serverConfig.emby?.configured && serverConfig.emby.serverUrl) {
+                  const localEmby = storage.get(STORAGE_KEYS.EMBY_CONFIG, { serverUrl: '', apiKey: '' });
+                  if (!localEmby.serverUrl) {
+                      console.log('✅ 使用后端 Emby 配置');
+                      const newConfig = {
+                          serverUrl: serverConfig.emby.serverUrl,
+                          apiKey: serverConfig.emby.apiKey
+                      };
+                      setEmbyConfig(newConfig);
+                      storage.set(STORAGE_KEYS.EMBY_CONFIG, newConfig);
+                  }
+              }
+              
+              // 如果后端配置了 MoviePilot 且本地没有配置,使用后端配置
+              if (serverConfig.moviepilot?.configured && serverConfig.moviepilot.url) {
+                  const localNotify = storage.get(STORAGE_KEYS.NOTIFICATIONS, {}) as any;
+                  if (!localNotify.moviePilotUrl) {
+                      console.log('✅ 使用后端 MoviePilot 配置');
+                      const newNotify = {
+                          ...localNotify,
+                          moviePilotUrl: serverConfig.moviepilot.url,
+                          moviePilotUsername: serverConfig.moviepilot.username,
+                          moviePilotSubscribeUser: serverConfig.moviepilot.subscribeUser
+                      };
+                      storage.set(STORAGE_KEYS.NOTIFICATIONS, newNotify);
+                  }
+              }
+          })
+          .catch(err => console.error('获取后端配置失败:', err));
+  }, []);
+
   const checkRequestsStatus = (ids: Set<string>) => {
       const existingRequests = JSON.parse(localStorage.getItem('requests') || '[]');
       let requestsChanged = false;
