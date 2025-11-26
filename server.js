@@ -6,6 +6,7 @@ import compression from 'compression';
 import { fileURLToPath } from 'url';
 import https from 'https';
 import http from 'http';
+import crypto from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -27,6 +28,10 @@ let config = {
   server: {
     port: parseInt(process.env.PORT) || 3000,
     dataDir: process.env.DATA_DIR || path.join(__dirname, 'data')
+  },
+  auth: {
+    enabled: true,
+    password: process.env.ADMIN_PASSWORD || ''
   },
   proxy: {
     http: process.env.HTTP_PROXY || '',
@@ -67,6 +72,11 @@ if (!fs.existsSync(configInData) && !fs.existsSync(configInRoot)) {
       "serverUrlExternal": "",
       "apiKey": "your_emby_api_key_here",
       "_说明": "可选配置，用于媒体库同步和播放统计"
+    },
+    "auth": {
+      "enabled": true,
+      "password": "",
+      "_说明": "安全认证配置 - 首次访问时设置管理员密码"
     },
     "moviepilot": {
       "url": "https://your-moviepilot-server.com",
@@ -164,8 +174,183 @@ app.use(compression());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'dist')));
 
+// ==================== 认证系统 ====================
+
+// Session store (简单的内存存储，生产环境建议使用 Redis)
+const sessions = new Map();
+const SESSION_TIMEOUT = 24 * 60 * 60 * 1000; // 24小时
+
+// 生成随机 token
+function generateToken() {
+    return Array.from(crypto.randomBytes(32), byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+// 认证中间件
+function requireAuth(req, res, next) {
+    // 如果认证未启用，直接通过
+    if (!config.auth?.enabled) {
+        return next();
+    }
+    
+    // 如果密码未设置（首次使用），允许通过设置密码
+    if (!config.auth?.password) {
+        return next();
+    }
+    
+    const token = req.headers['authorization']?.replace('Bearer ', '');
+    
+    if (!token) {
+        return res.status(401).json({ error: '未授权：缺少认证令牌' });
+    }
+    
+    const session = sessions.get(token);
+    if (!session || Date.now() > session.expiry) {
+        sessions.delete(token);
+        return res.status(401).json({ error: '未授权：令牌无效或已过期' });
+    }
+    
+    // 刷新过期时间
+    session.expiry = Date.now() + SESSION_TIMEOUT;
+    next();
+}
+
+// 清理过期 session
+setInterval(() => {
+    const now = Date.now();
+    for (const [token, session] of sessions.entries()) {
+        if (now > session.expiry) {
+            sessions.delete(token);
+        }
+    }
+}, 60 * 60 * 1000); // 每小时清理一次
+
+// ==================== 认证 API ====================
+
+// 检查认证状态
+app.get('/api/auth/status', (req, res) => {
+    const authEnabled = config.auth?.enabled !== false;
+    const hasPassword = !!config.auth?.password;
+    
+    res.json({
+        authEnabled,
+        needsSetup: authEnabled && !hasPassword,
+        isAuthenticated: false // 前端会检查 localStorage 中的 token
+    });
+});
+
+// 设置初始密码（仅在未设置时可用）
+app.post('/api/auth/setup', async (req, res) => {
+    try {
+        if (config.auth?.password) {
+            return res.status(400).json({ error: '密码已设置' });
+        }
+        
+        const { password } = req.body;
+        if (!password || password.length < 6) {
+            return res.status(400).json({ error: '密码至少6个字符' });
+        }
+        
+        // 使用简单的加密（生产环境建议使用 bcrypt）
+        const crypto = await import('crypto');
+        const hash = crypto.createHash('sha256').update(password).digest('hex');
+        
+        // 更新配置
+        config.auth = config.auth || {};
+        config.auth.password = hash;
+        config.auth.enabled = true;
+        
+        // 保存到 config.json
+        const configData = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+        configData.auth = config.auth;
+        fs.writeFileSync(configPath, JSON.stringify(configData, null, 2));
+        
+        // 生成 token
+        const token = generateToken();
+        sessions.set(token, {
+            createdAt: Date.now(),
+            expiry: Date.now() + SESSION_TIMEOUT
+        });
+        
+        console.log('✅ 管理员密码已设置');
+        
+        res.json({
+            success: true,
+            token,
+            message: '密码设置成功'
+        });
+    } catch (error) {
+        console.error('设置密码失败:', error);
+        res.status(500).json({ error: '设置密码失败' });
+    }
+});
+
+// 登录
+app.post('/api/auth/login', async (req, res) => {
+    try {
+        const { password } = req.body;
+        
+        if (!config.auth?.password) {
+            return res.status(400).json({ error: '请先设置密码' });
+        }
+        
+        // 验证密码
+        const crypto = await import('crypto');
+        const hash = crypto.createHash('sha256').update(password).digest('hex');
+        
+        if (hash !== config.auth.password) {
+            return res.status(401).json({ error: '密码错误' });
+        }
+        
+        // 生成 token
+        const token = generateToken();
+        sessions.set(token, {
+            createdAt: Date.now(),
+            expiry: Date.now() + SESSION_TIMEOUT
+        });
+        
+        res.json({
+            success: true,
+            token,
+            message: '登录成功'
+        });
+    } catch (error) {
+        console.error('登录失败:', error);
+        res.status(500).json({ error: '登录失败' });
+    }
+});
+
+// 登出
+app.post('/api/auth/logout', (req, res) => {
+    const token = req.headers['authorization']?.replace('Bearer ', '');
+    if (token) {
+        sessions.delete(token);
+    }
+    res.json({ success: true, message: '登出成功' });
+});
+
+// 验证 token
+app.post('/api/auth/verify', (req, res) => {
+    const token = req.headers['authorization']?.replace('Bearer ', '');
+    
+    if (!token) {
+        return res.status(401).json({ valid: false });
+    }
+    
+    const session = sessions.get(token);
+    if (!session || Date.now() > session.expiry) {
+        sessions.delete(token);
+        return res.status(401).json({ valid: false });
+    }
+    
+    // 刷新过期时间
+    session.expiry = Date.now() + SESSION_TIMEOUT;
+    res.json({ valid: true });
+});
+
+// ==================== API 路由（需要认证） ====================
+
 // API: Get server configuration (for frontend)
-app.get('/api/config', (req, res) => {
+app.get('/api/config', requireAuth, (req, res) => {
     try {
         // Return configuration for frontend (hide passwords)
         const isEmbyConfigured = !!config.emby?.serverUrl && config.emby?.serverUrl !== 'http://your-emby-server:8096';
@@ -214,7 +399,7 @@ app.get('/api/config', (req, res) => {
 });
 
 // API: Get Data
-app.get('/api/db', (req, res) => {
+app.get('/api/db', requireAuth, (req, res) => {
     try {
         if (fs.existsSync(DB_FILE)) {
             const data = fs.readFileSync(DB_FILE, 'utf8');
@@ -229,7 +414,7 @@ app.get('/api/db', (req, res) => {
 });
 
 // API: Save Data
-app.post('/api/db', (req, res) => {
+app.post('/api/db', requireAuth, (req, res) => {
     try {
         const data = req.body;
         fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
@@ -241,7 +426,7 @@ app.post('/api/db', (req, res) => {
 });
 
 // API: Proxy for MoviePilot
-app.post('/api/proxy/moviepilot', async (req, res) => {
+app.post('/api/proxy/moviepilot', requireAuth, async (req, res) => {
     try {
         const { target_url, method, headers, body } = req.body;
         
@@ -351,7 +536,7 @@ app.use('/tmdb', async (req, res) => {
 });
 
 // API: 手动触发报告生成
-app.post('/api/report/generate', async (req, res) => {
+app.post('/api/report/generate', requireAuth, async (req, res) => {
     try {
         const { type = 'daily', sendToTelegram = false } = req.body;
         
@@ -413,7 +598,7 @@ app.post('/api/report/generate', async (req, res) => {
 });
 
 // API: 获取报告配置状态
-app.get('/api/report/status', (req, res) => {
+app.get('/api/report/status', requireAuth, (req, res) => {
     res.json({
         enabled: config.report?.enabled || false,
         dailyTime: config.report?.dailyTime || '23:00',
