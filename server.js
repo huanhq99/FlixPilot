@@ -889,7 +889,7 @@ async function getMPToken() {
     return null;
 }
 
-// MP 搜索资源
+// MP 搜索资源 (使用 torrents 接口)
 async function mpSearchResources(keyword, mediaType = null) {
     const token = await getMPToken();
     if (!token) return { success: false, error: 'MoviePilot 未配置或登录失败' };
@@ -898,18 +898,25 @@ async function mpSearchResources(keyword, mediaType = null) {
     const baseUrl = mpConfig.url.replace(/\/$/, '');
     
     try {
-        const url = new URL(`${baseUrl}/api/v1/resource/search`);
+        // MoviePilot V2 API: /api/v1/search/torrents
+        const url = new URL(`${baseUrl}/api/v1/search/torrents`);
         url.searchParams.set('keyword', keyword);
         if (mediaType) url.searchParams.set('mtype', mediaType);
+        
+        console.log(`[MP] 搜索资源: ${url.toString()}`);
         
         const response = await fetch(url.toString(), {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         
+        console.log(`[MP] 搜索响应: ${response.status}`);
+        
         if (response.ok) {
             const data = await response.json();
-            return { success: true, data: data.slice(0, 10) }; // 最多返回10个
+            return { success: true, data: Array.isArray(data) ? data.slice(0, 10) : [] };
         } else {
+            const text = await response.text();
+            console.error(`[MP] 搜索失败: ${response.status} - ${text}`);
             return { success: false, error: `API 错误: ${response.status}` };
         }
     } catch (e) {
