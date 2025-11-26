@@ -408,7 +408,7 @@ app.post('/api/auth/login', async (req, res) => {
         
         // 验证密码 - 直接比对明文
         if (password !== config.auth.password) {
-            console.log(`[Auth] 失败: 密码不匹配 ("${password}" != "${config.auth.password}")`);
+            console.log(`[Auth] 失败: 密码不匹配`);
             return res.status(401).json({ error: '用户名或密码错误' });
         }
         
@@ -2015,16 +2015,29 @@ async function handleCallbackQuery(callbackQuery) {
     
     // 处理下载确认
     if (data.startsWith('dl_')) {
-        const index = parseInt(data.split('_')[1]);
+        const resourceId = data.split('_')[1];
         const users = loadBotUsers();
         const user = users[userId];
         
-        if (!user?.lastSearch || !user.lastSearch[index]) {
+        if (!user?.lastSearch) {
             await answerCallback(callbackQuery.id, '❌ 资源已过期，请重新搜索');
             return;
         }
         
-        const resource = user.lastSearch[index];
+        // 通过 ID 或索引查找资源
+        let resource = user.lastSearch.find(r => r.id === resourceId);
+        if (!resource) {
+            // 兼容旧版索引方式
+            const index = parseInt(resourceId);
+            if (!isNaN(index) && user.lastSearch[index]) {
+                resource = user.lastSearch[index];
+            }
+        }
+        
+        if (!resource) {
+            await answerCallback(callbackQuery.id, '❌ 资源已过期，请重新搜索');
+            return;
+        }
         const botConfig = getBotConfig();
         const isAdmin = botConfig.adminUsers.includes(userId);
         
