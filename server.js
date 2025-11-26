@@ -674,7 +674,7 @@ app.post('/api/report/generate', requireAuth, async (req, res) => {
         
         const stats = await getEmbyPlaybackStats(config.emby, startDate, now);
         
-        try {
+        {
             const { target_url, method, headers, body } = req.body;
             if (!target_url) {
                 return res.status(400).json({ error: 'Missing target_url' });
