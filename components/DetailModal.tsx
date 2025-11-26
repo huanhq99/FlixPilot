@@ -430,22 +430,22 @@ const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDar
                         ) : (
                             <button 
                                     onClick={() => {
-                                        if (authState?.isAuthenticated) {
+                                        if (authState?.isAuthenticated && !authState?.isGuest) {
                                             setShowRequestForm(true);
                                         } else if (onRequest) {
                                             // Trigger login hint or flow if not authenticated (handled by parent usually)
                                             onRequest(selectedMedia); 
                                         }
                                     }}
-                                disabled={!authState?.isAuthenticated}
+                                disabled={!authState?.isAuthenticated || authState?.isGuest}
                                 className={`px-6 py-2.5 rounded-xl font-bold shadow-lg transition-all flex items-center gap-2 ${
-                                    authState?.isAuthenticated 
+                                    authState?.isAuthenticated && !authState?.isGuest
                                     ? 'bg-indigo-600 text-white shadow-indigo-500/20 hover:bg-indigo-700 active:scale-95' 
                                     : 'bg-gray-400 text-white cursor-not-allowed opacity-50'
                                 }`}
                             >
                                 <MonitorPlay size={20} />
-                                {authState?.isAuthenticated ? '求片 / 点播' : '登录后求片'}
+                                {authState?.isGuest ? '游客无法求片' : (authState?.isAuthenticated ? '求片 / 点播' : '登录后求片')}
                             </button>
                         )}
                         
@@ -455,7 +455,7 @@ const DetailModal: React.FC<DetailModalProps> = ({ selectedMedia, onClose, isDar
                         </button>
 
                         {/* 收藏按钮 */}
-                        {authState?.isAuthenticated && onToggleFavorite && (
+                        {authState?.isAuthenticated && !authState?.isGuest && onToggleFavorite && (
                             <button 
                                 onClick={() => onToggleFavorite(selectedMedia)}
                                 className={`px-4 py-2.5 rounded-xl font-bold border transition-all flex items-center gap-2 ${

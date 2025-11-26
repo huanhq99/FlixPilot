@@ -1219,19 +1219,21 @@ function AppContent() {
                     <Calendar size={16} className="md:w-[18px] md:h-[18px]" />
                 </button>
                 
-                {/* 我的列表按钮 */}
-                <button 
-                    onClick={() => setShowMyList(true)}
-                    className={`p-1.5 md:p-2 rounded-full transition-all hover:scale-110 active:scale-95 shrink-0 relative ${isDarkMode ? 'bg-zinc-800 text-pink-400 hover:bg-zinc-700' : 'bg-pink-50 text-pink-500 hover:bg-pink-100'}`}
-                    title="我的列表"
-                >
-                    <Heart size={16} className="md:w-[18px] md:h-[18px]" fill={favorites.length > 0 ? 'currentColor' : 'none'} />
-                    {favorites.length > 0 && (
-                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-pink-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                            {favorites.length > 9 ? '9+' : favorites.length}
-                        </span>
-                    )}
-                </button>
+                {/* 我的列表按钮 - 游客不显示 */}
+                {!authState.isGuest && (
+                    <button 
+                        onClick={() => setShowMyList(true)}
+                        className={`p-1.5 md:p-2 rounded-full transition-all hover:scale-110 active:scale-95 shrink-0 relative ${isDarkMode ? 'bg-zinc-800 text-pink-400 hover:bg-zinc-700' : 'bg-pink-50 text-pink-500 hover:bg-pink-100'}`}
+                        title="我的列表"
+                    >
+                        <Heart size={16} className="md:w-[18px] md:h-[18px]" fill={favorites.length > 0 ? 'currentColor' : 'none'} />
+                        {favorites.length > 0 && (
+                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-pink-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                                {favorites.length > 9 ? '9+' : favorites.length}
+                            </span>
+                        )}
+                    </button>
+                )}
                 <div className="hidden md:flex flex-col items-end mr-1">
                     <span className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                         {authState.user?.Name || 'Guest'}
