@@ -7,16 +7,16 @@ export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
       server: {
-        port: 3000,
+        port: 5173, // Use standard Vite port to avoid conflict with backend
         host: '0.0.0.0',
         proxy: {
           '/api': {
-            target: 'http://localhost:8000', // Python Backend
+            target: 'http://localhost:3000', // Proxy to local backend
             changeOrigin: true,
             secure: false,
           },
           '/tmdb': {
-            target: 'http://localhost:8000', // Python Backend
+            target: 'http://localhost:3000', // Proxy to local backend TMDB proxy
             changeOrigin: true,
             secure: false,
           }
