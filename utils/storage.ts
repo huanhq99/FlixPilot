@@ -59,29 +59,46 @@ class StorageManager {
     localStorage.clear();
   }
 
+  // 不应该同步到服务器的敏感 key
+  private sensitiveKeys = new Set([
+    STORAGE_KEYS.AUTH,  // 认证信息绝不同步
+    'streamhub_token',   // API token
+  ]);
+
   // Sync methods
-  async loadFromServer(): Promise<void> {
+  async loadFromServer(authToken?: string): Promise<void> {
     try {
-      const response = await fetch('/api/db');
+      const headers: Record<string, string> = {};
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      }
+      
+      const response = await fetch('/api/db', { headers });
       if (response.ok) {
         const data = await response.json();
         // Merge server data with local storage, server takes precedence
+        // 但不覆盖敏感信息
         Object.keys(data).forEach(key => {
-          localStorage.setItem(key, JSON.stringify(data[key]));
+          if (!this.sensitiveKeys.has(key)) {
+            localStorage.setItem(key, JSON.stringify(data[key]));
+          }
         });
         console.log('Data loaded from server');
+      } else if (response.status === 401) {
+        console.log('需要认证才能同步数据');
       }
     } catch (e) {
       console.error('Failed to load data from server:', e);
     }
   }
 
-  async saveToServer(): Promise<void> {
+  async saveToServer(authToken?: string): Promise<void> {
     try {
       const data: Record<string, any> = {};
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key) {
+        // 敏感信息不同步到服务器
+        if (key && !this.sensitiveKeys.has(key)) {
           try {
             data[key] = JSON.parse(localStorage.getItem(key) || 'null');
           } catch {
@@ -90,9 +107,16 @@ class StorageManager {
         }
       }
       
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      }
+      
       await fetch('/api/db', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(data)
       });
     } catch (e) {

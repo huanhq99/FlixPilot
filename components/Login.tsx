@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Server, User, Lock, LogIn, Shield, Ghost, Loader2, AlertCircle, CheckCircle2, Settings2, Tv } from 'lucide-react';
+import { Server, User, Lock, LogIn, Shield, Ghost, Loader2, AlertCircle, CheckCircle2, Settings2, Tv, KeyRound } from 'lucide-react';
 import { loginEmby } from '../services/embyService';
 import { AuthState, EmbyConfig } from '../types';
 import { storage, STORAGE_KEYS } from '../utils/storage';
@@ -8,48 +8,44 @@ interface LoginProps {
     onLogin: (auth: AuthState) => void;
     isDarkMode: boolean;
     embyConfig?: EmbyConfig; // 从后端配置传入
+    needsSetup?: boolean; // 是否需要首次设置密码
+    onSetupComplete?: (token: string) => void; // 设置密码完成回调
+    onPasswordLogin?: (token: string) => void; // 密码登录成功回调
 }
 
-const Login: React.FC<LoginProps> = ({ onLogin, isDarkMode, embyConfig }) => {
-    const [mode, setMode] = useState<'login' | 'setup'>('login');
-    const [loginMethod, setLoginMethod] = useState<'local' | 'emby'>('local');
+const Login: React.FC<LoginProps> = ({ 
+    onLogin, 
+    isDarkMode, 
+    embyConfig,
+    needsSetup = false,
+    onSetupComplete,
+    onPasswordLogin
+}) => {
+    const [mode, setMode] = useState<'password' | 'emby'>('password');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
     
-    // Local Account State
-    const [username, setUsername] = useState('');
+    // Password State
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     
-    // Emby Config State (Optional during setup)
-    const [configureEmby, setConfigureEmby] = useState(false);
-    const [embyUrl, setEmbyUrl] = useState('');
+    // Emby Login State
     const [embyUser, setEmbyUser] = useState('');
     const [embyPass, setEmbyPass] = useState('');
     
     // 检查后端是否配置了 Emby
     const isEmbyConfigured = !!(embyConfig?.serverUrl && embyConfig?.apiKey);
 
-    // Check if system is initialized
-    useEffect(() => {
-        try {
-            const users = storage.get(STORAGE_KEYS.USERS, []);
-            // 如果有用户，默认显示登录界面；否则显示创建界面
-            // 但用户可以在两种模式间切换
-            if (users && users.length > 0) {
-                setMode('login');
-            } else {
-                setMode('setup');
-            }
-        } catch (e) {
-            setMode('setup');
-        }
-    }, []);
-
-    const handleSetup = async (e: React.FormEvent) => {
+    // 首次设置密码
+    const handleSetupPassword = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!username || !password) {
-            setError('请输入用户名和密码');
+        if (!password) {
+            setError('请输入密码');
+            return;
+        }
+        if (password.length < 6) {
+            setError('密码至少6个字符');
             return;
         }
         if (password !== confirmPassword) {
@@ -61,136 +57,97 @@ const Login: React.FC<LoginProps> = ({ onLogin, isDarkMode, embyConfig }) => {
         setError('');
 
         try {
-            let embyConfig = null;
-
-            // Try to connect to Emby if configured
-            if (configureEmby && embyUrl && embyUser) {
-                try {
-                    const result = await loginEmby(embyUrl, embyUser, embyPass);
-                    if (result) {
-                        embyConfig = {
-                            serverUrl: embyUrl,
-                            username: embyUser,
-                            accessToken: result.accessToken,
-                            userId: result.user.Id
-                        };
-                    }
-                } catch (err) {
-                    console.error('Emby connection failed during setup', err);
-                    setError('无法连接到 Emby 服务器，请检查配置或取消勾选');
-                    setLoading(false);
-                    return;
-                }
+            const res = await fetch('/api/auth/setup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password })
+            });
+            
+            const data = await res.json();
+            
+            if (res.ok && data.success) {
+                setSuccess('密码设置成功！');
+                setTimeout(() => {
+                    onSetupComplete?.(data.token);
+                }, 1000);
+            } else {
+                setError(data.error || '设置失败');
             }
-
-            // Create Admin User
-            const newUser = {
-                id: 'admin-' + Date.now(),
-                username,
-                password, // In real app, hash this!
-                isAdmin: true,
-                embyConfig,
-                createdAt: Date.now()
-            };
-
-            // Save to LocalStorage
-            const users = [newUser];
-            storage.set(STORAGE_KEYS.USERS, users);
-
-            // Auto Login
-            const authState: AuthState = {
-                isAuthenticated: true,
-                user: {
-                    Id: newUser.id,
-                    Name: newUser.username,
-                    Policy: { IsAdministrator: true }
-                } as any,
-                serverUrl: embyConfig?.serverUrl || '',
-                accessToken: embyConfig?.accessToken || '',
-                isAdmin: true,
-                isGuest: false
-            };
-
-            onLogin(authState);
-
         } catch (err) {
-            setError('设置失败，请重试');
+            setError('网络错误，请重试');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleLogin = async (e: React.FormEvent) => {
+    // 密码登录
+    const handlePasswordLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!username || !password) return;
+        if (!password) {
+            setError('请输入密码');
+            return;
+        }
 
         setLoading(true);
         setError('');
 
         try {
-            // Emby 账号登录
-            if (loginMethod === 'emby' && isEmbyConfigured) {
-                const serverUrl = embyConfig!.serverUrl;
-                const result = await loginEmby(serverUrl, username, password);
-                
-                if (result) {
-                    const authState: AuthState = {
-                        isAuthenticated: true,
-                        user: result.user,
-                        serverUrl: serverUrl,
-                        accessToken: result.accessToken,
-                        isAdmin: result.user.Policy?.IsAdministrator || false,
-                        isGuest: false
-                    };
-                    onLogin(authState);
-                    return;
-                } else {
-                    setError('Emby 用户名或密码错误');
-                    setLoading(false);
-                    return;
-                }
-            }
-
-            // 本地账户登录
-            const users = storage.get<any[]>(STORAGE_KEYS.USERS, []);
+            const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password })
+            });
             
-            const localUser = users.find((u: any) => u.username === username && u.password === password);
-
-            if (localUser) {
-                // Login successful
-                const authState: AuthState = {
-                    isAuthenticated: true,
-                    user: {
-                        Id: localUser.id,
-                        Name: localUser.username,
-                        Policy: { IsAdministrator: localUser.isAdmin }
-                    } as any,
-                    serverUrl: localUser.embyConfig?.serverUrl || '',
-                    accessToken: localUser.embyConfig?.accessToken || '',
-                    isAdmin: localUser.isAdmin,
-                    isGuest: false
-                };
-                onLogin(authState);
-                return;
-            }
+            const data = await res.json();
             
-            setError('用户名或密码错误');
+            if (res.ok && data.success) {
+                setSuccess('登录成功！');
+                setTimeout(() => {
+                    onPasswordLogin?.(data.token);
+                }, 500);
+            } else {
+                setError(data.error || '密码错误');
+            }
         } catch (err) {
-            setError('登录失败');
+            setError('网络错误，请重试');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleGuestLogin = () => {
-        onLogin({
-            isAuthenticated: true,
-            user: null,
-            serverUrl: '',
-            accessToken: '',
-            isAdmin: false,
-            isGuest: true
-        });
+    // Emby 登录
+    const handleEmbyLogin = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!embyUser || !embyPass) {
+            setError('请输入 Emby 用户名和密码');
+            return;
+        }
+
+        setLoading(true);
+        setError('');
+
+        try {
+            const serverUrl = embyConfig!.serverUrl;
+            const result = await loginEmby(serverUrl, embyUser, embyPass);
+            
+            if (result) {
+                const authState: AuthState = {
+                    isAuthenticated: true,
+                    user: result.user,
+                    serverUrl: serverUrl,
+                    accessToken: result.accessToken,
+                    isAdmin: result.user.Policy?.IsAdministrator || false,
+                    isGuest: false
+                };
+                onLogin(authState);
+            } else {
+                setError('Emby 用户名或密码错误');
+            }
+        } catch (err) {
+            setError('无法连接到 Emby 服务器');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -201,30 +158,30 @@ const Login: React.FC<LoginProps> = ({ onLogin, isDarkMode, embyConfig }) => {
                         Stream<span className="text-indigo-500">Hub</span>
                     </h1>
                     <p className={`text-sm ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
-                        {mode === 'setup' ? '初始化管理员账号' : '登录您的账户'}
+                        {needsSetup ? '🔐 首次使用，请设置管理员密码' : '登录以访问控制台'}
                     </p>
                 </div>
 
-                {/* 登录方式选择 - 仅当后端配置了 Emby 且处于登录模式时显示 */}
-                {mode === 'login' && isEmbyConfigured && (
+                {/* 登录方式选择 - 仅当后端配置了 Emby 且不是首次设置时显示 */}
+                {!needsSetup && isEmbyConfigured && (
                     <div className={`flex rounded-xl p-1 mb-6 ${isDarkMode ? 'bg-zinc-800' : 'bg-slate-100'}`}>
                         <button
                             type="button"
-                            onClick={() => setLoginMethod('local')}
+                            onClick={() => setMode('password')}
                             className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-                                loginMethod === 'local'
+                                mode === 'password'
                                     ? (isDarkMode ? 'bg-indigo-600 text-white' : 'bg-white text-indigo-600 shadow-sm')
                                     : (isDarkMode ? 'text-zinc-400 hover:text-white' : 'text-slate-500 hover:text-slate-900')
                             }`}
                         >
-                            <User size={16} />
-                            本地账户
+                            <KeyRound size={16} />
+                            密码登录
                         </button>
                         <button
                             type="button"
-                            onClick={() => setLoginMethod('emby')}
+                            onClick={() => setMode('emby')}
                             className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-                                loginMethod === 'emby'
+                                mode === 'emby'
                                     ? (isDarkMode ? 'bg-indigo-600 text-white' : 'bg-white text-indigo-600 shadow-sm')
                                     : (isDarkMode ? 'text-zinc-400 hover:text-white' : 'text-slate-500 hover:text-slate-900')
                             }`}
@@ -235,44 +192,27 @@ const Login: React.FC<LoginProps> = ({ onLogin, isDarkMode, embyConfig }) => {
                     </div>
                 )}
 
-                <form onSubmit={mode === 'setup' ? handleSetup : handleLogin} className="space-y-4">
-                    
-                    {/* Common Fields */}
-                    <div className="space-y-2">
-                        <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
-                            {mode === 'login' && loginMethod === 'emby' ? 'Emby 用户名' : '用户名'}
-                        </label>
-                        <div className="relative">
-                            <User className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`} size={18} />
-                            <input 
-                                type="text" 
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
-                                className={`w-full pl-10 pr-4 py-3 rounded-xl border outline-none transition-all font-mono text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
-                                placeholder={mode === 'login' && loginMethod === 'emby' ? 'Emby 用户名' : 'admin'}
-                            />
+                {/* 密码登录/设置表单 */}
+                {(needsSetup || mode === 'password') && (
+                    <form onSubmit={needsSetup ? handleSetupPassword : handlePasswordLogin} className="space-y-4">
+                        <div className="space-y-2">
+                            <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
+                                {needsSetup ? '设置密码' : '管理员密码'}
+                            </label>
+                            <div className="relative">
+                                <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`} size={18} />
+                                <input 
+                                    type="password" 
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className={`w-full pl-10 pr-4 py-3 rounded-xl border outline-none transition-all font-mono text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
+                                    placeholder="••••••"
+                                    autoFocus
+                                />
+                            </div>
                         </div>
-                    </div>
 
-                    <div className="space-y-2">
-                        <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
-                            {mode === 'login' && loginMethod === 'emby' ? 'Emby 密码' : '密码'}
-                        </label>
-                        <div className="relative">
-                            <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`} size={18} />
-                            <input 
-                                type="password" 
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className={`w-full pl-10 pr-4 py-3 rounded-xl border outline-none transition-all font-mono text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
-                                placeholder="••••••"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Setup Only Fields */}
-                    {mode === 'setup' && (
-                        <>
+                        {needsSetup && (
                             <div className="space-y-2">
                                 <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
                                     确认密码
@@ -288,102 +228,95 @@ const Login: React.FC<LoginProps> = ({ onLogin, isDarkMode, embyConfig }) => {
                                     />
                                 </div>
                             </div>
+                        )}
 
-                            <div className={`p-4 rounded-xl border ${isDarkMode ? 'bg-zinc-900/50 border-zinc-800' : 'bg-slate-50 border-slate-200'}`}>
-                                <div className="flex items-center justify-between mb-4">
-                                    <div className="flex items-center gap-2">
-                                        <Settings2 size={18} className="text-indigo-500" />
-                                        <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>配置 Emby 服务器</span>
-                                    </div>
-                                    <label className="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" checked={configureEmby} onChange={e => setConfigureEmby(e.target.checked)} className="sr-only peer" />
-                                        <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
-                                    </label>
-                                </div>
-
-                                {configureEmby && (
-                                    <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
-                                        <input 
-                                            type="text" 
-                                            value={embyUrl}
-                                            onChange={(e) => setEmbyUrl(e.target.value)}
-                                            placeholder="http://192.168.1.10:8096"
-                                            className={`w-full px-3 py-2 rounded-lg border text-xs ${isDarkMode ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-white border-slate-200'}`}
-                                        />
-                                        <input 
-                                            type="text" 
-                                            value={embyUser}
-                                            onChange={(e) => setEmbyUser(e.target.value)}
-                                            placeholder="Emby 用户名"
-                                            className={`w-full px-3 py-2 rounded-lg border text-xs ${isDarkMode ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-white border-slate-200'}`}
-                                        />
-                                        <input 
-                                            type="password" 
-                                            value={embyPass}
-                                            onChange={(e) => setEmbyPass(e.target.value)}
-                                            placeholder="Emby 密码"
-                                            className={`w-full px-3 py-2 rounded-lg border text-xs ${isDarkMode ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-white border-slate-200'}`}
-                                        />
-                                    </div>
-                                )}
+                        {error && (
+                            <div className="flex items-center gap-2 text-red-500 text-sm bg-red-500/10 p-3 rounded-lg">
+                                <AlertCircle size={16} />
+                                {error}
                             </div>
-                        </>
-                    )}
+                        )}
 
-                    {error && (
-                        <div className="flex items-center gap-2 text-red-500 text-sm bg-red-500/10 p-3 rounded-lg">
-                            <AlertCircle size={16} />
-                            {error}
-                        </div>
-                    )}
+                        {success && (
+                            <div className="flex items-center gap-2 text-emerald-500 text-sm bg-emerald-500/10 p-3 rounded-lg">
+                                <CheckCircle2 size={16} />
+                                {success}
+                            </div>
+                        )}
 
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {loading ? <Loader2 className="animate-spin" size={20} /> : (mode === 'setup' ? <Shield size={20} /> : <LogIn size={20} />)}
-                        {mode === 'setup' ? '创建管理员账户' : '登录'}
-                    </button>
-
-                    {/* Mode Switcher */}
-                    <div className="text-center">
                         <button
-                            type="button"
-                            onClick={() => {
-                                setMode(mode === 'login' ? 'setup' : 'login');
-                                setError('');
-                            }}
-                            className={`text-xs ${isDarkMode ? 'text-zinc-400 hover:text-indigo-400' : 'text-slate-500 hover:text-indigo-600'} transition-colors`}
+                            type="submit"
+                            disabled={loading}
+                            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            {mode === 'login' ? '还没有账户？创建账户' : '已有账户？去登录'}
+                            {loading ? <Loader2 className="animate-spin" size={20} /> : (needsSetup ? <Shield size={20} /> : <LogIn size={20} />)}
+                            {needsSetup ? '设置密码并登录' : '登录'}
                         </button>
-                    </div>
 
-                    {mode === 'login' && (
-                        <>
-                            <div className="relative my-6">
-                                <div className="absolute inset-0 flex items-center">
-                                    <div className={`w-full border-t ${isDarkMode ? 'border-zinc-800' : 'border-slate-200'}`}></div>
-                                </div>
-                                <div className="relative flex justify-center text-xs uppercase">
-                                    <span className={`px-2 ${isDarkMode ? 'bg-[#18181b] text-zinc-500' : 'bg-white text-slate-500'}`}>
-                                        或者
-                                    </span>
-                                </div>
+                        {!needsSetup && (
+                            <p className={`text-xs text-center ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
+                                密码在 config.json 中配置，或首次访问时设置
+                            </p>
+                        )}
+                    </form>
+                )}
+
+                {/* Emby 登录表单 */}
+                {!needsSetup && mode === 'emby' && (
+                    <form onSubmit={handleEmbyLogin} className="space-y-4">
+                        <div className="space-y-2">
+                            <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
+                                Emby 用户名
+                            </label>
+                            <div className="relative">
+                                <User className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`} size={18} />
+                                <input 
+                                    type="text" 
+                                    value={embyUser}
+                                    onChange={(e) => setEmbyUser(e.target.value)}
+                                    className={`w-full pl-10 pr-4 py-3 rounded-xl border outline-none transition-all font-mono text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
+                                    placeholder="Emby 用户名"
+                                />
                             </div>
+                        </div>
 
-                            <button
-                                type="button"
-                                onClick={handleGuestLogin}
-                                className={`w-full py-3 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 ${isDarkMode ? 'bg-zinc-800 hover:bg-zinc-700 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-900'}`}
-                            >
-                                <Ghost size={20} />
-                                游客访问
-                            </button>
-                        </>
-                    )}
-                </form>
+                        <div className="space-y-2">
+                            <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
+                                Emby 密码
+                            </label>
+                            <div className="relative">
+                                <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`} size={18} />
+                                <input 
+                                    type="password" 
+                                    value={embyPass}
+                                    onChange={(e) => setEmbyPass(e.target.value)}
+                                    className={`w-full pl-10 pr-4 py-3 rounded-xl border outline-none transition-all font-mono text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
+                                    placeholder="••••••"
+                                />
+                            </div>
+                        </div>
+
+                        {error && (
+                            <div className="flex items-center gap-2 text-red-500 text-sm bg-red-500/10 p-3 rounded-lg">
+                                <AlertCircle size={16} />
+                                {error}
+                            </div>
+                        )}
+
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {loading ? <Loader2 className="animate-spin" size={20} /> : <Tv size={20} />}
+                            使用 Emby 账户登录
+                        </button>
+
+                        <p className={`text-xs text-center ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
+                            使用你的 Emby 服务器账户登录
+                        </p>
+                    </form>
+                )}
             </div>
         </div>
     );

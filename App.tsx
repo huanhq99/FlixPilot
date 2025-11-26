@@ -56,7 +56,7 @@ function AppContent() {
   const [selectedPerson, setSelectedPerson] = useState<any | null>(null);
   const [personCredits, setPersonCredits] = useState<any[]>([]);
 
-  // Auth State
+  // Auth State - 新增 token 和 needsSetup
   const [authState, setAuthState] = useState<AuthState>(() => 
     storage.get(STORAGE_KEYS.AUTH, {
           isAuthenticated: false,
@@ -67,6 +67,11 @@ function AppContent() {
           isGuest: false
     })
   );
+  const [authToken, setAuthToken] = useState<string>(() => 
+    localStorage.getItem('streamhub_token') || ''
+  );
+  const [authLoading, setAuthLoading] = useState(true);
+  const [needsPasswordSetup, setNeedsPasswordSetup] = useState(false);
 
   // Emby State
   const [showSettings, setShowSettings] = useState(false);
@@ -899,19 +904,82 @@ function AppContent() {
   // Load data from server on mount
   useEffect(() => {
     const initData = async () => {
-      await storage.loadFromServer();
-      // Force re-render or update state if needed, but since we use storage.get() in initial state,
-      // we might need to reload the page or update state.
-      // For simplicity, we just load it. The user might need to refresh if it's the very first load on a new device.
-      // Better: Update critical states after load.
-      setAuthState(storage.get(STORAGE_KEYS.AUTH, { isAuthenticated: false, user: null, serverUrl: '' }));
+      // 首先检查后端认证状态
+      try {
+        const statusRes = await fetch('/api/auth/status');
+        const status = await statusRes.json();
+        
+        if (status.needsSetup) {
+          // 需要首次设置密码
+          setNeedsPasswordSetup(true);
+          setAuthLoading(false);
+          return;
+        }
+        
+        if (status.authEnabled) {
+          // 验证本地 token 是否有效
+          const savedToken = localStorage.getItem('streamhub_token');
+          if (savedToken) {
+            const verifyRes = await fetch('/api/auth/verify', {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${savedToken}` }
+            });
+            
+            if (verifyRes.ok) {
+              // Token 有效，保持登录状态
+              setAuthToken(savedToken);
+              setAuthState(prev => ({ ...prev, isAuthenticated: true, isAdmin: true }));
+              await storage.loadFromServer(savedToken);
+            } else {
+              // Token 无效，清除认证状态
+              localStorage.removeItem('streamhub_token');
+              setAuthState(prev => ({ ...prev, isAuthenticated: false }));
+            }
+          }
+        } else {
+          // 认证未启用，直接进入
+          setAuthState(prev => ({ ...prev, isAuthenticated: true }));
+          await storage.loadFromServer();
+        }
+      } catch (e) {
+        console.error('认证检查失败:', e);
+      }
+      
+      setAuthLoading(false);
       setIsDarkMode(storage.get(STORAGE_KEYS.DARK_MODE, false));
     };
     initData();
   }, []);
 
-  if (!authState.isAuthenticated) {
-      return <Login onLogin={handleLogin} isDarkMode={isDarkMode} embyConfig={embyConfig} />;
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mx-auto mb-4" />
+          <p className="text-slate-400">正在验证...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (needsPasswordSetup || !authState.isAuthenticated) {
+      return <Login 
+        onLogin={handleLogin} 
+        isDarkMode={isDarkMode} 
+        embyConfig={embyConfig}
+        needsSetup={needsPasswordSetup}
+        onSetupComplete={(token: string) => {
+          localStorage.setItem('streamhub_token', token);
+          setAuthToken(token);
+          setNeedsPasswordSetup(false);
+          setAuthState(prev => ({ ...prev, isAuthenticated: true, isAdmin: true }));
+        }}
+        onPasswordLogin={(token: string) => {
+          localStorage.setItem('streamhub_token', token);
+          setAuthToken(token);
+          setAuthState(prev => ({ ...prev, isAuthenticated: true, isAdmin: true }));
+        }}
+      />;
   }
 
   return (
