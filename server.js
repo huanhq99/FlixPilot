@@ -692,7 +692,10 @@ function updateUser(userId, updates) {
 
 // 发送 Bot 消息
 async function sendBotMessage(chatId, text, options = {}) {
-    if (!config.telegram?.botToken) return false;
+    if (!config.telegram?.botToken) {
+        console.error('[Bot] 发送消息失败: Bot Token 未配置');
+        return false;
+    }
     
     try {
         const body = {
@@ -702,31 +705,58 @@ async function sendBotMessage(chatId, text, options = {}) {
             ...options
         };
         
+        console.log(`[Bot] 发送消息到 ${chatId}: ${text.substring(0, 100)}...`);
+        
         const res = await fetch(`https://api.telegram.org/bot${config.telegram.botToken}/sendMessage`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
-        return res.ok;
+        
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            console.error(`[Bot] 发送消息失败: ${res.status}`, errData);
+            return false;
+        }
+        
+        console.log('[Bot] 消息发送成功');
+        return true;
     } catch (e) {
-        console.error('[Bot] 发送消息失败:', e.message);
+        console.error('[Bot] 发送消息异常:', e.message);
         return false;
     }
 }
 
 // 搜索 TMDB
 async function searchTMDB(query, type = 'multi') {
-    if (!config.tmdb?.apiKey) return [];
+    console.log(`[Bot] 搜索 TMDB: "${query}" (类型: ${type})`);
+    
+    if (!config.tmdb?.apiKey) {
+        console.error('[Bot] TMDB API Key 未配置!');
+        return [];
+    }
     
     try {
         const searchUrl = `${config.tmdb.baseUrl}/search/${type}?api_key=${config.tmdb.apiKey}&query=${encodeURIComponent(query)}&language=zh-CN&include_adult=false`;
+        console.log(`[Bot] TMDB 请求: ${searchUrl.replace(config.tmdb.apiKey, '***')}`);
+        
         const res = await fetch(searchUrl);
+        console.log(`[Bot] TMDB 响应状态: ${res.status}`);
+        
         if (res.ok) {
             const data = await res.json();
-            return data.results?.slice(0, 5) || [];
+            const results = data.results?.slice(0, 5) || [];
+            console.log(`[Bot] TMDB 搜索结果: ${results.length} 条`);
+            results.forEach((r, i) => {
+                console.log(`[Bot]   ${i+1}. ${r.title || r.name} (${r.media_type}) ID:${r.id}`);
+            });
+            return results;
+        } else {
+            const errText = await res.text();
+            console.error(`[Bot] TMDB 请求失败: ${res.status} - ${errText}`);
         }
     } catch (e) {
-        console.error('[Bot] TMDB 搜索失败:', e.message);
+        console.error('[Bot] TMDB 搜索异常:', e.message);
     }
     return [];
 }
@@ -737,6 +767,8 @@ async function handleBotCommand(message) {
     const userId = message.from.id.toString();
     const username = message.from.username || message.from.first_name || 'User';
     const text = message.text || '';
+    
+    console.log(`[Bot] 收到消息 - 用户: ${username} (${userId}), 内容: "${text}"`);
     
     const botConfig = getBotConfig();
     
@@ -1253,14 +1285,17 @@ async function answerCallback(callbackQueryId, text) {
 app.post('/api/telegram/webhook', async (req, res) => {
     try {
         const update = req.body;
+        console.log('[Bot] 收到 Webhook:', JSON.stringify(update).substring(0, 500));
         
         // 处理普通消息
         if (update.message?.text) {
+            console.log('[Bot] 处理文本消息...');
             await handleBotCommand(update.message);
         }
         
         // 处理回调查询（按钮点击）
         if (update.callback_query) {
+            console.log('[Bot] 处理回调查询:', update.callback_query.data);
             await handleCallbackQuery(update.callback_query);
         }
         
