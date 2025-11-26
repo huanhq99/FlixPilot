@@ -45,9 +45,29 @@
     "_https_help": "例如: http://proxy.example.com:8080"
   },
   
+  "telegram": {
+    "_comment": "Telegram 通知配置 (可选)",
+    "botToken": "your_bot_token_here",
+    "_botToken_help": "从 @BotFather 获取",
+    "chatId": "your_chat_id_here",
+    "_chatId_help": "从 @userinfobot 获取"
+  },
+  
+  "bot": {
+    "_comment": "TG 机器人求片功能配置",
+    "defaultQuota": 3,
+    "_defaultQuota_help": "新用户默认求片额度",
+    "checkinReward": 10,
+    "_checkinReward_help": "每日签到获得的爆米花数量",
+    "exchangeRate": 50,
+    "_exchangeRate_help": "兑换1次求片额度需要的爆米花数量",
+    "adminUsers": [],
+    "_adminUsers_help": "管理员 TG 用户 ID 列表"
+  },
+  
   "_usage_notes": [
     "1. 必需配置: tmdb.apiKey",
-    "2. 可选配置: emby, moviepilot, proxy",
+    "2. 可选配置: emby, moviepilot, telegram, bot, proxy",
     "3. 修改配置后需重启服务器: Ctrl+C 然后 node server.js",
     "4. 详细说明请查看 CONFIG.md 文档",
     "5. 安全提示: config.json 不会被提交到 Git"

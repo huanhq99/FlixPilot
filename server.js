@@ -12,7 +12,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Version info
-const VERSION = '2.1.31';
+const VERSION = '2.2.0';
 const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf-8'));
 if (packageJson.version !== VERSION) {
   console.log(`\n⚠️  版本不匹配: package.json (${packageJson.version}) vs server.js (${VERSION})`);
@@ -90,6 +90,17 @@ if (!fs.existsSync(configInData) && !fs.existsSync(configInRoot)) {
       "chatId": "your_chat_id_here",
       "_说明": "可选配置，用于通知推送",
       "_获取方式": "1. @BotFather 创建机器人获取 Token; 2. @userinfobot 获取 Chat ID"
+    },
+    "bot": {
+      "defaultQuota": 3,
+      "checkinReward": 10,
+      "exchangeRate": 50,
+      "adminUsers": [],
+      "_说明": "TG 机器人求片功能配置",
+      "_defaultQuota": "新用户默认求片额度",
+      "_checkinReward": "每日签到获得的爆米花数量",
+      "_exchangeRate": "兑换1次求片额度需要的爆米花数量",
+      "_adminUsers": "管理员 TG 用户 ID 列表，可在机器人中用 /start 查看"
     },
     "report": {
       "enabled": false,
@@ -607,6 +618,710 @@ app.get('/api/report/status', requireAuth, (req, res) => {
         telegramConfigured: !!(config.telegram?.botToken && config.telegram?.chatId),
         embyConfigured: !!(config.emby?.serverUrl && config.emby?.apiKey)
     });
+});
+
+// ==================== Telegram Bot 功能 ====================
+
+// Bot 用户数据文件
+const BOT_USERS_FILE = path.join(DATA_DIR, 'bot_users.json');
+
+// 初始化 Bot 用户数据
+function loadBotUsers() {
+    try {
+        if (fs.existsSync(BOT_USERS_FILE)) {
+            return JSON.parse(fs.readFileSync(BOT_USERS_FILE, 'utf-8'));
+        }
+    } catch (e) {
+        console.error('[Bot] 加载用户数据失败:', e.message);
+    }
+    return {};
+}
+
+function saveBotUsers(users) {
+    try {
+        fs.writeFileSync(BOT_USERS_FILE, JSON.stringify(users, null, 2));
+    } catch (e) {
+        console.error('[Bot] 保存用户数据失败:', e.message);
+    }
+}
+
+// 获取 Bot 配置（带默认值）
+function getBotConfig() {
+    const botConfig = config.bot || {};
+    return {
+        defaultQuota: botConfig.defaultQuota ?? 3,          // 默认求片额度
+        checkinReward: botConfig.checkinReward ?? 10,       // 签到奖励爆米花
+        exchangeRate: botConfig.exchangeRate ?? 50,         // 多少爆米花换一次额度
+        adminUsers: botConfig.adminUsers || []              // 管理员 TG 用户 ID
+    };
+}
+
+// 获取或创建用户
+function getOrCreateUser(userId, username) {
+    const users = loadBotUsers();
+    const botConfig = getBotConfig();
+    
+    if (!users[userId]) {
+        users[userId] = {
+            id: userId,
+            username: username || '',
+            popcorn: 0,                           // 爆米花积分
+            quota: botConfig.defaultQuota,        // 求片额度
+            totalCheckins: 0,                     // 累计签到天数
+            lastCheckin: null,                    // 上次签到日期
+            requests: [],                         // 求片历史
+            createdAt: new Date().toISOString()
+        };
+        saveBotUsers(users);
+    } else if (username && users[userId].username !== username) {
+        users[userId].username = username;
+        saveBotUsers(users);
+    }
+    
+    return users[userId];
+}
+
+// 更新用户数据
+function updateUser(userId, updates) {
+    const users = loadBotUsers();
+    if (users[userId]) {
+        Object.assign(users[userId], updates);
+        saveBotUsers(users);
+    }
+}
+
+// 发送 Bot 消息
+async function sendBotMessage(chatId, text, options = {}) {
+    if (!config.telegram?.botToken) return false;
+    
+    try {
+        const body = {
+            chat_id: chatId,
+            text: text,
+            parse_mode: 'HTML',
+            ...options
+        };
+        
+        const res = await fetch(`https://api.telegram.org/bot${config.telegram.botToken}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        return res.ok;
+    } catch (e) {
+        console.error('[Bot] 发送消息失败:', e.message);
+        return false;
+    }
+}
+
+// 搜索 TMDB
+async function searchTMDB(query, type = 'multi') {
+    if (!config.tmdb?.apiKey) return [];
+    
+    try {
+        const searchUrl = `${config.tmdb.baseUrl}/search/${type}?api_key=${config.tmdb.apiKey}&query=${encodeURIComponent(query)}&language=zh-CN&include_adult=false`;
+        const res = await fetch(searchUrl);
+        if (res.ok) {
+            const data = await res.json();
+            return data.results?.slice(0, 5) || [];
+        }
+    } catch (e) {
+        console.error('[Bot] TMDB 搜索失败:', e.message);
+    }
+    return [];
+}
+
+// 处理 Bot 命令
+async function handleBotCommand(message) {
+    const chatId = message.chat.id;
+    const userId = message.from.id.toString();
+    const username = message.from.username || message.from.first_name || 'User';
+    const text = message.text || '';
+    
+    const botConfig = getBotConfig();
+    
+    // 解析命令
+    const [command, ...args] = text.split(/\s+/);
+    const cmdLower = command.toLowerCase();
+    
+    // /start - 欢迎消息
+    if (cmdLower === '/start' || cmdLower === '/帮助' || cmdLower === '/help') {
+        const user = getOrCreateUser(userId, username);
+        await sendBotMessage(chatId, `
+🎬 <b>欢迎使用 StreamHub Bot!</b>
+
+你好 <b>${username}</b>，我可以帮你：
+
+📌 <b>可用命令</b>
+/签到 - 每日签到领取 ${botConfig.checkinReward} 🍿
+/余额 - 查看爆米花和求片额度
+/兑换 - 用 ${botConfig.exchangeRate} 🍿 兑换 1 次求片额度
+/求片 <片名> - 搜索并提交求片请求
+
+📊 <b>你的状态</b>
+🍿 爆米花: ${user.popcorn}
+🎫 求片额度: ${user.quota}
+📅 累计签到: ${user.totalCheckins} 天
+        `.trim());
+        return;
+    }
+    
+    // /签到 - 签到
+    if (cmdLower === '/签到' || cmdLower === '/checkin') {
+        const user = getOrCreateUser(userId, username);
+        const today = new Date().toISOString().split('T')[0];
+        
+        if (user.lastCheckin === today) {
+            await sendBotMessage(chatId, `
+😅 <b>${username}</b>，你今天已经签到过了！
+
+明天再来吧~
+
+🍿 当前爆米花: ${user.popcorn}
+🎫 求片额度: ${user.quota}
+            `.trim());
+            return;
+        }
+        
+        // 签到成功
+        const newPopcorn = user.popcorn + botConfig.checkinReward;
+        const newCheckins = user.totalCheckins + 1;
+        
+        updateUser(userId, {
+            popcorn: newPopcorn,
+            totalCheckins: newCheckins,
+            lastCheckin: today
+        });
+        
+        // 随机鼓励语
+        const encouragements = ['太棒了!', '坚持就是胜利!', '继续加油!', '签到达人!', '积少成多!'];
+        const encourage = encouragements[Math.floor(Math.random() * encouragements.length)];
+        
+        await sendBotMessage(chatId, `
+✅ <b>签到成功!</b> ${encourage}
+
+🍿 获得 +${botConfig.checkinReward} 爆米花
+📅 累计签到: ${newCheckins} 天
+
+当前状态:
+🍿 爆米花: ${newPopcorn}
+🎫 求片额度: ${user.quota}
+        `.trim());
+        return;
+    }
+    
+    // /余额 - 查看余额
+    if (cmdLower === '/余额' || cmdLower === '/balance' || cmdLower === '/我的') {
+        const user = getOrCreateUser(userId, username);
+        const recentRequests = user.requests?.slice(-3) || [];
+        
+        let requestHistory = '暂无求片记录';
+        if (recentRequests.length > 0) {
+            requestHistory = recentRequests.map(r => 
+                `• ${r.title} (${r.year}) - ${r.status === 'pending' ? '⏳处理中' : r.status === 'completed' ? '✅已完成' : '❌已拒绝'}`
+            ).join('\n');
+        }
+        
+        await sendBotMessage(chatId, `
+👤 <b>${username} 的账户</b>
+
+💰 <b>资产</b>
+🍿 爆米花: ${user.popcorn}
+🎫 求片额度: ${user.quota}
+
+📊 <b>统计</b>
+📅 累计签到: ${user.totalCheckins} 天
+🎬 累计求片: ${user.requests?.length || 0} 次
+
+📝 <b>最近求片</b>
+${requestHistory}
+
+💡 提示: ${botConfig.exchangeRate} 🍿 可兑换 1 次求片额度
+        `.trim());
+        return;
+    }
+    
+    // /兑换 - 兑换额度
+    if (cmdLower === '/兑换' || cmdLower === '/exchange') {
+        const user = getOrCreateUser(userId, username);
+        
+        if (user.popcorn < botConfig.exchangeRate) {
+            await sendBotMessage(chatId, `
+❌ <b>爆米花不足!</b>
+
+🍿 当前: ${user.popcorn}
+🍿 需要: ${botConfig.exchangeRate}
+🍿 还差: ${botConfig.exchangeRate - user.popcorn}
+
+💡 每日签到可获得 ${botConfig.checkinReward} 🍿
+            `.trim());
+            return;
+        }
+        
+        // 扣除爆米花，增加额度
+        const newPopcorn = user.popcorn - botConfig.exchangeRate;
+        const newQuota = user.quota + 1;
+        
+        updateUser(userId, {
+            popcorn: newPopcorn,
+            quota: newQuota
+        });
+        
+        await sendBotMessage(chatId, `
+✅ <b>兑换成功!</b>
+
+🍿 消耗: -${botConfig.exchangeRate}
+🎫 获得: +1 求片额度
+
+当前状态:
+🍿 爆米花: ${newPopcorn}
+🎫 求片额度: ${newQuota}
+        `.trim());
+        return;
+    }
+    
+    // /求片 - 搜索并求片
+    if (cmdLower === '/求片' || cmdLower === '/request' || cmdLower === '/搜索' || cmdLower === '/search') {
+        const query = args.join(' ').trim();
+        
+        if (!query) {
+            await sendBotMessage(chatId, `
+🔍 <b>求片用法</b>
+
+/求片 <片名>
+
+例如:
+/求片 流浪地球
+/求片 Breaking Bad
+            `.trim());
+            return;
+        }
+        
+        const user = getOrCreateUser(userId, username);
+        
+        if (user.quota <= 0) {
+            await sendBotMessage(chatId, `
+❌ <b>求片额度不足!</b>
+
+🎫 当前额度: 0
+🍿 爆米花: ${user.popcorn}
+
+💡 使用 /兑换 用 ${botConfig.exchangeRate} 🍿 换取 1 次额度
+💡 或每日 /签到 获得爆米花
+            `.trim());
+            return;
+        }
+        
+        await sendBotMessage(chatId, `🔍 正在搜索 "<b>${query}</b>"...`);
+        
+        const results = await searchTMDB(query);
+        
+        if (results.length === 0) {
+            await sendBotMessage(chatId, `
+😕 未找到 "<b>${query}</b>" 的结果
+
+💡 请尝试:
+• 检查拼写是否正确
+• 使用英文原名搜索
+• 使用更简短的关键词
+            `.trim());
+            return;
+        }
+        
+        // 显示搜索结果，带 inline keyboard
+        const keyboard = results.map((item, index) => {
+            const title = item.title || item.name;
+            const year = (item.release_date || item.first_air_date || '').split('-')[0] || '未知';
+            const type = item.media_type === 'movie' ? '🎬' : '📺';
+            return [{
+                text: `${type} ${title} (${year})`,
+                callback_data: `req_${item.id}_${item.media_type}`
+            }];
+        });
+        
+        keyboard.push([{ text: '❌ 取消', callback_data: 'req_cancel' }]);
+        
+        await sendBotMessage(chatId, `
+🎬 <b>搜索结果</b>: ${query}
+
+请选择要求片的内容:
+        `.trim(), {
+            reply_markup: { inline_keyboard: keyboard }
+        });
+        return;
+    }
+    
+    // 管理员命令
+    if (botConfig.adminUsers.includes(userId)) {
+        // /充值 @用户 数量 - 给用户充值爆米花
+        if (cmdLower === '/充值' || cmdLower === '/addpopcorn') {
+            // 简化版本，只给自己充值测试
+            if (args.length >= 1) {
+                const amount = parseInt(args[0]);
+                if (!isNaN(amount) && amount > 0) {
+                    const user = getOrCreateUser(userId, username);
+                    updateUser(userId, { popcorn: user.popcorn + amount });
+                    await sendBotMessage(chatId, `✅ 已充值 ${amount} 🍿 给 ${username}`);
+                    return;
+                }
+            }
+            await sendBotMessage(chatId, '用法: /充值 <数量>');
+            return;
+        }
+        
+        // /设置额度 数量 - 设置自己的额度
+        if (cmdLower === '/设置额度' || cmdLower === '/setquota') {
+            if (args.length >= 1) {
+                const amount = parseInt(args[0]);
+                if (!isNaN(amount) && amount >= 0) {
+                    updateUser(userId, { quota: amount });
+                    await sendBotMessage(chatId, `✅ 已设置求片额度为 ${amount}`);
+                    return;
+                }
+            }
+            await sendBotMessage(chatId, '用法: /设置额度 <数量>');
+            return;
+        }
+    }
+}
+
+// 处理回调查询（按钮点击）
+async function handleCallbackQuery(callbackQuery) {
+    const chatId = callbackQuery.message.chat.id;
+    const messageId = callbackQuery.message.message_id;
+    const userId = callbackQuery.from.id.toString();
+    const username = callbackQuery.from.username || callbackQuery.from.first_name || 'User';
+    const data = callbackQuery.data;
+    
+    // 取消操作
+    if (data === 'req_cancel') {
+        await editBotMessage(chatId, messageId, '❌ 已取消求片');
+        return;
+    }
+    
+    // 处理求片确认
+    if (data.startsWith('req_')) {
+        const [, tmdbId, mediaType] = data.split('_');
+        
+        const user = getOrCreateUser(userId, username);
+        
+        if (user.quota <= 0) {
+            await answerCallback(callbackQuery.id, '❌ 求片额度不足!');
+            return;
+        }
+        
+        // 获取详细信息
+        let itemInfo = null;
+        try {
+            const detailUrl = `${config.tmdb.baseUrl}/${mediaType}/${tmdbId}?api_key=${config.tmdb.apiKey}&language=zh-CN`;
+            const res = await fetch(detailUrl);
+            if (res.ok) {
+                itemInfo = await res.json();
+            }
+        } catch (e) {
+            console.error('[Bot] 获取详情失败:', e.message);
+        }
+        
+        if (!itemInfo) {
+            await answerCallback(callbackQuery.id, '❌ 获取信息失败');
+            return;
+        }
+        
+        const title = itemInfo.title || itemInfo.name;
+        const year = (itemInfo.release_date || itemInfo.first_air_date || '').split('-')[0] || '未知';
+        const overview = itemInfo.overview?.substring(0, 100) + (itemInfo.overview?.length > 100 ? '...' : '') || '暂无简介';
+        
+        // 扣除额度
+        const newQuota = user.quota - 1;
+        const requestRecord = {
+            tmdbId: parseInt(tmdbId),
+            title,
+            year,
+            mediaType,
+            status: 'pending',
+            requestedAt: new Date().toISOString()
+        };
+        
+        const newRequests = [...(user.requests || []), requestRecord];
+        updateUser(userId, {
+            quota: newQuota,
+            requests: newRequests
+        });
+        
+        // 更新消息
+        await editBotMessage(chatId, messageId, `
+✅ <b>求片成功!</b>
+
+🎬 <b>${title}</b> (${year})
+${mediaType === 'movie' ? '类型: 电影' : '类型: 剧集'}
+
+📝 ${overview}
+
+🎫 剩余额度: ${newQuota}
+
+管理员会尽快处理你的请求~
+        `.trim());
+        
+        // 通知管理员
+        if (config.telegram?.chatId) {
+            const posterUrl = itemInfo.poster_path 
+                ? `https://image.tmdb.org/t/p/w500${itemInfo.poster_path}` 
+                : null;
+            
+            const adminKeyboard = {
+                inline_keyboard: [[
+                    { text: '✅ 已完成', callback_data: `admin_done_${userId}_${tmdbId}` },
+                    { text: '❌ 拒绝', callback_data: `admin_reject_${userId}_${tmdbId}` }
+                ], [
+                    { text: '🔗 TMDB', url: `https://www.themoviedb.org/${mediaType}/${tmdbId}` }
+                ]]
+            };
+            
+            const adminMsg = `
+🎬 <b>新的求片请求</b>
+
+👤 用户: ${username} (ID: ${userId})
+📽️ 片名: <b>${title}</b> (${year})
+🎞️ 类型: ${mediaType === 'movie' ? '电影' : '剧集'}
+
+📝 ${overview}
+            `.trim();
+            
+            if (posterUrl) {
+                await sendBotPhoto(config.telegram.chatId, posterUrl, adminMsg, adminKeyboard);
+            } else {
+                await sendBotMessage(config.telegram.chatId, adminMsg, { reply_markup: adminKeyboard });
+            }
+        }
+        
+        await answerCallback(callbackQuery.id, '✅ 求片成功!');
+        return;
+    }
+    
+    // 管理员处理求片
+    if (data.startsWith('admin_done_') || data.startsWith('admin_reject_')) {
+        const botConfig = getBotConfig();
+        const adminId = callbackQuery.from.id.toString();
+        
+        // 检查是否是管理员
+        if (!botConfig.adminUsers.includes(adminId)) {
+            await answerCallback(callbackQuery.id, '❌ 你没有权限执行此操作');
+            return;
+        }
+        
+        const parts = data.split('_');
+        const action = parts[1]; // done 或 reject
+        const targetUserId = parts[2];
+        const tmdbId = parts[3];
+        
+        // 更新用户的求片状态
+        const users = loadBotUsers();
+        if (users[targetUserId]) {
+            const requests = users[targetUserId].requests || [];
+            const reqIndex = requests.findIndex(r => r.tmdbId === parseInt(tmdbId));
+            if (reqIndex !== -1) {
+                requests[reqIndex].status = action === 'done' ? 'completed' : 'rejected';
+                requests[reqIndex].processedAt = new Date().toISOString();
+                users[targetUserId].requests = requests;
+                saveBotUsers(users);
+                
+                // 通知用户
+                const req = requests[reqIndex];
+                const statusEmoji = action === 'done' ? '✅' : '❌';
+                const statusText = action === 'done' ? '已完成' : '已被拒绝';
+                
+                await sendBotMessage(targetUserId, `
+${statusEmoji} <b>求片状态更新</b>
+
+🎬 <b>${req.title}</b> (${req.year})
+
+状态: ${statusText}
+
+${action === 'done' ? '🎉 感谢你的耐心等待!' : '😔 抱歉，暂时无法满足此请求'}
+                `.trim());
+            }
+        }
+        
+        // 更新管理员消息
+        const originalText = callbackQuery.message.text || callbackQuery.message.caption || '';
+        const statusLine = action === 'done' ? '\n\n✅ 已标记完成' : '\n\n❌ 已拒绝';
+        
+        if (callbackQuery.message.photo) {
+            await editBotCaption(chatId, messageId, originalText + statusLine);
+        } else {
+            await editBotMessage(chatId, messageId, originalText + statusLine);
+        }
+        
+        await answerCallback(callbackQuery.id, action === 'done' ? '已标记完成' : '已拒绝');
+        return;
+    }
+}
+
+// 编辑消息
+async function editBotMessage(chatId, messageId, text) {
+    if (!config.telegram?.botToken) return false;
+    
+    try {
+        const res = await fetch(`https://api.telegram.org/bot${config.telegram.botToken}/editMessageText`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chat_id: chatId,
+                message_id: messageId,
+                text: text,
+                parse_mode: 'HTML'
+            })
+        });
+        return res.ok;
+    } catch (e) {
+        console.error('[Bot] 编辑消息失败:', e.message);
+        return false;
+    }
+}
+
+// 编辑图片说明
+async function editBotCaption(chatId, messageId, caption) {
+    if (!config.telegram?.botToken) return false;
+    
+    try {
+        const res = await fetch(`https://api.telegram.org/bot${config.telegram.botToken}/editMessageCaption`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chat_id: chatId,
+                message_id: messageId,
+                caption: caption,
+                parse_mode: 'HTML'
+            })
+        });
+        return res.ok;
+    } catch (e) {
+        console.error('[Bot] 编辑说明失败:', e.message);
+        return false;
+    }
+}
+
+// 发送图片
+async function sendBotPhoto(chatId, photoUrl, caption, replyMarkup = null) {
+    if (!config.telegram?.botToken) return false;
+    
+    try {
+        const body = {
+            chat_id: chatId,
+            photo: photoUrl,
+            caption: caption,
+            parse_mode: 'HTML'
+        };
+        
+        if (replyMarkup) {
+            body.reply_markup = replyMarkup;
+        }
+        
+        const res = await fetch(`https://api.telegram.org/bot${config.telegram.botToken}/sendPhoto`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        return res.ok;
+    } catch (e) {
+        console.error('[Bot] 发送图片失败:', e.message);
+        return false;
+    }
+}
+
+// 回答回调查询
+async function answerCallback(callbackQueryId, text) {
+    if (!config.telegram?.botToken) return false;
+    
+    try {
+        const res = await fetch(`https://api.telegram.org/bot${config.telegram.botToken}/answerCallbackQuery`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                callback_query_id: callbackQueryId,
+                text: text
+            })
+        });
+        return res.ok;
+    } catch (e) {
+        console.error('[Bot] 回答回调失败:', e.message);
+        return false;
+    }
+}
+
+// Telegram Bot Webhook
+app.post('/api/telegram/webhook', async (req, res) => {
+    try {
+        const update = req.body;
+        
+        // 处理普通消息
+        if (update.message?.text) {
+            await handleBotCommand(update.message);
+        }
+        
+        // 处理回调查询（按钮点击）
+        if (update.callback_query) {
+            await handleCallbackQuery(update.callback_query);
+        }
+        
+        res.json({ ok: true });
+    } catch (error) {
+        console.error('[Bot] Webhook 处理错误:', error);
+        res.json({ ok: true }); // 总是返回 200，避免 Telegram 重试
+    }
+});
+
+// API: 获取 Bot 配置（前端用）
+app.get('/api/bot/config', requireAuth, (req, res) => {
+    const botConfig = getBotConfig();
+    res.json({
+        defaultQuota: botConfig.defaultQuota,
+        checkinReward: botConfig.checkinReward,
+        exchangeRate: botConfig.exchangeRate,
+        webhookUrl: config.bot?.webhookUrl || ''
+    });
+});
+
+// API: 获取所有 Bot 用户（管理员用）
+app.get('/api/bot/users', requireAuth, (req, res) => {
+    const users = loadBotUsers();
+    res.json(Object.values(users));
+});
+
+// API: 设置 Webhook
+app.post('/api/bot/webhook/set', requireAuth, async (req, res) => {
+    const { webhookUrl } = req.body;
+    
+    if (!config.telegram?.botToken) {
+        return res.status(400).json({ success: false, error: 'Telegram Bot Token 未配置' });
+    }
+    
+    try {
+        const apiUrl = `https://api.telegram.org/bot${config.telegram.botToken}/setWebhook`;
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: webhookUrl })
+        });
+        
+        const result = await response.json();
+        
+        if (result.ok) {
+            // 保存到配置
+            config.bot = config.bot || {};
+            config.bot.webhookUrl = webhookUrl;
+            
+            const configData = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+            configData.bot = config.bot;
+            fs.writeFileSync(configPath, JSON.stringify(configData, null, 2));
+            
+            res.json({ success: true, message: 'Webhook 设置成功' });
+        } else {
+            res.status(400).json({ success: false, error: result.description });
+        }
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
 });
 
 // Serve React App

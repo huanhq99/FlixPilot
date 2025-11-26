@@ -8,7 +8,7 @@
 
 连接 Emby 媒体库与全球热门影视的智能桥梁
 
-[![Version](https://img.shields.io/badge/version-2.1.31-blue.svg)](https://github.com/huanhq99/StreamHub/releases)
+[![Version](https://img.shields.io/badge/version-2.2.0-blue.svg)](https://github.com/huanhq99/StreamHub/releases)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![React](https://img.shields.io/badge/React-19-61DAFB.svg)](https://reactjs.org/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](https://hub.docker.com/)
@@ -231,6 +231,44 @@ StreamHub v2.1.31+ 实施了企业级安全措施:
 - [ ] 定期更换 API Keys
 
 ## 📝 更新日志
+
+### v2.2.0 (2025-11-26) 🤖 Telegram 机器人求片系统
+
+**✨ 新功能**
+- 🤖 **TG 机器人交互式求片**
+  - `/签到` - 每日签到领取爆米花 🍿
+  - `/余额` - 查看爆米花和求片额度
+  - `/兑换` - 用爆米花兑换求片额度
+  - `/求片 <片名>` - 搜索并提交求片请求
+- 🍿 **爆米花积分系统**
+  - 每日签到奖励（默认 10 爆米花）
+  - 积分兑换求片额度（默认 50:1）
+  - 新用户默认求片额度（默认 3 次）
+- 👮 **管理员功能**
+  - 收到求片请求自动通知
+  - 一键标记完成/拒绝
+  - 用户自动收到状态更新
+- 🔐 **多用户认证系统**
+  - 支持管理员密码登录
+  - 支持 Emby 账户登录
+  - 支持游客浏览模式
+
+**📝 配置说明 (config.json)**
+```json
+{
+  "bot": {
+    "defaultQuota": 3,
+    "checkinReward": 10,
+    "exchangeRate": 50,
+    "adminUsers": ["你的TG用户ID"]
+  }
+}
+```
+
+**⚙️ 设置 Webhook**
+```
+https://你的域名/api/telegram/webhook
+```
 
 ### v2.1.31 (2025-11-25) 📊 观影报告系统
 
