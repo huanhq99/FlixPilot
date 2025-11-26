@@ -1187,7 +1187,8 @@ async function handleBotCommand(message) {
     // /start - 欢迎消息
     if (cmdLower === '/start' || cmdLower === '/帮助' || cmdLower === '/help') {
         const bindStatus = isAdmin ? '👑 管理员' : (isBound ? `✅ 已绑定: ${user.embyUsername}` : '❌ 未绑定');
-        await sendBotMessage(chatId, `
+        
+        let helpText = `
 🎬 <b>欢迎使用 StreamHub Bot!</b>
 
 你好 <b>${username}</b>，我可以帮你：
@@ -1206,8 +1207,21 @@ async function handleBotCommand(message) {
 📊 <b>其他功能</b>
 /库存 - 查看媒体库统计
 /问 &lt;问题&gt; - AI 问答
-/发红包 &lt;数量&gt; [份数] - 群里发红包
-        `.trim());
+/发红包 &lt;数量&gt; [份数] - 群里发红包`;
+
+        // 管理员额外命令
+        if (isAdmin) {
+            helpText += `
+
+👑 <b>管理员命令</b>
+/充值 &lt;ID&gt; &lt;数量&gt; - 充值爆米花
+/设置额度 &lt;ID&gt; &lt;数量&gt; - 设置求片额度
+/用户列表 - 查看用户列表
+/日报 - 手动发送日报
+/周报 - 手动发送周报`;
+        }
+        
+        await sendBotMessage(chatId, helpText.trim());
         return;
     }
     
@@ -1603,6 +1617,75 @@ ${requestHistory}
 
 ${userList || '暂无用户'}
             `.trim());
+            return;
+        }
+        
+        // /日报 - 手动发送日报
+        if (cmdLower === '/日报' || cmdLower === '/daily') {
+            await sendBotMessage(chatId, `📊 正在生成日报...`);
+            
+            try {
+                const now = new Date();
+                const startOfDay = new Date(now);
+                startOfDay.setHours(0, 0, 0, 0);
+                
+                const stats = await getEmbyPlaybackStats(config.emby, startOfDay, now);
+                const dateStr = now.toLocaleDateString('zh-CN');
+                
+                // 生成图片
+                const imageBuffer = await generateReportImage(stats, 'daily', dateStr);
+                
+                if (imageBuffer) {
+                    // 直接发送到当前聊天
+                    await sendTelegramPhoto(
+                        config.telegram?.botToken,
+                        chatId,
+                        imageBuffer,
+                        `📊 Emby 今日排行榜 - ${dateStr}`
+                    );
+                } else {
+                    // 发送文本报告
+                    const message = generateReportText('daily', stats, dateStr);
+                    await sendBotMessage(chatId, message);
+                }
+            } catch (e) {
+                console.error('[Bot] 生成日报失败:', e.message);
+                await sendBotMessage(chatId, `❌ 生成日报失败: ${e.message}`);
+            }
+            return;
+        }
+        
+        // /周报 - 手动发送周报
+        if (cmdLower === '/周报' || cmdLower === '/weekly') {
+            await sendBotMessage(chatId, `📊 正在生成周报...`);
+            
+            try {
+                const now = new Date();
+                const startOfWeek = new Date(now);
+                startOfWeek.setDate(now.getDate() - 7);
+                startOfWeek.setHours(0, 0, 0, 0);
+                
+                const stats = await getEmbyPlaybackStats(config.emby, startOfWeek, now);
+                const dateRange = `${startOfWeek.toLocaleDateString('zh-CN')} - ${now.toLocaleDateString('zh-CN')}`;
+                
+                // 生成图片
+                const imageBuffer = await generateReportImage(stats, 'weekly', dateRange);
+                
+                if (imageBuffer) {
+                    await sendTelegramPhoto(
+                        config.telegram?.botToken,
+                        chatId,
+                        imageBuffer,
+                        `📊 Emby 本周排行榜 - ${dateRange}`
+                    );
+                } else {
+                    const message = generateReportText('weekly', stats, dateRange);
+                    await sendBotMessage(chatId, message);
+                }
+            } catch (e) {
+                console.error('[Bot] 生成周报失败:', e.message);
+                await sendBotMessage(chatId, `❌ 生成周报失败: ${e.message}`);
+            }
             return;
         }
     }
