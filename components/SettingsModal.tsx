@@ -96,25 +96,26 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
                         setServerVersion(data.version);
                     }
                     
-                    // 合并服务器端 Telegram 配置 (优先使用服务器配置)
-                    if (data.telegram?.configured) {
-                        setNotifyConfig(prev => ({
-                            ...prev,
-                            telegramBotToken: data.telegram.botToken || prev.telegramBotToken,
-                            telegramChatId: data.telegram.chatId || prev.telegramChatId
-                        }));
-                    }
-                    
-                    // 合并服务器端 MoviePilot 配置
-                    if (data.moviepilot?.configured) {
-                        setNotifyConfig(prev => ({
-                            ...prev,
-                            moviePilotUrl: data.moviepilot.url || prev.moviePilotUrl,
-                            moviePilotUsername: data.moviepilot.username || prev.moviePilotUsername,
-                            moviePilotPassword: data.moviepilot.password || prev.moviePilotPassword,
-                            moviePilotSubscribeUser: data.moviepilot.subscribeUser || prev.moviePilotSubscribeUser
-                        }));
-                    }
+                    // 一次性合并所有服务器配置，避免多次 setState 覆盖
+                    setNotifyConfig(prev => {
+                        const merged = { ...prev };
+                        
+                        // 合并 Telegram 配置
+                        if (data.telegram?.configured) {
+                            merged.telegramBotToken = data.telegram.botToken || prev.telegramBotToken;
+                            merged.telegramChatId = data.telegram.chatId || prev.telegramChatId;
+                        }
+                        
+                        // 合并 MoviePilot 配置
+                        if (data.moviepilot?.configured) {
+                            merged.moviePilotUrl = data.moviepilot.url || prev.moviePilotUrl;
+                            merged.moviePilotUsername = data.moviepilot.username || prev.moviePilotUsername;
+                            merged.moviePilotPassword = data.moviepilot.password || prev.moviePilotPassword;
+                            merged.moviePilotSubscribeUser = data.moviepilot.subscribeUser || prev.moviePilotSubscribeUser;
+                        }
+                        
+                        return merged;
+                    });
                     
                     // 合并服务器端 TMDB 配置
                     if (data.tmdb?.configured && data.tmdb.apiKey) {
