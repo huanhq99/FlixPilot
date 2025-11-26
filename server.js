@@ -859,6 +859,46 @@ function isUserAuthorized(userId) {
 let mpToken = null;
 let mpTokenExpiry = 0;
 
+// 使用 http/https 模块发送请求（和网页代理一样的方式）
+function mpHttpRequest(url, options = {}) {
+    return new Promise((resolve, reject) => {
+        const urlObj = new URL(url);
+        const isHttps = urlObj.protocol === 'https:';
+        const requestModule = isHttps ? https : http;
+        
+        const requestOptions = {
+            method: options.method || 'GET',
+            headers: options.headers || {},
+            rejectUnauthorized: false, // 忽略 SSL 证书
+            timeout: 30000
+        };
+        
+        const req = requestModule.request(url, requestOptions, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+                resolve({
+                    ok: res.statusCode >= 200 && res.statusCode < 300,
+                    status: res.statusCode,
+                    json: () => Promise.resolve(JSON.parse(data)),
+                    text: () => Promise.resolve(data)
+                });
+            });
+        });
+        
+        req.on('error', reject);
+        req.on('timeout', () => {
+            req.destroy();
+            reject(new Error('Request timeout'));
+        });
+        
+        if (options.body) {
+            req.write(options.body);
+        }
+        req.end();
+    });
+}
+
 async function getMPToken() {
     if (mpToken && Date.now() < mpTokenExpiry) {
         return mpToken;
@@ -875,24 +915,11 @@ async function getMPToken() {
         const loginUrl = `${baseUrl}/api/v1/login/access-token`;
         console.log(`[MP] 正在登录: ${loginUrl}`);
         
-        // 使用 undici 的 Agent 忽略 SSL 证书错误
-        const fetchOptions = {
+        const response = await mpHttpRequest(loginUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: `username=${encodeURIComponent(mpConfig.username)}&password=${encodeURIComponent(mpConfig.password)}`
-        };
-        
-        // 对于 HTTPS 使用 undici 并忽略证书
-        let response;
-        if (baseUrl.startsWith('https://')) {
-            const { Agent, fetch: undiciFetch } = await import('undici');
-            const agent = new Agent({
-                connect: { rejectUnauthorized: false }
-            });
-            response = await undiciFetch(loginUrl, { ...fetchOptions, dispatcher: agent });
-        } else {
-            response = await fetch(loginUrl, fetchOptions);
-        }
+        });
         
         console.log(`[MP] 登录响应: ${response.status}`);
         
@@ -907,24 +934,9 @@ async function getMPToken() {
             console.error(`[MP] 登录失败: ${response.status} - ${text}`);
         }
     } catch (e) {
-        console.error('[MP] 获取 Token 失败:', e.message, e.cause || '');
+        console.error('[MP] 获取 Token 失败:', e.message);
     }
     return null;
-}
-
-// MP 安全 fetch (忽略 HTTPS 证书)
-async function mpFetch(url, options = {}) {
-    const mpConfig = config.moviepilot || {};
-    const baseUrl = mpConfig.url || '';
-    
-    if (baseUrl.startsWith('https://')) {
-        const { Agent, fetch: undiciFetch } = await import('undici');
-        const agent = new Agent({
-            connect: { rejectUnauthorized: false }
-        });
-        return undiciFetch(url, { ...options, dispatcher: agent });
-    }
-    return fetch(url, options);
 }
 
 // MP 搜索资源 (使用 torrents 接口)
@@ -943,7 +955,7 @@ async function mpSearchResources(keyword, mediaType = null) {
         
         console.log(`[MP] 搜索资源: ${url.toString()}`);
         
-        const response = await mpFetch(url.toString(), {
+        const response = await mpHttpRequest(url.toString(), {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         
@@ -972,7 +984,7 @@ async function mpDownload(resourceId) {
     const baseUrl = mpConfig.url.replace(/\/$/, '');
     
     try {
-        const response = await mpFetch(`${baseUrl}/api/v1/download/add`, {
+        const response = await mpHttpRequest(`${baseUrl}/api/v1/download/add`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -1002,7 +1014,7 @@ async function mpGetDownloads() {
     const baseUrl = mpConfig.url.replace(/\/$/, '');
     
     try {
-        const response = await mpFetch(`${baseUrl}/api/v1/download/`, {
+        const response = await mpHttpRequest(`${baseUrl}/api/v1/download/`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         
