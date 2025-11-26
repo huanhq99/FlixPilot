@@ -738,7 +738,9 @@ function getOrCreateUser(userId, username) {
             totalCheckins: 0,                     // 累计签到天数
             lastCheckin: null,                    // 上次签到日期
             requests: [],                         // 求片历史
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            embyUserId: null,                     // 绑定的 Emby 用户 ID
+            embyUsername: null                    // 绑定的 Emby 用户名
         };
         saveBotUsers(users);
     } else if (username && users[userId].username !== username) {
@@ -756,6 +758,48 @@ function updateUser(userId, updates) {
         Object.assign(users[userId], updates);
         saveBotUsers(users);
     }
+}
+
+// 验证 Emby 用户是否存在
+async function verifyEmbyUser(embyUsername) {
+    const embyConfig = config.emby || {};
+    if (!embyConfig.serverUrl || !embyConfig.apiKey) {
+        return { success: false, error: 'Emby 未配置' };
+    }
+    
+    try {
+        const baseUrl = embyConfig.serverUrl.replace(/\/$/, '');
+        const usersRes = await fetch(`${baseUrl}/Users?api_key=${embyConfig.apiKey}`);
+        
+        if (!usersRes.ok) {
+            return { success: false, error: 'Emby 服务器连接失败' };
+        }
+        
+        const users = await usersRes.json();
+        // 不区分大小写匹配用户名
+        const foundUser = users.find(u => u.Name.toLowerCase() === embyUsername.toLowerCase());
+        
+        if (foundUser) {
+            return { success: true, user: { id: foundUser.Id, name: foundUser.Name } };
+        } else {
+            return { success: false, error: '用户不存在' };
+        }
+    } catch (e) {
+        console.error('[Bot] Emby 验证失败:', e.message);
+        return { success: false, error: '验证失败: ' + e.message };
+    }
+}
+
+// 检查用户是否已绑定 Emby（管理员例外）
+function isUserAuthorized(userId) {
+    const botConfig = getBotConfig();
+    // 管理员无需绑定
+    if (botConfig.adminUsers.includes(userId)) {
+        return true;
+    }
+    
+    const user = getOrCreateUser(userId, '');
+    return !!user.embyUserId;
 }
 
 // 发送 Bot 消息
@@ -839,6 +883,9 @@ async function handleBotCommand(message) {
     console.log(`[Bot] 收到消息 - 用户: ${username} (${userId}), 内容: "${text}"`);
     
     const botConfig = getBotConfig();
+    const user = getOrCreateUser(userId, username);
+    const isAdmin = botConfig.adminUsers.includes(userId);
+    const isBound = !!user.embyUserId;
     
     // 解析命令
     const [command, ...args] = text.split(/\s+/);
@@ -846,19 +893,21 @@ async function handleBotCommand(message) {
     
     // /start - 欢迎消息
     if (cmdLower === '/start' || cmdLower === '/帮助' || cmdLower === '/help') {
-        const user = getOrCreateUser(userId, username);
+        const bindStatus = isAdmin ? '👑 管理员' : (isBound ? `✅ 已绑定: ${user.embyUsername}` : '❌ 未绑定');
         await sendBotMessage(chatId, `
 🎬 <b>欢迎使用 StreamHub Bot!</b>
 
 你好 <b>${username}</b>，我可以帮你：
 
 📌 <b>可用命令</b>
+/绑定 &lt;Emby用户名&gt; - 绑定 Emby 账号 (必须先绑定才能使用)
 /签到 - 每日签到领取 ${botConfig.checkinReward} 🍿
 /余额 - 查看爆米花和求片额度
 /兑换 - 用 ${botConfig.exchangeRate} 🍿 兑换 1 次求片额度
 /求片 &lt;片名&gt; - 搜索并提交求片请求
 
 📊 <b>你的状态</b>
+🔗 绑定状态: ${bindStatus}
 🍿 爆米花: ${user.popcorn}
 🎫 求片额度: ${user.quota}
 📅 累计签到: ${user.totalCheckins} 天
@@ -866,9 +915,97 @@ async function handleBotCommand(message) {
         return;
     }
     
+    // /绑定 - 绑定 Emby 账号
+    if (cmdLower === '/绑定' || cmdLower === '/bind') {
+        const embyUsername = args.join(' ').trim();
+        
+        if (!embyUsername) {
+            await sendBotMessage(chatId, `
+🔗 <b>绑定 Emby 账号</b>
+
+请输入你的 Emby 用户名:
+/绑定 &lt;用户名&gt;
+
+例如:
+/绑定 zhangsan
+            `.trim());
+            return;
+        }
+        
+        // 已经绑定过
+        if (user.embyUserId && !isAdmin) {
+            await sendBotMessage(chatId, `
+⚠️ 你已经绑定了 Emby 账号: <b>${user.embyUsername}</b>
+
+如需更换绑定，请联系管理员。
+            `.trim());
+            return;
+        }
+        
+        // 验证 Emby 用户
+        await sendBotMessage(chatId, `🔍 正在验证 Emby 用户 <b>${embyUsername}</b>...`);
+        
+        const result = await verifyEmbyUser(embyUsername);
+        
+        if (result.success) {
+            // 检查是否已被其他 TG 用户绑定
+            const allUsers = loadBotUsers();
+            const alreadyBound = Object.values(allUsers).find(
+                u => u.embyUserId === result.user.id && u.id !== userId
+            );
+            
+            if (alreadyBound) {
+                await sendBotMessage(chatId, `
+❌ <b>绑定失败</b>
+
+该 Emby 账号已被其他用户绑定。
+如有疑问请联系管理员。
+                `.trim());
+                return;
+            }
+            
+            // 绑定成功
+            updateUser(userId, {
+                embyUserId: result.user.id,
+                embyUsername: result.user.name
+            });
+            
+            await sendBotMessage(chatId, `
+✅ <b>绑定成功!</b>
+
+🔗 Emby 账号: <b>${result.user.name}</b>
+
+现在你可以使用以下功能:
+• /签到 - 每日签到领取爆米花
+• /求片 - 搜索并提交求片请求
+            `.trim());
+        } else {
+            await sendBotMessage(chatId, `
+❌ <b>绑定失败</b>
+
+${result.error}
+
+请检查用户名是否正确，注意区分大小写。
+            `.trim());
+        }
+        return;
+    }
+    
+    // 以下命令需要绑定 Emby 或是管理员
+    if (!isAdmin && !isBound) {
+        await sendBotMessage(chatId, `
+🔒 <b>请先绑定 Emby 账号</b>
+
+使用 /绑定 &lt;Emby用户名&gt; 绑定你的 Emby 账号后才能使用此功能。
+
+例如:
+/绑定 zhangsan
+        `.trim());
+        return;
+    }
+    
     // /签到 - 签到
     if (cmdLower === '/签到' || cmdLower === '/checkin') {
-        const user = getOrCreateUser(userId, username);
         const today = new Date().toISOString().split('T')[0];
         
         if (user.lastCheckin === today) {
