@@ -88,6 +88,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
             fetch('/api/config')
                 .then(res => res.json())
                 .then(data => {
+                    console.log('📦 后端配置返回:', JSON.stringify(data, null, 2));
+                    
                     if (data.version) {
                         setServerVersion(data.version);
                     }
@@ -104,12 +106,16 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
                     
                     // 后端 MoviePilot 配置直接覆盖
                     if (data.moviepilot?.configured) {
+                        console.log('✅ MoviePilot 配置:', data.moviepilot);
                         merged.moviePilotUrl = data.moviepilot.url;
                         merged.moviePilotUsername = data.moviepilot.username;
                         merged.moviePilotPassword = data.moviepilot.password;
                         merged.moviePilotSubscribeUser = data.moviepilot.subscribeUser;
+                    } else {
+                        console.log('❌ MoviePilot 未配置, data.moviepilot =', data.moviepilot);
                     }
                     
+                    console.log('📝 最终 notifyConfig:', merged);
                     setNotifyConfig(merged);
                     
                     // 后端 TMDB 配置直接覆盖
