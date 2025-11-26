@@ -133,6 +133,23 @@ ${tagLine}
 
 const PROXY_URL = '/api/proxy/moviepilot';
 
+/**
+ * 获取本地存储中的 StreamHub 管理员 token
+ * 优先使用 `streamhub_token`，其次尝试 `streamhub_auth.accessToken` 或 `streamhub_auth.token`
+ */
+function getLocalAuthToken(): string {
+    const tokenDirect = localStorage.getItem('streamhub_token');
+    if (tokenDirect) return tokenDirect;
+    const authStr = localStorage.getItem('streamhub_auth');
+    if (!authStr) return '';
+    try {
+        const auth = JSON.parse(authStr);
+        return auth.accessToken || auth.token || '';
+    } catch {
+        return '';
+    }
+}
+
 export const testMoviePilotConnection = async (config: NotificationConfig): Promise<{ success: boolean, message: string, method?: string }> => {
     if (!config.moviePilotUrl) {
         return { success: false, message: '请先配置 MoviePilot 地址' };
@@ -150,7 +167,7 @@ export const testMoviePilotConnection = async (config: NotificationConfig): Prom
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('streamhub_auth') ? JSON.parse(localStorage.getItem('streamhub_auth') || '{}').token : ''}`
+                    'Authorization': `Bearer ${getLocalAuthToken()}`
                 },
                 body: JSON.stringify({
                     target_url: loginUrl,
@@ -208,7 +225,7 @@ export const testMoviePilotConnection = async (config: NotificationConfig): Prom
                 headers: {
                     'Content-Type': 'application/json',
                     // Authorization header for server.js requireAuth middleware if needed
-                    'Authorization': `Bearer ${localStorage.getItem('streamhub_auth') ? JSON.parse(localStorage.getItem('streamhub_auth') || '{}').token : ''}`
+                    'Authorization': `Bearer ${getLocalAuthToken()}`
                 },
                 body: JSON.stringify({
                     target_url: targetUrl,
@@ -291,7 +308,7 @@ export const subscribeToMoviePilot = async (config: NotificationConfig, item: Me
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('streamhub_auth') ? JSON.parse(localStorage.getItem('streamhub_auth') || '{}').token : ''}`
+                'Authorization': `Bearer ${getLocalAuthToken()}`
             },
             body: JSON.stringify({
                 target_url: targetUrl,
