@@ -162,17 +162,58 @@ if (fs.existsSync(configPath)) {
   }
 }
 
-// 设置默认用户名
+// ==================== 配置状态检查 ====================
+console.log('\n📋 配置状态检查:');
+console.log('─'.repeat(50));
+
+// TMDB 配置
+if (config.tmdb?.apiKey && config.tmdb.apiKey !== 'your_tmdb_api_key_here') {
+  console.log('✅ TMDB API Key: 已配置');
+} else {
+  console.log('❌ TMDB API Key: 未配置 (必需!)');
+  console.log('   → 获取地址: https://www.themoviedb.org/settings/api');
+}
+
+// 管理员账号
 if (!config.auth?.username) {
   config.auth = config.auth || {};
   config.auth.username = 'admin';
 }
-
 if (config.auth?.password) {
-  console.log(`✅ 管理员账号已配置: ${config.auth.username}`);
+  console.log(`✅ 管理员账号: ${config.auth.username} / ${'*'.repeat(config.auth.password.length)}`);
 } else {
-  console.log('⚠️  管理员密码未配置 - 首次访问时需在网页设置');
+  console.log('⚠️  管理员密码: 未配置 (首次访问时在网页设置)');
 }
+
+// Emby 配置
+if (config.emby?.serverUrl && config.emby.serverUrl !== 'http://your-emby-server:8096' && config.emby?.apiKey && config.emby.apiKey !== 'your_emby_api_key_here') {
+  console.log(`✅ Emby 服务器: ${config.emby.serverUrl}`);
+} else {
+  console.log('⚠️  Emby: 未配置 (可选)');
+}
+
+// MoviePilot 配置
+if (config.moviepilot?.url && config.moviepilot.url !== 'https://your-moviepilot-server.com') {
+  console.log(`✅ MoviePilot: ${config.moviepilot.url}`);
+} else {
+  console.log('⚠️  MoviePilot: 未配置 (可选)');
+}
+
+// Telegram 配置
+if (config.telegram?.botToken && config.telegram.botToken !== 'your_bot_token_here' && config.telegram?.chatId && config.telegram.chatId !== 'your_chat_id_here') {
+  console.log(`✅ Telegram Bot: 已配置 (Chat ID: ${config.telegram.chatId})`);
+} else {
+  console.log('⚠️  Telegram Bot: 未配置 (可选)');
+}
+
+// Bot 求片功能
+if (config.bot?.adminUsers?.length > 0) {
+  console.log(`✅ TG 求片功能: 已配置 (管理员: ${config.bot.adminUsers.join(', ')})`);
+} else if (config.telegram?.botToken && config.telegram.botToken !== 'your_bot_token_here') {
+  console.log('⚠️  TG 求片功能: 未配置管理员 (bot.adminUsers)');
+}
+
+console.log('─'.repeat(50) + '\n');
 
 // Create an HTTPS agent that ignores SSL errors
 const httpsAgent = new https.Agent({  
