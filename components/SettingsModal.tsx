@@ -97,21 +97,22 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
                     }
                     
                     // 一次性合并所有服务器配置，避免多次 setState 覆盖
+                    // 后端配置优先级高于本地存储
                     setNotifyConfig(prev => {
                         const merged = { ...prev };
                         
-                        // 合并 Telegram 配置
+                        // 合并 Telegram 配置 (后端优先)
                         if (data.telegram?.configured) {
-                            merged.telegramBotToken = data.telegram.botToken || prev.telegramBotToken;
-                            merged.telegramChatId = data.telegram.chatId || prev.telegramChatId;
+                            if (data.telegram.botToken) merged.telegramBotToken = data.telegram.botToken;
+                            if (data.telegram.chatId) merged.telegramChatId = data.telegram.chatId;
                         }
                         
-                        // 合并 MoviePilot 配置
+                        // 合并 MoviePilot 配置 (后端优先)
                         if (data.moviepilot?.configured) {
-                            merged.moviePilotUrl = data.moviepilot.url || prev.moviePilotUrl;
-                            merged.moviePilotUsername = data.moviepilot.username || prev.moviePilotUsername;
-                            merged.moviePilotPassword = data.moviepilot.password || prev.moviePilotPassword;
-                            merged.moviePilotSubscribeUser = data.moviepilot.subscribeUser || prev.moviePilotSubscribeUser;
+                            if (data.moviepilot.url) merged.moviePilotUrl = data.moviepilot.url;
+                            if (data.moviepilot.username) merged.moviePilotUsername = data.moviepilot.username;
+                            if (data.moviepilot.password) merged.moviePilotPassword = data.moviepilot.password;
+                            if (data.moviepilot.subscribeUser) merged.moviePilotSubscribeUser = data.moviepilot.subscribeUser;
                         }
                         
                         return merged;
