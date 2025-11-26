@@ -273,6 +273,15 @@ function AppContent() {
                   };
                   storage.set(STORAGE_KEYS.NOTIFICATIONS, newNotify);
               }
+              
+              // 后端配置了 TMDB 就用后端的
+              if (serverConfig.tmdb?.configured && serverConfig.tmdb.apiKey) {
+                  console.log('✅ 使用后端 TMDB 配置');
+                  storage.set(STORAGE_KEYS.TMDB_CONFIG, {
+                      apiKey: serverConfig.tmdb.apiKey,
+                      baseUrl: serverConfig.tmdb.baseUrl
+                  });
+              }
           })
           .catch(err => console.error('获取后端配置失败:', err));
   }, []);

@@ -475,7 +475,9 @@ app.get('/api/config', requireAuth, (req, res) => {
         res.json({
             version: VERSION,
             tmdb: {
-                configured: !!config.tmdb.apiKey && config.tmdb.apiKey !== 'your_tmdb_api_key_here'
+                configured: !!config.tmdb.apiKey && config.tmdb.apiKey !== 'your_tmdb_api_key_here',
+                apiKey: config.tmdb.apiKey !== 'your_tmdb_api_key_here' ? config.tmdb.apiKey : '',
+                baseUrl: config.tmdb.baseUrl || 'https://api.themoviedb.org/3'
             },
             // 返回 Emby 完整配置给前端使用
             emby: isEmbyConfigured ? {

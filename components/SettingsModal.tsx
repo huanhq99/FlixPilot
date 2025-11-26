@@ -115,6 +115,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
                             moviePilotSubscribeUser: data.moviepilot.subscribeUser || prev.moviePilotSubscribeUser
                         }));
                     }
+                    
+                    // 合并服务器端 TMDB 配置
+                    if (data.tmdb?.configured && data.tmdb.apiKey) {
+                        setTmdbApiKey(data.tmdb.apiKey);
+                        setTmdbProxyUrl(data.tmdb.baseUrl || '');
+                    }
                 })
                 .catch(err => console.error('Failed to fetch server config:', err));
 
