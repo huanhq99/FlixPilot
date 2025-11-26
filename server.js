@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url';
 import https from 'https';
 import http from 'http';
 import crypto from 'crypto';
-import { HttpsProxyAgent } from 'https-proxy-agent';
+import { ProxyAgent, fetch as undiciFetch } from 'undici';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -233,28 +233,21 @@ if (config.bot?.adminUsers?.length > 0) {
 console.log('─'.repeat(50) + '\n');
 
 // ==================== 代理配置 ====================
-let proxyAgent = null;
 const proxyUrl = config.proxy?.https || config.proxy?.http || process.env.HTTPS_PROXY || process.env.HTTP_PROXY || '';
 
 if (proxyUrl) {
-  try {
-    proxyAgent = new HttpsProxyAgent(proxyUrl);
-    console.log(`✅ 代理已启用: ${proxyUrl}`);
-  } catch (e) {
-    console.error(`❌ 代理配置错误: ${e.message}`);
-  }
+  console.log(`✅ 代理已启用: ${proxyUrl}`);
 } else {
   console.log('⚠️  代理未配置 (国内用户需要配置代理才能访问 TMDB/Telegram)');
 }
 
-// 带代理的 fetch 封装 - 使用 undici dispatcher
+// 带代理的 fetch 封装 - 使用 undici ProxyAgent
 async function proxyFetch(url, options = {}) {
-  if (proxyAgent) {
-    // Node.js 原生 fetch 使用 dispatcher 而不是 agent
-    const { fetch: undiciFetch } = await import('undici');
+  if (proxyUrl) {
+    const dispatcher = new ProxyAgent(proxyUrl);
     return undiciFetch(url, {
       ...options,
-      dispatcher: new (await import('undici')).ProxyAgent(proxyUrl)
+      dispatcher
     });
   }
   return fetch(url, options);
