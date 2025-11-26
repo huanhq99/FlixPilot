@@ -464,7 +464,7 @@ app.post('/api/auth/verify', (req, res) => {
 // ==================== API 路由（需要认证） ====================
 
 // API: Get server configuration (for frontend)
-app.get('/api/config', (req, res) => {
+app.get('/api/config', requireAuth, (req, res) => {
     try {
         // Return configuration for frontend (hide passwords)
         const isEmbyConfigured = !!config.emby?.serverUrl && config.emby?.serverUrl !== 'http://your-emby-server:8096';
@@ -674,25 +674,57 @@ app.post('/api/report/generate', requireAuth, async (req, res) => {
         
         const stats = await getEmbyPlaybackStats(config.emby, startDate, now);
         
-        // 生成图片
-        const imageBuffer = await generateReportImage(stats, type, dateStr);
-        
-        if (sendToTelegram && config.telegram?.botToken && config.telegram?.chatId) {
-            const success = imageBuffer 
-                ? await sendTelegramPhoto(config.telegram.botToken, config.telegram.chatId, imageBuffer, `📊 Emby ${type === 'daily' ? '今日' : '周'}排行榜 - ${dateStr}`)
-                : await sendTelegramMessage(config.telegram.botToken, config.telegram.chatId, generateReportText(type, stats, dateStr));
-            
-            if (success) {
-                res.json({ success: true, message: '报告已发送到 Telegram' });
-            } else {
-                res.status(500).json({ success: false, error: 'Telegram 发送失败' });
+        try {
+            const { target_url, method, headers, body } = req.body;
+            if (!target_url) {
+                return res.status(400).json({ error: 'Missing target_url' });
             }
-        } else if (imageBuffer) {
-            // 返回图片
-            res.set('Content-Type', 'image/png');
-            res.set('Content-Disposition', `inline; filename="report-${type}-${Date.now()}.png"`);
-            res.send(imageBuffer);
-        } else {
+
+            console.log(`[Proxy] ${method} -> ${target_url}`);
+            console.log(`[Proxy] Headers:`, headers);
+            console.log(`[Proxy] Body type:`, typeof body);
+
+            // Parse the URL
+            const urlObj = new URL(target_url);
+            const isHttps = urlObj.protocol === 'https:';
+            const requestModule = isHttps ? https : http;
+
+            // 处理 Content-Type: application/x-www-form-urlencoded
+            let proxyBody = body;
+            let contentType = headers && headers['Content-Type'] ? headers['Content-Type'] : headers && headers['content-type'] ? headers['content-type'] : '';
+            if (contentType === 'application/x-www-form-urlencoded' && typeof body === 'object') {
+                // 如果 body 是对象，转为表单字符串
+                proxyBody = Object.entries(body).map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+            }
+
+            const requestOptions = {
+                method: method || 'POST',
+                headers: headers || {},
+            };
+
+            // 处理 body
+            let reqBody = null;
+            if (method === 'POST' || method === 'PUT') {
+                reqBody = typeof proxyBody === 'string' ? proxyBody : JSON.stringify(proxyBody);
+                if (contentType) {
+                    requestOptions.headers['Content-Type'] = contentType;
+                }
+                requestOptions.headers['Content-Length'] = Buffer.byteLength(reqBody);
+            }
+
+            const proxyReq = requestModule.request(target_url, requestOptions, (proxyRes) => {
+                let data = '';
+                proxyRes.on('data', (chunk) => { data += chunk; });
+                proxyRes.on('end', () => {
+                    res.status(proxyRes.statusCode).set(proxyRes.headers).send(data);
+                });
+            });
+            proxyReq.on('error', (err) => {
+                console.error('Proxy error:', err);
+                res.status(502).json({ error: 'Proxy request failed', details: err.message });
+            });
+            if (reqBody) proxyReq.write(reqBody);
+            proxyReq.end();
             // 返回文本报告
             res.json({ 
                 success: true, 
