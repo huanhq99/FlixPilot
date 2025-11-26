@@ -91,13 +91,14 @@
   "report": {
     "_comment": "观影报告自动推送配置 (可选)",
     "enabled": false,
-    "_enabled_help": "是否启用定时报告推送",
+    "_enabled_help": "是否启用定时报告推送到 Telegram",
     "dailyTime": "23:00",
     "_dailyTime_help": "每日报告推送时间 (HH:mm 格式)",
     "weeklyDay": 0,
     "_weeklyDay_help": "周报推送星期几 (0=周日, 1=周一, ..., 6=周六)",
     "weeklyTime": "22:00",
-    "_weeklyTime_help": "周报推送时间 (HH:mm 格式)"
+    "_weeklyTime_help": "周报推送时间 (HH:mm 格式)",
+    "_usage_note": "需要同时配置 telegram.botToken 和 telegram.chatId 才能推送"
   },
   
   "_usage_notes": [
