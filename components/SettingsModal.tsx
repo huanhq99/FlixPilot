@@ -111,6 +111,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
                             ...prev,
                             moviePilotUrl: data.moviepilot.url || prev.moviePilotUrl,
                             moviePilotUsername: data.moviepilot.username || prev.moviePilotUsername,
+                            moviePilotPassword: data.moviepilot.password || prev.moviePilotPassword,
                             moviePilotSubscribeUser: data.moviepilot.subscribeUser || prev.moviePilotSubscribeUser
                         }));
                     }

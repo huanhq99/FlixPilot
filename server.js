@@ -485,12 +485,12 @@ app.get('/api/config', requireAuth, (req, res) => {
                 serverUrlExternal: config.emby.serverUrlExternal || '',
                 apiKey: config.emby.apiKey
             } : { configured: false },
-            // 返回 MoviePilot 配置给前端使用 (不返回密码)
+            // 返回 MoviePilot 配置给前端使用
             moviepilot: isMPConfigured ? {
                 configured: true,
                 url: config.moviepilot.url,
                 username: config.moviepilot.username,
-                // password 不返回,前端需要时单独请求
+                password: config.moviepilot.password,  // 返回密码供前端登录使用
                 subscribeUser: config.moviepilot.subscribeUser
             } : { configured: false },
             // 返回 Telegram 配置给前端使用

@@ -256,6 +256,7 @@ function AppContent() {
                       ...localNotify,
                       moviePilotUrl: serverConfig.moviepilot.url,
                       moviePilotUsername: serverConfig.moviepilot.username,
+                      moviePilotPassword: serverConfig.moviepilot.password,
                       moviePilotSubscribeUser: serverConfig.moviepilot.subscribeUser
                   };
                   storage.set(STORAGE_KEYS.NOTIFICATIONS, newNotify);
