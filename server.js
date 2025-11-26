@@ -551,6 +551,15 @@ app.post('/api/proxy/moviepilot', requireAuth, async (req, res) => {
         }
 
         console.log(`[Proxy] ${method} -> ${target_url}`);
+        // 打印 incoming Authorization header (mask token for安全)
+        const incomingAuth = req.headers['authorization'] || '';
+        const mask = (s) => {
+            if (!s) return '';
+            const t = s.replace(/^Bearer\s+/i, '');
+            if (t.length > 8) return `${t.slice(0,4)}...${t.slice(-4)}`;
+            return t;
+        };
+        console.log(`[Proxy] Incoming Authorization: Bearer ${mask(incomingAuth)}`);
         console.log(`[Proxy] Headers:`, headers);
         console.log(`[Proxy] Body type:`, typeof body);
         
