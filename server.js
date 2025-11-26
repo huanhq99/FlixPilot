@@ -1667,27 +1667,45 @@ ${userList || '暂无用户'}
                 const startOfDay = new Date(now);
                 startOfDay.setHours(0, 0, 0, 0);
                 
+                console.log('[Bot] 获取 Emby 播放统计...');
                 const stats = await getEmbyPlaybackStats(config.emby, startOfDay, now);
+                console.log('[Bot] 播放统计:', JSON.stringify(stats).slice(0, 200));
+                
+                if (!stats) {
+                    await sendBotMessage(chatId, `❌ 无法获取 Emby 播放统计，请检查 Emby 配置`);
+                    return;
+                }
+                
                 const dateStr = now.toLocaleDateString('zh-CN');
                 
                 // 生成图片
+                console.log('[Bot] 生成日报图片...');
                 const imageBuffer = await generateReportImage(stats, 'daily', dateStr);
+                console.log('[Bot] 图片生成结果:', imageBuffer ? `${imageBuffer.length} bytes` : 'null');
                 
                 if (imageBuffer) {
                     // 直接发送到当前聊天
-                    await sendTelegramPhoto(
+                    console.log('[Bot] 发送日报图片...');
+                    const result = await sendTelegramPhoto(
                         config.telegram?.botToken,
                         chatId,
                         imageBuffer,
                         `📊 Emby 今日排行榜 - ${dateStr}`
                     );
+                    console.log('[Bot] 图片发送结果:', result);
+                    if (!result) {
+                        // 图片发送失败，尝试文本
+                        const message = generateReportText('daily', stats, dateStr);
+                        await sendBotMessage(chatId, message);
+                    }
                 } else {
                     // 发送文本报告
+                    console.log('[Bot] 图片生成失败，发送文本报告');
                     const message = generateReportText('daily', stats, dateStr);
                     await sendBotMessage(chatId, message);
                 }
             } catch (e) {
-                console.error('[Bot] 生成日报失败:', e.message);
+                console.error('[Bot] 生成日报失败:', e.message, e.stack);
                 await sendBotMessage(chatId, `❌ 生成日报失败: ${e.message}`);
             }
             return;
