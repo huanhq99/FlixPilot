@@ -642,7 +642,7 @@ app.use('/tmdb', async (req, res) => {
 
         console.log(`[TMDB Proxy] GET -> ${url.pathname}`);
 
-        const response = await fetch(url.toString());
+        const response = await proxyFetch(url.toString());
         const data = await response.json();
         
         res.status(response.status).json(data);
