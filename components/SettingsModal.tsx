@@ -80,15 +80,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
             
             // Load requests
             setRequests(storage.get<RequestItem[]>(STORAGE_KEYS.REQUESTS, []));
-
-            // Load notifications from localStorage first
-            const localNotify = storage.get(STORAGE_KEYS.NOTIFICATIONS, {});
-            setNotifyConfig(localNotify);
             
             // Load users
             setUsers(storage.get(STORAGE_KEYS.USERS, []));
             
-            // Fetch server config and merge with local
+            // 直接从后端加载配置，后端配置优先
             fetch('/api/config')
                 .then(res => res.json())
                 .then(data => {
@@ -96,31 +92,29 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
                         setServerVersion(data.version);
                     }
                     
-                    // 一次性合并所有服务器配置，避免多次 setState 覆盖
-                    // 后端配置优先级高于本地存储
-                    setNotifyConfig(prev => {
-                        const merged = { ...prev };
-                        
-                        // 合并 Telegram 配置 (后端优先)
-                        if (data.telegram?.configured) {
-                            if (data.telegram.botToken) merged.telegramBotToken = data.telegram.botToken;
-                            if (data.telegram.chatId) merged.telegramChatId = data.telegram.chatId;
-                        }
-                        
-                        // 合并 MoviePilot 配置 (后端优先)
-                        if (data.moviepilot?.configured) {
-                            if (data.moviepilot.url) merged.moviePilotUrl = data.moviepilot.url;
-                            if (data.moviepilot.username) merged.moviePilotUsername = data.moviepilot.username;
-                            if (data.moviepilot.password) merged.moviePilotPassword = data.moviepilot.password;
-                            if (data.moviepilot.subscribeUser) merged.moviePilotSubscribeUser = data.moviepilot.subscribeUser;
-                        }
-                        
-                        return merged;
-                    });
+                    // 先加载本地配置作为基础
+                    const localNotify = storage.get(STORAGE_KEYS.NOTIFICATIONS, {}) as any;
+                    const merged: any = { ...localNotify };
                     
-                    // 合并服务器端 TMDB 配置
-                    if (data.tmdb?.configured && data.tmdb.apiKey) {
-                        setTmdbApiKey(data.tmdb.apiKey);
+                    // 后端 Telegram 配置直接覆盖
+                    if (data.telegram?.configured) {
+                        merged.telegramBotToken = data.telegram.botToken;
+                        merged.telegramChatId = data.telegram.chatId;
+                    }
+                    
+                    // 后端 MoviePilot 配置直接覆盖
+                    if (data.moviepilot?.configured) {
+                        merged.moviePilotUrl = data.moviepilot.url;
+                        merged.moviePilotUsername = data.moviepilot.username;
+                        merged.moviePilotPassword = data.moviepilot.password;
+                        merged.moviePilotSubscribeUser = data.moviepilot.subscribeUser;
+                    }
+                    
+                    setNotifyConfig(merged);
+                    
+                    // 后端 TMDB 配置直接覆盖
+                    if (data.tmdb?.configured) {
+                        setTmdbApiKey(data.tmdb.apiKey || '');
                         setTmdbProxyUrl(data.tmdb.baseUrl || '');
                     }
                 })
