@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import https from 'https';
 import http from 'http';
 import crypto from 'crypto';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -224,6 +225,29 @@ if (config.bot?.adminUsers?.length > 0) {
 }
 
 console.log('─'.repeat(50) + '\n');
+
+// ==================== 代理配置 ====================
+let proxyAgent = null;
+const proxyUrl = config.proxy?.https || config.proxy?.http || process.env.HTTPS_PROXY || process.env.HTTP_PROXY || '';
+
+if (proxyUrl) {
+  try {
+    proxyAgent = new HttpsProxyAgent(proxyUrl);
+    console.log(`✅ 代理已启用: ${proxyUrl}`);
+  } catch (e) {
+    console.error(`❌ 代理配置错误: ${e.message}`);
+  }
+} else {
+  console.log('⚠️  代理未配置 (国内用户需要配置代理才能访问 TMDB/Telegram)');
+}
+
+// 带代理的 fetch 封装
+async function proxyFetch(url, options = {}) {
+  if (proxyAgent) {
+    options.agent = proxyAgent;
+  }
+  return fetch(url, options);
+}
 
 // Create an HTTPS agent that ignores SSL errors
 const httpsAgent = new https.Agent({  
@@ -1063,7 +1087,7 @@ async function sendBotMessage(chatId, text, options = {}) {
         
         console.log(`[Bot] 发送消息到 ${chatId}: ${text.substring(0, 100)}...`);
         
-        const res = await fetch(`https://api.telegram.org/bot${config.telegram.botToken}/sendMessage`, {
+        const res = await proxyFetch(`https://api.telegram.org/bot${config.telegram.botToken}/sendMessage`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
@@ -1096,7 +1120,7 @@ async function searchTMDB(query, type = 'multi') {
         const searchUrl = `${config.tmdb.baseUrl}/search/${type}?api_key=${config.tmdb.apiKey}&query=${encodeURIComponent(query)}&language=zh-CN&include_adult=false`;
         console.log(`[Bot] TMDB 请求: ${searchUrl.replace(config.tmdb.apiKey, '***')}`);
         
-        const res = await fetch(searchUrl);
+        const res = await proxyFetch(searchUrl);
         console.log(`[Bot] TMDB 响应状态: ${res.status}`);
         
         if (res.ok) {
@@ -1884,7 +1908,7 @@ ${rp.remainingCount > 0 ? `📦 剩余 ${rp.remainingCount} 份` : '🎊 已被�
         let itemInfo = null;
         try {
             const detailUrl = `${config.tmdb.baseUrl}/${mediaType}/${tmdbId}?api_key=${config.tmdb.apiKey}&language=zh-CN`;
-            const res = await fetch(detailUrl);
+            const res = await proxyFetch(detailUrl);
             if (res.ok) {
                 itemInfo = await res.json();
             }
@@ -2032,7 +2056,7 @@ async function editBotMessage(chatId, messageId, text) {
     if (!config.telegram?.botToken) return false;
     
     try {
-        const res = await fetch(`https://api.telegram.org/bot${config.telegram.botToken}/editMessageText`, {
+        const res = await proxyFetch(`https://api.telegram.org/bot${config.telegram.botToken}/editMessageText`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -2054,7 +2078,7 @@ async function editBotCaption(chatId, messageId, caption) {
     if (!config.telegram?.botToken) return false;
     
     try {
-        const res = await fetch(`https://api.telegram.org/bot${config.telegram.botToken}/editMessageCaption`, {
+        const res = await proxyFetch(`https://api.telegram.org/bot${config.telegram.botToken}/editMessageCaption`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -2087,7 +2111,7 @@ async function sendBotPhoto(chatId, photoUrl, caption, replyMarkup = null) {
             body.reply_markup = replyMarkup;
         }
         
-        const res = await fetch(`https://api.telegram.org/bot${config.telegram.botToken}/sendPhoto`, {
+        const res = await proxyFetch(`https://api.telegram.org/bot${config.telegram.botToken}/sendPhoto`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
@@ -2104,7 +2128,7 @@ async function answerCallback(callbackQueryId, text) {
     if (!config.telegram?.botToken) return false;
     
     try {
-        const res = await fetch(`https://api.telegram.org/bot${config.telegram.botToken}/answerCallbackQuery`, {
+        const res = await proxyFetch(`https://api.telegram.org/bot${config.telegram.botToken}/answerCallbackQuery`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -2207,7 +2231,7 @@ app.get(/.*/, (req, res) => {
 // 发送 Telegram 消息
 async function sendTelegramMessage(botToken, chatId, message) {
     try {
-        const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        const res = await proxyFetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -2234,7 +2258,7 @@ async function sendTelegramPhoto(botToken, chatId, imageBuffer, caption = '') {
             form.append('caption', caption);
         }
         
-        const res = await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
+        const res = await proxyFetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
             method: 'POST',
             body: form
         });
@@ -2480,7 +2504,7 @@ async function generateReportImage(stats, type, dateStr) {
             try {
                 const searchType = topType === 'movie' ? 'movie' : 'tv';
                 const searchUrl = `https://api.themoviedb.org/3/search/${searchType}?api_key=${config.tmdb.apiKey}&query=${encodeURIComponent(topItem.name)}&language=zh-CN`;
-                const searchRes = await fetch(searchUrl);
+                const searchRes = await proxyFetch(searchUrl);
                 
                 if (searchRes.ok) {
                     const searchData = await searchRes.json();
