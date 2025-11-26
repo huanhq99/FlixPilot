@@ -798,29 +798,43 @@ function updateUser(userId, updates) {
     }
 }
 
-// 验证 Emby 用户是否存在
-async function verifyEmbyUser(embyUsername) {
+// 验证 Emby 用户并使用密码登录验证
+async function verifyEmbyUser(embyUsername, embyPassword) {
     const embyConfig = config.emby || {};
-    if (!embyConfig.serverUrl || !embyConfig.apiKey) {
+    if (!embyConfig.serverUrl) {
         return { success: false, error: 'Emby 未配置' };
     }
     
     try {
         const baseUrl = embyConfig.serverUrl.replace(/\/$/, '');
-        const usersRes = await fetch(`${baseUrl}/Users?api_key=${embyConfig.apiKey}`);
         
-        if (!usersRes.ok) {
+        // 使用 Emby 登录接口验证用户名密码
+        const authRes = await fetch(`${baseUrl}/Users/AuthenticateByName`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Emby-Authorization': 'MediaBrowser Client="StreamHub", Device="Bot", DeviceId="streamhub-bot", Version="1.0"'
+            },
+            body: JSON.stringify({
+                Username: embyUsername,
+                Pw: embyPassword
+            })
+        });
+        
+        if (authRes.status === 401) {
+            return { success: false, error: '用户名或密码错误' };
+        }
+        
+        if (!authRes.ok) {
             return { success: false, error: 'Emby 服务器连接失败' };
         }
         
-        const users = await usersRes.json();
-        // 不区分大小写匹配用户名
-        const foundUser = users.find(u => u.Name.toLowerCase() === embyUsername.toLowerCase());
+        const authData = await authRes.json();
         
-        if (foundUser) {
-            return { success: true, user: { id: foundUser.Id, name: foundUser.Name } };
+        if (authData.User) {
+            return { success: true, user: { id: authData.User.Id, name: authData.User.Name } };
         } else {
-            return { success: false, error: '用户不存在' };
+            return { success: false, error: '验证失败' };
         }
     } catch (e) {
         console.error('[Bot] Emby 验证失败:', e.message);
@@ -1172,7 +1186,7 @@ async function handleBotCommand(message) {
 你好 <b>${username}</b>，我可以帮你：
 
 📌 <b>基础功能</b>
-/绑定 &lt;Emby用户名&gt; - 绑定 Emby 账号
+/绑定 &lt;用户名&gt; &lt;密码&gt; - 绑定 Emby 账号
 /签到 - 每日签到领取 ${botConfig.checkinReward} 🍿
 /余额 - 查看爆米花和求片额度
 /兑换 - 用 ${botConfig.exchangeRate} 🍿 兑换 1 次求片额度
@@ -1198,17 +1212,20 @@ async function handleBotCommand(message) {
     
     // /绑定 - 绑定 Emby 账号
     if (cmdLower === '/绑定' || cmdLower === '/bind') {
-        const embyUsername = args.join(' ').trim();
+        const embyUsername = args[0]?.trim();
+        const embyPassword = args.slice(1).join(' ').trim();
         
-        if (!embyUsername) {
+        if (!embyUsername || !embyPassword) {
             await sendBotMessage(chatId, `
 🔗 <b>绑定 Emby 账号</b>
 
-请输入你的 Emby 用户名:
-/绑定 &lt;用户名&gt;
+请输入你的 Emby 用户名和密码:
+/绑定 &lt;用户名&gt; &lt;密码&gt;
 
 例如:
-/绑定 zhangsan
+/绑定 zhangsan mypassword123
+
+⚠️ 密码用于验证身份，不会被保存
             `.trim());
             return;
         }
@@ -1226,7 +1243,7 @@ async function handleBotCommand(message) {
         // 验证 Emby 用户
         await sendBotMessage(chatId, `🔍 正在验证 Emby 用户 <b>${embyUsername}</b>...`);
         
-        const result = await verifyEmbyUser(embyUsername);
+        const result = await verifyEmbyUser(embyUsername, embyPassword);
         
         if (result.success) {
             // 检查是否已被其他 TG 用户绑定
