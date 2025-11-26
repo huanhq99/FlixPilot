@@ -104,6 +104,16 @@ if (!fs.existsSync(configInData) && !fs.existsSync(configInRoot)) {
       "_exchangeRate": "兑换1次求片额度需要的爆米花数量",
       "_adminUsers": "管理员 TG 用户 ID 列表，可在机器人中用 /start 查看"
     },
+    "ai": {
+      "enabled": false,
+      "provider": "openai",
+      "apiKey": "",
+      "apiUrl": "https://api.openai.com/v1",
+      "model": "gpt-3.5-turbo",
+      "_说明": "AI 问答功能配置",
+      "_provider": "支持 openai, claude, deepseek 等兼容 OpenAI API 的服务",
+      "_apiUrl": "API 地址，可用于自定义服务或代理"
+    },
     "report": {
       "enabled": false,
       "dailyTime": "23:00",
@@ -802,6 +812,240 @@ function isUserAuthorized(userId) {
     return !!user.embyUserId;
 }
 
+// ==================== MoviePilot API ====================
+// 获取 MP Token
+let mpToken = null;
+let mpTokenExpiry = 0;
+
+async function getMPToken() {
+    if (mpToken && Date.now() < mpTokenExpiry) {
+        return mpToken;
+    }
+    
+    const mpConfig = config.moviepilot || {};
+    if (!mpConfig.url || !mpConfig.username || !mpConfig.password) {
+        return null;
+    }
+    
+    try {
+        const baseUrl = mpConfig.url.replace(/\/$/, '');
+        const response = await fetch(`${baseUrl}/api/v1/login/access-token`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `username=${encodeURIComponent(mpConfig.username)}&password=${encodeURIComponent(mpConfig.password)}`
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            mpToken = data.access_token;
+            mpTokenExpiry = Date.now() + 3600000; // 1 hour
+            return mpToken;
+        }
+    } catch (e) {
+        console.error('[MP] 获取 Token 失败:', e.message);
+    }
+    return null;
+}
+
+// MP 搜索资源
+async function mpSearchResources(keyword, mediaType = null) {
+    const token = await getMPToken();
+    if (!token) return { success: false, error: 'MoviePilot 未配置或登录失败' };
+    
+    const mpConfig = config.moviepilot || {};
+    const baseUrl = mpConfig.url.replace(/\/$/, '');
+    
+    try {
+        const url = new URL(`${baseUrl}/api/v1/resource/search`);
+        url.searchParams.set('keyword', keyword);
+        if (mediaType) url.searchParams.set('mtype', mediaType);
+        
+        const response = await fetch(url.toString(), {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            return { success: true, data: data.slice(0, 10) }; // 最多返回10个
+        } else {
+            return { success: false, error: `API 错误: ${response.status}` };
+        }
+    } catch (e) {
+        console.error('[MP] 搜索失败:', e.message);
+        return { success: false, error: e.message };
+    }
+}
+
+// MP 下载资源
+async function mpDownload(resourceId) {
+    const token = await getMPToken();
+    if (!token) return { success: false, error: 'MoviePilot 未配置或登录失败' };
+    
+    const mpConfig = config.moviepilot || {};
+    const baseUrl = mpConfig.url.replace(/\/$/, '');
+    
+    try {
+        const response = await fetch(`${baseUrl}/api/v1/download/add`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ torrent_id: resourceId })
+        });
+        
+        if (response.ok) {
+            return { success: true };
+        } else {
+            const error = await response.text();
+            return { success: false, error };
+        }
+    } catch (e) {
+        console.error('[MP] 下载失败:', e.message);
+        return { success: false, error: e.message };
+    }
+}
+
+// MP 获取下载状态
+async function mpGetDownloads() {
+    const token = await getMPToken();
+    if (!token) return { success: false, error: 'MoviePilot 未配置或登录失败' };
+    
+    const mpConfig = config.moviepilot || {};
+    const baseUrl = mpConfig.url.replace(/\/$/, '');
+    
+    try {
+        const response = await fetch(`${baseUrl}/api/v1/download/`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            return { success: true, data };
+        }
+    } catch (e) {
+        console.error('[MP] 获取下载状态失败:', e.message);
+    }
+    return { success: false, error: '获取失败' };
+}
+
+// ==================== Emby 统计 ====================
+async function getEmbyStats() {
+    const embyConfig = config.emby || {};
+    if (!embyConfig.serverUrl || !embyConfig.apiKey) {
+        return null;
+    }
+    
+    const baseUrl = embyConfig.serverUrl.replace(/\/$/, '');
+    
+    try {
+        // 获取电影数量
+        const moviesRes = await fetch(`${baseUrl}/Items/Counts?api_key=${embyConfig.apiKey}`);
+        if (moviesRes.ok) {
+            const counts = await moviesRes.json();
+            return {
+                movies: counts.MovieCount || 0,
+                series: counts.SeriesCount || 0,
+                episodes: counts.EpisodeCount || 0,
+                albums: counts.AlbumCount || 0
+            };
+        }
+    } catch (e) {
+        console.error('[Emby] 获取统计失败:', e.message);
+    }
+    return null;
+}
+
+// ==================== AI 问答 ====================
+async function askAI(question) {
+    const aiConfig = config.ai || {};
+    if (!aiConfig.enabled || !aiConfig.apiKey) {
+        return { success: false, error: 'AI 功能未配置' };
+    }
+    
+    try {
+        const apiUrl = (aiConfig.apiUrl || 'https://api.openai.com/v1').replace(/\/$/, '');
+        const response = await fetch(`${apiUrl}/chat/completions`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${aiConfig.apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: aiConfig.model || 'gpt-3.5-turbo',
+                messages: [
+                    { role: 'system', content: '你是一个友好的影视助手，帮助用户解答关于电影、电视剧的问题。回答简洁有趣。' },
+                    { role: 'user', content: question }
+                ],
+                max_tokens: 500
+            })
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            const answer = data.choices?.[0]?.message?.content || '无法获取回答';
+            return { success: true, answer };
+        } else {
+            return { success: false, error: `API 错误: ${response.status}` };
+        }
+    } catch (e) {
+        console.error('[AI] 问答失败:', e.message);
+        return { success: false, error: e.message };
+    }
+}
+
+// ==================== 红包功能 ====================
+const activeRedPackets = new Map(); // 存储活跃的红包
+
+function createRedPacket(senderId, senderName, totalPopcorn, count) {
+    const id = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+    const redPacket = {
+        id,
+        senderId,
+        senderName,
+        totalPopcorn,
+        remainingPopcorn: totalPopcorn,
+        count,
+        remainingCount: count,
+        claimedBy: [], // { userId, username, amount }
+        createdAt: Date.now(),
+        expiresAt: Date.now() + 24 * 60 * 60 * 1000 // 24小时过期
+    };
+    activeRedPackets.set(id, redPacket);
+    return redPacket;
+}
+
+function claimRedPacket(redPacketId, userId, username) {
+    const rp = activeRedPackets.get(redPacketId);
+    if (!rp) return { success: false, error: '红包不存在或已过期' };
+    if (Date.now() > rp.expiresAt) {
+        activeRedPackets.delete(redPacketId);
+        return { success: false, error: '红包已过期' };
+    }
+    if (rp.remainingCount <= 0) return { success: false, error: '红包已被抢完' };
+    if (rp.claimedBy.find(c => c.userId === userId)) return { success: false, error: '你已经抢过了' };
+    
+    // 计算随机金额 (最后一个人拿剩余所有)
+    let amount;
+    if (rp.remainingCount === 1) {
+        amount = rp.remainingPopcorn;
+    } else {
+        // 随机分配，但确保每人至少1个
+        const maxAmount = rp.remainingPopcorn - (rp.remainingCount - 1);
+        amount = Math.max(1, Math.floor(Math.random() * Math.min(maxAmount, rp.remainingPopcorn * 0.5)));
+    }
+    
+    rp.remainingPopcorn -= amount;
+    rp.remainingCount -= 1;
+    rp.claimedBy.push({ userId, username, amount });
+    
+    // 给用户加爆米花
+    const user = getOrCreateUser(userId, username);
+    updateUser(userId, { popcorn: user.popcorn + amount });
+    
+    return { success: true, amount, remaining: rp.remainingCount };
+}
+
 // 发送 Bot 消息
 async function sendBotMessage(chatId, text, options = {}) {
     if (!config.telegram?.botToken) {
@@ -899,18 +1143,27 @@ async function handleBotCommand(message) {
 
 你好 <b>${username}</b>，我可以帮你：
 
-📌 <b>可用命令</b>
-/绑定 &lt;Emby用户名&gt; - 绑定 Emby 账号 (必须先绑定才能使用)
+📌 <b>基础功能</b>
+/绑定 &lt;Emby用户名&gt; - 绑定 Emby 账号
 /签到 - 每日签到领取 ${botConfig.checkinReward} 🍿
 /余额 - 查看爆米花和求片额度
 /兑换 - 用 ${botConfig.exchangeRate} 🍿 兑换 1 次求片额度
+
+📥 <b>求片下载</b>
 /求片 &lt;片名&gt; - 搜索并提交求片请求
+/下载 &lt;关键词&gt; - 搜索并下载资源 (10🍿)
+/状态 - 查看下载进度
+
+📊 <b>其他功能</b>
+/库存 - 查看媒体库统计
+/线路 - 查看播放服务器地址
+/问 &lt;问题&gt; - AI 问答
+/发红包 &lt;数量&gt; [份数] - 群里发红包
 
 📊 <b>你的状态</b>
-🔗 绑定状态: ${bindStatus}
+🔗 ${bindStatus}
 🍿 爆米花: ${user.popcorn}
 🎫 求片额度: ${user.quota}
-📅 累计签到: ${user.totalCheckins} 天
         `.trim());
         return;
     }
@@ -1220,6 +1473,241 @@ ${requestHistory}
             return;
         }
     }
+    
+    // ==================== 新功能命令 ====================
+    
+    // /下载 - 搜索并下载资源 (消耗爆米花)
+    if (cmdLower === '/下载' || cmdLower === '/download' || cmdLower === '/dl') {
+        const query = args.join(' ').trim();
+        
+        if (!query) {
+            await sendBotMessage(chatId, `
+📥 <b>下载资源</b>
+
+/下载 &lt;关键词&gt;
+
+例如:
+/下载 流浪地球
+/下载 Breaking Bad S01
+
+💡 下载消耗 10 🍿
+            `.trim());
+            return;
+        }
+        
+        // 检查爆米花
+        if (user.popcorn < 10 && !isAdmin) {
+            await sendBotMessage(chatId, `
+❌ <b>爆米花不足!</b>
+
+🍿 当前: ${user.popcorn}
+🍿 需要: 10
+
+💡 每日 /签到 获得爆米花
+            `.trim());
+            return;
+        }
+        
+        await sendBotMessage(chatId, `🔍 正在搜索资源 "<b>${query}</b>"...`);
+        
+        const result = await mpSearchResources(query);
+        
+        if (!result.success) {
+            await sendBotMessage(chatId, `❌ 搜索失败: ${result.error}`);
+            return;
+        }
+        
+        if (!result.data || result.data.length === 0) {
+            await sendBotMessage(chatId, `😕 未找到 "<b>${query}</b>" 的资源`);
+            return;
+        }
+        
+        // 显示搜索结果
+        const keyboard = result.data.slice(0, 5).map((item, index) => {
+            const title = item.title || item.name || '未知';
+            const size = item.size ? `${(item.size / 1024 / 1024 / 1024).toFixed(2)}GB` : '';
+            return [{
+                text: `${index + 1}. ${title.substring(0, 30)} ${size}`,
+                callback_data: `dl_${item.id || index}`
+            }];
+        });
+        keyboard.push([{ text: '❌ 取消', callback_data: 'dl_cancel' }]);
+        
+        // 临时存储搜索结果
+        const users = loadBotUsers();
+        users[userId] = users[userId] || {};
+        users[userId].lastSearch = result.data.slice(0, 5);
+        saveBotUsers(users);
+        
+        await sendBotMessage(chatId, `
+📥 <b>搜索结果</b> (消耗 10 🍿)
+
+点击选择要下载的资源:
+        `.trim(), {
+            reply_markup: { inline_keyboard: keyboard }
+        });
+        return;
+    }
+    
+    // /状态 - 查看下载状态
+    if (cmdLower === '/状态' || cmdLower === '/status') {
+        const result = await mpGetDownloads();
+        
+        if (!result.success) {
+            await sendBotMessage(chatId, `❌ 获取状态失败: ${result.error}`);
+            return;
+        }
+        
+        if (!result.data || result.data.length === 0) {
+            await sendBotMessage(chatId, `📭 当前没有下载任务`);
+            return;
+        }
+        
+        const statusList = result.data.slice(0, 5).map(item => {
+            const progress = item.progress ? `${(item.progress * 100).toFixed(1)}%` : '0%';
+            const speed = item.speed ? `${(item.speed / 1024 / 1024).toFixed(2)}MB/s` : '';
+            return `• ${item.name?.substring(0, 25) || '未知'}\n  📊 ${progress} ${speed}`;
+        }).join('\n\n');
+        
+        await sendBotMessage(chatId, `
+📥 <b>下载状态</b>
+
+${statusList}
+        `.trim());
+        return;
+    }
+    
+    // /库存 - 查看 Emby 库存统计
+    if (cmdLower === '/库存' || cmdLower === '/stats' || cmdLower === '/统计') {
+        const stats = await getEmbyStats();
+        
+        if (!stats) {
+            await sendBotMessage(chatId, `❌ 无法获取库存统计 (Emby 未配置或连接失败)`);
+            return;
+        }
+        
+        await sendBotMessage(chatId, `
+📊 <b>媒体库统计</b>
+
+🎬 电影: ${stats.movies} 部
+📺 剧集: ${stats.series} 部
+📹 集数: ${stats.episodes} 集
+🎵 专辑: ${stats.albums} 张
+
+💡 使用 /求片 提交想看的内容
+        `.trim());
+        return;
+    }
+    
+    // /线路 - 查看播放线路
+    if (cmdLower === '/线路' || cmdLower === '/server' || cmdLower === '/地址') {
+        const embyConfig = config.emby || {};
+        if (!embyConfig.serverUrl) {
+            await sendBotMessage(chatId, `❌ Emby 服务器未配置`);
+            return;
+        }
+        
+        await sendBotMessage(chatId, `
+🌐 <b>播放线路</b>
+
+📺 服务器地址:
+<code>${embyConfig.serverUrl}</code>
+
+💡 请使用 Emby 客户端连接
+        `.trim());
+        return;
+    }
+    
+    // /问 - AI 问答
+    if (cmdLower === '/问' || cmdLower === '/ask' || cmdLower === '/ai') {
+        const question = args.join(' ').trim();
+        
+        if (!question) {
+            await sendBotMessage(chatId, `
+🤖 <b>AI 问答</b>
+
+/问 &lt;问题&gt;
+
+例如:
+/问 推荐几部科幻电影
+/问 复仇者联盟的观看顺序
+            `.trim());
+            return;
+        }
+        
+        await sendBotMessage(chatId, `🤔 思考中...`);
+        
+        const result = await askAI(question);
+        
+        if (result.success) {
+            await sendBotMessage(chatId, `
+🤖 <b>AI 回答</b>
+
+${result.answer}
+            `.trim());
+        } else {
+            await sendBotMessage(chatId, `❌ AI 回答失败: ${result.error}`);
+        }
+        return;
+    }
+    
+    // /发红包 - 发送红包 (需要是群聊)
+    if (cmdLower === '/发红包' || cmdLower === '/红包' || cmdLower === '/hongbao') {
+        // 检查是否群聊
+        if (message.chat.type === 'private') {
+            await sendBotMessage(chatId, `❌ 红包只能在群聊中发送`);
+            return;
+        }
+        
+        const amount = parseInt(args[0]) || 0;
+        const count = parseInt(args[1]) || 5;
+        
+        if (amount < 10) {
+            await sendBotMessage(chatId, `
+🧧 <b>发红包</b>
+
+/发红包 &lt;爆米花数量&gt; [份数]
+
+例如:
+/发红包 100 10  (100🍿分成10份)
+/发红包 50     (50🍿分成5份)
+
+💡 最少发 10 🍿
+            `.trim());
+            return;
+        }
+        
+        // 检查余额
+        if (user.popcorn < amount) {
+            await sendBotMessage(chatId, `
+❌ <b>爆米花不足!</b>
+
+🍿 当前: ${user.popcorn}
+🍿 需要: ${amount}
+            `.trim());
+            return;
+        }
+        
+        // 扣除爆米花并创建红包
+        updateUser(userId, { popcorn: user.popcorn - amount });
+        const rp = createRedPacket(userId, username, amount, Math.min(count, 20));
+        
+        await sendBotMessage(chatId, `
+🧧 <b>${username} 发了一个红包!</b>
+
+💰 总计: ${amount} 🍿
+📦 份数: ${rp.count} 份
+
+点击下方按钮抢红包 👇
+        `.trim(), {
+            reply_markup: {
+                inline_keyboard: [[
+                    { text: '🧧 抢红包', callback_data: `rp_${rp.id}` }
+                ]]
+            }
+        });
+        return;
+    }
 }
 
 // 处理回调查询（按钮点击）
@@ -1230,7 +1718,91 @@ async function handleCallbackQuery(callbackQuery) {
     const username = callbackQuery.from.username || callbackQuery.from.first_name || 'User';
     const data = callbackQuery.data;
     
-    // 取消操作
+    // 取消下载
+    if (data === 'dl_cancel') {
+        await editBotMessage(chatId, messageId, '❌ 已取消下载');
+        return;
+    }
+    
+    // 处理下载确认
+    if (data.startsWith('dl_')) {
+        const index = parseInt(data.split('_')[1]);
+        const users = loadBotUsers();
+        const user = users[userId];
+        
+        if (!user?.lastSearch || !user.lastSearch[index]) {
+            await answerCallback(callbackQuery.id, '❌ 资源已过期，请重新搜索');
+            return;
+        }
+        
+        const resource = user.lastSearch[index];
+        const botConfig = getBotConfig();
+        const isAdmin = botConfig.adminUsers.includes(userId);
+        
+        // 扣除爆米花
+        if (!isAdmin) {
+            if ((user.popcorn || 0) < 10) {
+                await answerCallback(callbackQuery.id, '❌ 爆米花不足!');
+                return;
+            }
+            updateUser(userId, { popcorn: user.popcorn - 10 });
+        }
+        
+        // 开始下载
+        const result = await mpDownload(resource.id);
+        
+        if (result.success) {
+            await editBotMessage(chatId, messageId, `
+✅ <b>下载任务已添加!</b>
+
+📥 ${resource.title || resource.name || '资源'}
+${!isAdmin ? '💰 消耗 10 🍿' : ''}
+
+💡 使用 /状态 查看下载进度
+            `.trim());
+        } else {
+            // 退还爆米花
+            if (!isAdmin) {
+                updateUser(userId, { popcorn: (user.popcorn || 0) + 10 });
+            }
+            await editBotMessage(chatId, messageId, `❌ 下载失败: ${result.error}`);
+        }
+        return;
+    }
+    
+    // 处理红包领取
+    if (data.startsWith('rp_')) {
+        const rpId = data.split('_')[1];
+        const result = claimRedPacket(rpId, userId, username);
+        
+        if (result.success) {
+            await answerCallback(callbackQuery.id, `🎉 恭喜获得 ${result.amount} 🍿`);
+            
+            // 更新消息显示领取情况
+            const rp = activeRedPackets.get(rpId);
+            if (rp) {
+                const claimedList = rp.claimedBy.map(c => `• ${c.username}: ${c.amount} 🍿`).join('\n');
+                await editBotMessage(chatId, messageId, `
+🧧 <b>${rp.senderName} 的红包</b>
+
+${claimedList}
+
+${rp.remainingCount > 0 ? `📦 剩余 ${rp.remainingCount} 份` : '🎊 已被抢完!'}
+                `.trim(), rp.remainingCount > 0 ? {
+                    reply_markup: {
+                        inline_keyboard: [[
+                            { text: '🧧 抢红包', callback_data: `rp_${rpId}` }
+                        ]]
+                    }
+                } : {});
+            }
+        } else {
+            await answerCallback(callbackQuery.id, result.error);
+        }
+        return;
+    }
+    
+    // 取消求片
     if (data === 'req_cancel') {
         await editBotMessage(chatId, messageId, '❌ 已取消求片');
         return;

@@ -74,6 +74,20 @@
     "_adminUsers_help": "管理员 TG 用户 ID 列表"
   },
   
+  "ai": {
+    "_comment": "AI 问答功能配置 (可选)",
+    "enabled": false,
+    "_enabled_help": "是否启用 AI 问答功能",
+    "provider": "openai",
+    "_provider_help": "支持 openai, claude, deepseek 等兼容 OpenAI API 的服务",
+    "apiKey": "",
+    "_apiKey_help": "AI 服务的 API Key",
+    "apiUrl": "https://api.openai.com/v1",
+    "_apiUrl_help": "API 地址，可用于自定义服务或代理",
+    "model": "gpt-3.5-turbo",
+    "_model_help": "使用的模型名称"
+  },
+  
   "_usage_notes": [
     "1. 必需配置: tmdb.apiKey",
     "2. 可选配置: emby, moviepilot, telegram, bot, proxy",
