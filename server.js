@@ -1443,25 +1443,61 @@ ${requestHistory}
     
     // 管理员命令
     if (botConfig.adminUsers.includes(userId)) {
-        // /充值 @用户 数量 - 给用户充值爆米花
-        if (cmdLower === '/充值' || cmdLower === '/addpopcorn') {
-            // 简化版本，只给自己充值测试
-            if (args.length >= 1) {
+        // /充值 <TG ID> <数量> - 给用户充值爆米花
+        if (cmdLower === '/充值' || cmdLower === '/addpopcorn' || cmdLower === '/add') {
+            if (args.length >= 2) {
+                const targetId = args[0].toString();
+                const amount = parseInt(args[1]);
+                if (!isNaN(amount) && amount !== 0) {
+                    const targetUser = getOrCreateUser(targetId, '');
+                    const newPopcorn = targetUser.popcorn + amount;
+                    updateUser(targetId, { popcorn: newPopcorn });
+                    const targetName = targetUser.username || targetId;
+                    await sendBotMessage(chatId, `
+✅ <b>充值成功</b>
+
+👤 用户: ${targetName} (${targetId})
+🍿 ${amount > 0 ? '+' : ''}${amount} 爆米花
+💰 当前余额: ${newPopcorn} 🍿
+                    `.trim());
+                    return;
+                }
+            } else if (args.length === 1) {
+                // 只有一个参数，给自己充值
                 const amount = parseInt(args[0]);
                 if (!isNaN(amount) && amount > 0) {
-                    const user = getOrCreateUser(userId, username);
-                    updateUser(userId, { popcorn: user.popcorn + amount });
-                    await sendBotMessage(chatId, `✅ 已充值 ${amount} 🍿 给 ${username}`);
+                    const newPopcorn = user.popcorn + amount;
+                    updateUser(userId, { popcorn: newPopcorn });
+                    await sendBotMessage(chatId, `✅ 已充值 ${amount} 🍿，当前: ${newPopcorn}`);
                     return;
                 }
             }
-            await sendBotMessage(chatId, '用法: /充值 <数量>');
+            await sendBotMessage(chatId, `
+💰 <b>充值爆米花</b>
+
+/充值 &lt;TG ID&gt; &lt;数量&gt;
+/充值 &lt;数量&gt;  (给自己)
+
+例如:
+/充值 6771943681 100
+/充值 50
+            `.trim());
             return;
         }
         
-        // /设置额度 数量 - 设置自己的额度
+        // /设置额度 <TG ID> <数量> - 设置用户额度
         if (cmdLower === '/设置额度' || cmdLower === '/setquota') {
-            if (args.length >= 1) {
+            if (args.length >= 2) {
+                const targetId = args[0].toString();
+                const amount = parseInt(args[1]);
+                if (!isNaN(amount) && amount >= 0) {
+                    const targetUser = getOrCreateUser(targetId, '');
+                    updateUser(targetId, { quota: amount });
+                    const targetName = targetUser.username || targetId;
+                    await sendBotMessage(chatId, `✅ 已设置 ${targetName} 的求片额度为 ${amount}`);
+                    return;
+                }
+            } else if (args.length === 1) {
                 const amount = parseInt(args[0]);
                 if (!isNaN(amount) && amount >= 0) {
                     updateUser(userId, { quota: amount });
@@ -1469,7 +1505,32 @@ ${requestHistory}
                     return;
                 }
             }
-            await sendBotMessage(chatId, '用法: /设置额度 <数量>');
+            await sendBotMessage(chatId, `
+🎫 <b>设置额度</b>
+
+/设置额度 &lt;TG ID&gt; &lt;数量&gt;
+/设置额度 &lt;数量&gt;  (给自己)
+            `.trim());
+            return;
+        }
+        
+        // /用户列表 - 查看所有用户
+        if (cmdLower === '/用户列表' || cmdLower === '/users') {
+            const allUsers = loadBotUsers();
+            const userList = Object.values(allUsers)
+                .sort((a, b) => (b.popcorn || 0) - (a.popcorn || 0))
+                .slice(0, 20)
+                .map((u, i) => {
+                    const name = u.username || u.id;
+                    const bound = u.embyUserId ? '✅' : '❌';
+                    return `${i + 1}. ${name}\n   ID: <code>${u.id}</code>\n   🍿${u.popcorn || 0} 🎫${u.quota || 0} ${bound}`;
+                }).join('\n\n');
+            
+            await sendBotMessage(chatId, `
+👥 <b>用户列表</b> (Top 20)
+
+${userList || '暂无用户'}
+            `.trim());
             return;
         }
     }
