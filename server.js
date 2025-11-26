@@ -94,6 +94,12 @@ if (!fs.existsSync(configInData) && !fs.existsSync(configInRoot)) {
       "_说明": "可选配置，用于通知推送",
       "_获取方式": "1. @BotFather 创建机器人获取 Token; 2. @userinfobot 获取 Chat ID"
     },
+    "proxy": {
+      "http": "",
+      "https": "",
+      "_说明": "代理配置 (国内用户访问 TMDB/Telegram 需要)",
+      "_示例": "http://127.0.0.1:7890"
+    },
     "bot": {
       "defaultQuota": 3,
       "checkinReward": 10,
