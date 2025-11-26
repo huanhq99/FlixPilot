@@ -247,10 +247,15 @@ if (proxyUrl) {
   console.log('⚠️  代理未配置 (国内用户需要配置代理才能访问 TMDB/Telegram)');
 }
 
-// 带代理的 fetch 封装
+// 带代理的 fetch 封装 - 使用 undici dispatcher
 async function proxyFetch(url, options = {}) {
   if (proxyAgent) {
-    options.agent = proxyAgent;
+    // Node.js 原生 fetch 使用 dispatcher 而不是 agent
+    const { fetch: undiciFetch } = await import('undici');
+    return undiciFetch(url, {
+      ...options,
+      dispatcher: new (await import('undici')).ProxyAgent(proxyUrl)
+    });
   }
   return fetch(url, options);
 }
