@@ -134,12 +134,55 @@ ${tagLine}
 const PROXY_URL = '/api/proxy/moviepilot';
 
 export const testMoviePilotConnection = async (config: NotificationConfig): Promise<{ success: boolean, message: string, method?: string }> => {
-    if (!config.moviePilotUrl || !config.moviePilotToken) {
-        return { success: false, message: '请先配置 MoviePilot 地址和 Token' };
+    if (!config.moviePilotUrl) {
+        return { success: false, message: '请先配置 MoviePilot 地址' };
     }
 
     const baseUrl = config.moviePilotUrl.replace(/\/$/, '');
-    const cleanToken = config.moviePilotToken.trim();
+    let cleanToken = config.moviePilotToken?.trim() || '';
+    
+    // 如果没有 Token，但有用户名密码，先尝试登录获取 Token
+    if (!cleanToken && config.moviePilotUsername && config.moviePilotPassword) {
+        console.log('🔐 使用用户名密码登录获取 Token...');
+        try {
+            const loginUrl = `${baseUrl}/api/v1/login/access-token`;
+            const loginResponse = await fetch(PROXY_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('streamhub_auth') ? JSON.parse(localStorage.getItem('streamhub_auth') || '{}').token : ''}`
+                },
+                body: JSON.stringify({
+                    target_url: loginUrl,
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'Accept': 'application/json'
+                    },
+                    body: `username=${encodeURIComponent(config.moviePilotUsername)}&password=${encodeURIComponent(config.moviePilotPassword)}`
+                })
+            });
+            
+            if (loginResponse.ok) {
+                const loginData = await loginResponse.json();
+                if (loginData.access_token) {
+                    cleanToken = loginData.access_token;
+                    console.log('✅ 登录成功，已获取 Token');
+                } else {
+                    return { success: false, message: '登录失败：未返回 Token' };
+                }
+            } else {
+                const errorText = await loginResponse.text();
+                return { success: false, message: `登录失败 (${loginResponse.status}): ${errorText}` };
+            }
+        } catch (e: any) {
+            return { success: false, message: `登录失败: ${e.message}` };
+        }
+    }
+    
+    if (!cleanToken) {
+        return { success: false, message: '请先配置 MoviePilot Token 或用户名密码' };
+    }
     
     // Endpoints to test
     const endpoints = [
@@ -215,7 +258,7 @@ export const testMoviePilotConnection = async (config: NotificationConfig): Prom
 
     return { 
         success: false, 
-        message: `连接失败: ${connectionError}\n\n请检查:\n1. MoviePilot 地址是否正确\n2. Token 是否正确\n3. MoviePilot 是否正常运行\n4. 后端服务是否正常运行`
+        message: `连接失败: ${connectionError}\n\n请检查:\n1. MoviePilot 地址是否正确\n2. Token 或用户名密码是否正确\n3. MoviePilot 是否正常运行\n4. 后端服务是否正常运行`
     };
 };
 
