@@ -904,7 +904,25 @@ function AppContent() {
   // Load data from server on mount
   useEffect(() => {
     const initData = async () => {
-      // 首先检查后端认证状态
+      // 检查是否有本地保存的认证状态 (Emby登录/游客模式)
+      const savedAuth = storage.get<AuthState | null>(STORAGE_KEYS.AUTH, null);
+      if (savedAuth?.isAuthenticated) {
+        // 已有本地认证 (游客或 Emby 用户)
+        setAuthState(savedAuth);
+        setAuthLoading(false);
+        setIsDarkMode(storage.get(STORAGE_KEYS.DARK_MODE, false));
+        
+        // 如果是管理员，尝试同步数据
+        if (savedAuth.isAdmin) {
+          const savedToken = localStorage.getItem('streamhub_token');
+          if (savedToken) {
+            await storage.loadFromServer(savedToken);
+          }
+        }
+        return;
+      }
+      
+      // 没有本地认证，检查后端认证状态
       try {
         const statusRes = await fetch('/api/auth/status');
         const status = await statusRes.json();

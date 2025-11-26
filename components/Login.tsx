@@ -317,6 +317,44 @@ const Login: React.FC<LoginProps> = ({
                         </p>
                     </form>
                 )}
+
+                {/* 游客入口 - 始终显示（除了首次设置） */}
+                {!needsSetup && (
+                    <>
+                        <div className="relative my-6">
+                            <div className="absolute inset-0 flex items-center">
+                                <div className={`w-full border-t ${isDarkMode ? 'border-zinc-800' : 'border-slate-200'}`}></div>
+                            </div>
+                            <div className="relative flex justify-center text-xs uppercase">
+                                <span className={`px-2 ${isDarkMode ? 'bg-[#18181b] text-zinc-500' : 'bg-white text-slate-500'}`}>
+                                    或者
+                                </span>
+                            </div>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={() => {
+                                onLogin({
+                                    isAuthenticated: true,
+                                    user: null,
+                                    serverUrl: '',
+                                    accessToken: '',
+                                    isAdmin: false,
+                                    isGuest: true
+                                });
+                            }}
+                            className={`w-full py-3 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 ${isDarkMode ? 'bg-zinc-800 hover:bg-zinc-700 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-900'}`}
+                        >
+                            <Ghost size={20} />
+                            游客访问（仅浏览）
+                        </button>
+
+                        <p className={`text-xs text-center mt-2 ${isDarkMode ? 'text-zinc-600' : 'text-slate-400'}`}>
+                            游客可浏览内容，但无法使用管理功能
+                        </p>
+                    </>
+                )}
             </div>
         </div>
     );
