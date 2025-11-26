@@ -354,18 +354,24 @@ app.post('/api/auth/login', async (req, res) => {
     try {
         const { username, password } = req.body;
         
+        console.log(`[Auth] 登录请求 - 用户名: "${username}", 密码长度: ${password?.length || 0}`);
+        console.log(`[Auth] 配置的用户名: "${config.auth?.username}", 配置的密码: "${config.auth?.password}"`);
+        
         if (!config.auth?.password) {
+            console.log('[Auth] 失败: 密码未配置');
             return res.status(400).json({ error: '请先设置密码' });
         }
         
         // 验证用户名（如果配置了）
         const adminUsername = config.auth?.username || 'admin';
         if (username && username !== adminUsername) {
+            console.log(`[Auth] 失败: 用户名不匹配 ("${username}" != "${adminUsername}")`);
             return res.status(401).json({ error: '用户名或密码错误' });
         }
         
         // 验证密码 - 直接比对明文
         if (password !== config.auth.password) {
+            console.log(`[Auth] 失败: 密码不匹配 ("${password}" != "${config.auth.password}")`);
             return res.status(401).json({ error: '用户名或密码错误' });
         }
         
@@ -376,7 +382,7 @@ app.post('/api/auth/login', async (req, res) => {
             expiry: Date.now() + SESSION_TIMEOUT
         });
         
-        console.log(`✅ 管理员登录成功: ${adminUsername}`);
+        console.log(`[Auth] ✅ 登录成功: ${adminUsername}`);
         
         res.json({
             success: true,
@@ -385,7 +391,7 @@ app.post('/api/auth/login', async (req, res) => {
             message: '登录成功'
         });
     } catch (error) {
-        console.error('登录失败:', error);
+        console.error('[Auth] 登录异常:', error);
         res.status(500).json({ error: '登录失败' });
     }
 });
