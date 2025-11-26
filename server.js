@@ -866,27 +866,65 @@ async function getMPToken() {
     
     const mpConfig = config.moviepilot || {};
     if (!mpConfig.url || !mpConfig.username || !mpConfig.password) {
+        console.log('[MP] MoviePilot 未配置');
         return null;
     }
     
     try {
         const baseUrl = mpConfig.url.replace(/\/$/, '');
-        const response = await fetch(`${baseUrl}/api/v1/login/access-token`, {
+        const loginUrl = `${baseUrl}/api/v1/login/access-token`;
+        console.log(`[MP] 正在登录: ${loginUrl}`);
+        
+        // 使用 undici 的 Agent 忽略 SSL 证书错误
+        const fetchOptions = {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: `username=${encodeURIComponent(mpConfig.username)}&password=${encodeURIComponent(mpConfig.password)}`
-        });
+        };
+        
+        // 对于 HTTPS 使用 undici 并忽略证书
+        let response;
+        if (baseUrl.startsWith('https://')) {
+            const { Agent, fetch: undiciFetch } = await import('undici');
+            const agent = new Agent({
+                connect: { rejectUnauthorized: false }
+            });
+            response = await undiciFetch(loginUrl, { ...fetchOptions, dispatcher: agent });
+        } else {
+            response = await fetch(loginUrl, fetchOptions);
+        }
+        
+        console.log(`[MP] 登录响应: ${response.status}`);
         
         if (response.ok) {
             const data = await response.json();
             mpToken = data.access_token;
             mpTokenExpiry = Date.now() + 3600000; // 1 hour
+            console.log('[MP] 登录成功');
             return mpToken;
+        } else {
+            const text = await response.text();
+            console.error(`[MP] 登录失败: ${response.status} - ${text}`);
         }
     } catch (e) {
-        console.error('[MP] 获取 Token 失败:', e.message);
+        console.error('[MP] 获取 Token 失败:', e.message, e.cause || '');
     }
     return null;
+}
+
+// MP 安全 fetch (忽略 HTTPS 证书)
+async function mpFetch(url, options = {}) {
+    const mpConfig = config.moviepilot || {};
+    const baseUrl = mpConfig.url || '';
+    
+    if (baseUrl.startsWith('https://')) {
+        const { Agent, fetch: undiciFetch } = await import('undici');
+        const agent = new Agent({
+            connect: { rejectUnauthorized: false }
+        });
+        return undiciFetch(url, { ...options, dispatcher: agent });
+    }
+    return fetch(url, options);
 }
 
 // MP 搜索资源 (使用 torrents 接口)
@@ -905,7 +943,7 @@ async function mpSearchResources(keyword, mediaType = null) {
         
         console.log(`[MP] 搜索资源: ${url.toString()}`);
         
-        const response = await fetch(url.toString(), {
+        const response = await mpFetch(url.toString(), {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         
@@ -934,7 +972,7 @@ async function mpDownload(resourceId) {
     const baseUrl = mpConfig.url.replace(/\/$/, '');
     
     try {
-        const response = await fetch(`${baseUrl}/api/v1/download/add`, {
+        const response = await mpFetch(`${baseUrl}/api/v1/download/add`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -964,7 +1002,7 @@ async function mpGetDownloads() {
     const baseUrl = mpConfig.url.replace(/\/$/, '');
     
     try {
-        const response = await fetch(`${baseUrl}/api/v1/download/`, {
+        const response = await mpFetch(`${baseUrl}/api/v1/download/`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         
