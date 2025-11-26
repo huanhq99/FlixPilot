@@ -72,6 +72,7 @@ function AppContent() {
   );
   const [authLoading, setAuthLoading] = useState(true);
   const [needsPasswordSetup, setNeedsPasswordSetup] = useState(false);
+  const [adminUsername, setAdminUsername] = useState('admin');
 
   // Emby State
   const [showSettings, setShowSettings] = useState(false);
@@ -927,6 +928,11 @@ function AppContent() {
         const statusRes = await fetch('/api/auth/status');
         const status = await statusRes.json();
         
+        // 保存管理员用户名
+        if (status.adminUsername) {
+          setAdminUsername(status.adminUsername);
+        }
+        
         if (status.needsSetup) {
           // 需要首次设置密码
           setNeedsPasswordSetup(true);
@@ -986,6 +992,7 @@ function AppContent() {
         isDarkMode={isDarkMode} 
         embyConfig={embyConfig}
         needsSetup={needsPasswordSetup}
+        adminUsername={adminUsername}
         onSetupComplete={(token: string) => {
           localStorage.setItem('streamhub_token', token);
           setAuthToken(token);

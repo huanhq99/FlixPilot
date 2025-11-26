@@ -75,8 +75,10 @@ if (!fs.existsSync(configInData) && !fs.existsSync(configInRoot)) {
     },
     "auth": {
       "enabled": true,
+      "username": "admin",
       "password": "",
-      "_说明": "安全认证配置 - 首次访问时设置管理员密码"
+      "_说明": "管理员账号配置 - 填写明文密码，首次启动后自动加密",
+      "_提示": "留空则首次访问时在网页设置密码"
     },
     "moviepilot": {
       "url": "https://your-moviepilot-server.com",
@@ -158,6 +160,35 @@ if (fs.existsSync(configPath)) {
   } catch (err) {
     console.error('⚠️  config.json 解析失败:', err.message);
   }
+}
+
+// ==================== 管理员密码自动哈希 ====================
+// 检查是否配置了明文密码（非哈希格式），自动转换为哈希
+if (config.auth?.password && config.auth.password.length > 0 && config.auth.password.length < 64) {
+  // 明文密码（哈希后是64位），需要转换
+  console.log('🔐 检测到明文密码，正在加密...');
+  const hash = crypto.createHash('sha256').update(config.auth.password).digest('hex');
+  config.auth.password = hash;
+  
+  // 更新配置文件
+  try {
+    const configData = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    configData.auth = configData.auth || {};
+    configData.auth.password = hash;
+    configData.auth.passwordHashed = true; // 标记已哈希
+    fs.writeFileSync(configPath, JSON.stringify(configData, null, 2));
+    console.log('✅ 管理员密码已加密保存');
+  } catch (e) {
+    console.error('⚠️  保存加密密码失败:', e.message);
+  }
+} else if (!config.auth?.password) {
+  console.log('⚠️  管理员密码未配置 - 首次访问时需在网页设置');
+}
+
+// 设置默认用户名
+if (!config.auth?.username) {
+  config.auth = config.auth || {};
+  config.auth.username = 'admin';
 }
 
 // Create an HTTPS agent that ignores SSL errors
@@ -245,6 +276,7 @@ app.get('/api/auth/status', (req, res) => {
     res.json({
         authEnabled,
         needsSetup: authEnabled && !hasPassword,
+        adminUsername: config.auth?.username || 'admin',
         isAuthenticated: false // 前端会检查 localStorage 中的 token
     });
 });
@@ -256,7 +288,7 @@ app.post('/api/auth/setup', async (req, res) => {
             return res.status(400).json({ error: '密码已设置' });
         }
         
-        const { password } = req.body;
+        const { username, password } = req.body;
         if (!password || password.length < 6) {
             return res.status(400).json({ error: '密码至少6个字符' });
         }
@@ -267,6 +299,7 @@ app.post('/api/auth/setup', async (req, res) => {
         
         // 更新配置
         config.auth = config.auth || {};
+        config.auth.username = username || 'admin';
         config.auth.password = hash;
         config.auth.enabled = true;
         
@@ -282,11 +315,12 @@ app.post('/api/auth/setup', async (req, res) => {
             expiry: Date.now() + SESSION_TIMEOUT
         });
         
-        console.log('✅ 管理员密码已设置');
+        console.log(`✅ 管理员账号已设置: ${config.auth.username}`);
         
         res.json({
             success: true,
             token,
+            username: config.auth.username,
             message: '密码设置成功'
         });
     } catch (error) {
@@ -298,10 +332,16 @@ app.post('/api/auth/setup', async (req, res) => {
 // 登录
 app.post('/api/auth/login', async (req, res) => {
     try {
-        const { password } = req.body;
+        const { username, password } = req.body;
         
         if (!config.auth?.password) {
             return res.status(400).json({ error: '请先设置密码' });
+        }
+        
+        // 验证用户名（如果配置了）
+        const adminUsername = config.auth?.username || 'admin';
+        if (username && username !== adminUsername) {
+            return res.status(401).json({ error: '用户名或密码错误' });
         }
         
         // 验证密码
@@ -309,7 +349,7 @@ app.post('/api/auth/login', async (req, res) => {
         const hash = crypto.createHash('sha256').update(password).digest('hex');
         
         if (hash !== config.auth.password) {
-            return res.status(401).json({ error: '密码错误' });
+            return res.status(401).json({ error: '用户名或密码错误' });
         }
         
         // 生成 token
@@ -319,9 +359,12 @@ app.post('/api/auth/login', async (req, res) => {
             expiry: Date.now() + SESSION_TIMEOUT
         });
         
+        console.log(`✅ 管理员登录成功: ${adminUsername}`);
+        
         res.json({
             success: true,
             token,
+            username: adminUsername,
             message: '登录成功'
         });
     } catch (error) {

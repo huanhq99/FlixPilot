@@ -29,6 +29,15 @@
     "_subscribeUser_help": "订阅时使用的用户名 (可选，默认为登录用户名)"
   },
   
+  "auth": {
+    "_comment": "管理员账号配置",
+    "enabled": true,
+    "username": "admin",
+    "_username_help": "管理员用户名",
+    "password": "",
+    "_password_help": "填写明文密码，首次启动后自动加密。留空则首次访问时在网页设置"
+  },
+  
   "server": {
     "_comment": "服务器运行配置",
     "port": 3000,

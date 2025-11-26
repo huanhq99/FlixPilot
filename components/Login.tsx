@@ -9,6 +9,7 @@ interface LoginProps {
     isDarkMode: boolean;
     embyConfig?: EmbyConfig; // 从后端配置传入
     needsSetup?: boolean; // 是否需要首次设置密码
+    adminUsername?: string; // 管理员用户名（从后端获取）
     onSetupComplete?: (token: string) => void; // 设置密码完成回调
     onPasswordLogin?: (token: string) => void; // 密码登录成功回调
 }
@@ -18,6 +19,7 @@ const Login: React.FC<LoginProps> = ({
     isDarkMode, 
     embyConfig,
     needsSetup = false,
+    adminUsername = 'admin',
     onSetupComplete,
     onPasswordLogin
 }) => {
@@ -27,6 +29,7 @@ const Login: React.FC<LoginProps> = ({
     const [success, setSuccess] = useState('');
     
     // Password State
+    const [username, setUsername] = useState(adminUsername);
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     
@@ -40,6 +43,10 @@ const Login: React.FC<LoginProps> = ({
     // 首次设置密码
     const handleSetupPassword = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!username) {
+            setError('请输入用户名');
+            return;
+        }
         if (!password) {
             setError('请输入密码');
             return;
@@ -60,13 +67,13 @@ const Login: React.FC<LoginProps> = ({
             const res = await fetch('/api/auth/setup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ password })
+                body: JSON.stringify({ username, password })
             });
             
             const data = await res.json();
             
             if (res.ok && data.success) {
-                setSuccess('密码设置成功！');
+                setSuccess('账号设置成功！');
                 setTimeout(() => {
                     onSetupComplete?.(data.token);
                 }, 1000);
@@ -95,7 +102,7 @@ const Login: React.FC<LoginProps> = ({
             const res = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ password })
+                body: JSON.stringify({ username, password })
             });
             
             const data = await res.json();
@@ -106,7 +113,7 @@ const Login: React.FC<LoginProps> = ({
                     onPasswordLogin?.(data.token);
                 }, 500);
             } else {
-                setError(data.error || '密码错误');
+                setError(data.error || '用户名或密码错误');
             }
         } catch (err) {
             setError('网络错误，请重试');
@@ -195,9 +202,28 @@ const Login: React.FC<LoginProps> = ({
                 {/* 密码登录/设置表单 */}
                 {(needsSetup || mode === 'password') && (
                     <form onSubmit={needsSetup ? handleSetupPassword : handlePasswordLogin} className="space-y-4">
+                        {/* 用户名 */}
                         <div className="space-y-2">
                             <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
-                                {needsSetup ? '设置密码' : '管理员密码'}
+                                用户名
+                            </label>
+                            <div className="relative">
+                                <User className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`} size={18} />
+                                <input 
+                                    type="text" 
+                                    value={username}
+                                    onChange={(e) => setUsername(e.target.value)}
+                                    className={`w-full pl-10 pr-4 py-3 rounded-xl border outline-none transition-all text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
+                                    placeholder="admin"
+                                    autoFocus={needsSetup}
+                                />
+                            </div>
+                        </div>
+
+                        {/* 密码 */}
+                        <div className="space-y-2">
+                            <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
+                                {needsSetup ? '设置密码' : '密码'}
                             </label>
                             <div className="relative">
                                 <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`} size={18} />
@@ -207,7 +233,7 @@ const Login: React.FC<LoginProps> = ({
                                     onChange={(e) => setPassword(e.target.value)}
                                     className={`w-full pl-10 pr-4 py-3 rounded-xl border outline-none transition-all font-mono text-sm ${isDarkMode ? 'bg-zinc-900 border-zinc-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
                                     placeholder="••••••"
-                                    autoFocus
+                                    autoFocus={!needsSetup}
                                 />
                             </div>
                         </div>
