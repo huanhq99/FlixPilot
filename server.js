@@ -714,11 +714,13 @@ function saveBotUsers(users) {
 // 获取 Bot 配置（带默认值）
 function getBotConfig() {
     const botConfig = config.bot || {};
+    // 将 adminUsers 统一转为字符串数组，避免类型不匹配
+    const adminUsers = (botConfig.adminUsers || []).map(id => String(id));
     return {
         defaultQuota: botConfig.defaultQuota ?? 3,          // 默认求片额度
         checkinReward: botConfig.checkinReward ?? 10,       // 签到奖励爆米花
         exchangeRate: botConfig.exchangeRate ?? 50,         // 多少爆米花换一次额度
-        adminUsers: botConfig.adminUsers || []              // 管理员 TG 用户 ID
+        adminUsers: adminUsers                              // 管理员 TG 用户 ID (字符串数组)
     };
 }
 
