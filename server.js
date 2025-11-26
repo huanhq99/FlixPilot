@@ -1193,9 +1193,9 @@ async function handleBotCommand(message) {
 你好 <b>${username}</b>，我可以帮你：
 
 📌 <b>基础功能</b>
-/绑定 &lt;用户名&gt; &lt;密码&gt; - 绑定 Emby 账号
+/绑定 - 绑定 Emby 账号
+/我的 - 查看个人信息
 /签到 - 每日签到领取 ${botConfig.checkinReward} 🍿
-/余额 - 查看爆米花和求片额度
 /兑换 - 用 ${botConfig.exchangeRate} 🍿 兑换 1 次求片额度
 
 📥 <b>求片下载</b>
@@ -1205,14 +1205,8 @@ async function handleBotCommand(message) {
 
 📊 <b>其他功能</b>
 /库存 - 查看媒体库统计
-/线路 - 查看播放服务器地址
 /问 &lt;问题&gt; - AI 问答
 /发红包 &lt;数量&gt; [份数] - 群里发红包
-
-📊 <b>你的状态</b>
-🔗 ${bindStatus}
-🍿 爆米花: ${user.popcorn}
-🎫 求片额度: ${user.quota}
         `.trim());
         return;
     }
@@ -1222,6 +1216,19 @@ async function handleBotCommand(message) {
         const embyUsername = args[0]?.trim();
         const embyPassword = args.slice(1).join(' ').trim();
         
+        // 已经绑定过 - 直接显示绑定信息
+        if (user.embyUserId) {
+            await sendBotMessage(chatId, `
+🔗 <b>Emby 账号绑定</b>
+
+✅ 已绑定账号: <b>${user.embyUsername}</b>
+
+${isAdmin ? '💡 管理员可使用 /绑定 用户名 密码 更换绑定' : '如需更换绑定，请联系管理员。'}
+            `.trim());
+            return;
+        }
+        
+        // 未绑定 - 显示帮助或执行绑定
         if (!embyUsername || !embyPassword) {
             await sendBotMessage(chatId, `
 🔗 <b>绑定 Emby 账号</b>
@@ -1232,17 +1239,7 @@ async function handleBotCommand(message) {
 例如:
 /绑定 zhangsan mypassword123
 
-⚠️ 密码用于验证身份，不会被保存
-            `.trim());
-            return;
-        }
-        
-        // 已经绑定过
-        if (user.embyUserId && !isAdmin) {
-            await sendBotMessage(chatId, `
-⚠️ 你已经绑定了 Emby 账号: <b>${user.embyUsername}</b>
-
-如需更换绑定，请联系管理员。
+⚠️ 密码仅用于验证身份，不会被保存
             `.trim());
             return;
         }
@@ -1352,12 +1349,29 @@ ${result.error}
         return;
     }
     
-    // /余额 - 查看余额
-    if (cmdLower === '/余额' || cmdLower === '/balance' || cmdLower === '/我的') {
+    // /我的 - 查看个人信息（包含余额、绑定、线路）
+    if (cmdLower === '/我的' || cmdLower === '/me' || cmdLower === '/余额' || cmdLower === '/balance') {
         const user = getOrCreateUser(userId, username);
+        const embyConfig = config.emby || {};
         const recentRequests = user.requests?.slice(-3) || [];
         
-        let requestHistory = '暂无求片记录';
+        // 绑定状态
+        const bindInfo = user.embyUserId 
+            ? `✅ 已绑定: <b>${user.embyUsername}</b>`
+            : `❌ 未绑定 (使用 /绑定 绑定账号)`;
+        
+        // 线路信息
+        let serverInfo = '未配置';
+        if (embyConfig.serverUrl) {
+            const servers = [];
+            if (embyConfig.serverUrlInternal) servers.push(`内网: <code>${embyConfig.serverUrlInternal}</code>`);
+            if (embyConfig.serverUrlExternal) servers.push(`外网: <code>${embyConfig.serverUrlExternal}</code>`);
+            if (servers.length === 0) servers.push(`<code>${embyConfig.serverUrl}</code>`);
+            serverInfo = servers.join('\n');
+        }
+        
+        // 最近求片
+        let requestHistory = '暂无记录';
         if (recentRequests.length > 0) {
             requestHistory = recentRequests.map(r => 
                 `• ${r.title} (${r.year}) - ${r.status === 'pending' ? '⏳处理中' : r.status === 'completed' ? '✅已完成' : '❌已拒绝'}`
@@ -1365,7 +1379,10 @@ ${result.error}
         }
         
         await sendBotMessage(chatId, `
-👤 <b>${username} 的账户</b>
+👤 <b>${username} 的个人信息</b>
+
+🔗 <b>Emby 绑定</b>
+${bindInfo}
 
 💰 <b>资产</b>
 🍿 爆米花: ${user.popcorn}
@@ -1374,6 +1391,9 @@ ${result.error}
 📊 <b>统计</b>
 📅 累计签到: ${user.totalCheckins} 天
 🎬 累计求片: ${user.requests?.length || 0} 次
+
+🌐 <b>播放线路</b>
+${serverInfo}
 
 📝 <b>最近求片</b>
 ${requestHistory}
@@ -1712,7 +1732,7 @@ ${statusList}
         return;
     }
     
-    // /线路 - 查看播放线路
+    // /线路 - 查看播放线路 (也可以通过 /我的 查看)
     if (cmdLower === '/线路' || cmdLower === '/server' || cmdLower === '/地址') {
         const embyConfig = config.emby || {};
         if (!embyConfig.serverUrl) {
@@ -1720,11 +1740,15 @@ ${statusList}
             return;
         }
         
+        const servers = [];
+        if (embyConfig.serverUrlInternal) servers.push(`🏠 内网: <code>${embyConfig.serverUrlInternal}</code>`);
+        if (embyConfig.serverUrlExternal) servers.push(`🌐 外网: <code>${embyConfig.serverUrlExternal}</code>`);
+        if (servers.length === 0) servers.push(`📺 地址: <code>${embyConfig.serverUrl}</code>`);
+        
         await sendBotMessage(chatId, `
 🌐 <b>播放线路</b>
 
-📺 服务器地址:
-<code>${embyConfig.serverUrl}</code>
+${servers.join('\n')}
 
 💡 请使用 Emby 客户端连接
         `.trim());
