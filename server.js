@@ -392,8 +392,7 @@ app.post('/api/auth/login', async (req, res) => {
     try {
         const { username, password } = req.body;
         
-        console.log(`[Auth] 登录请求 - 用户名: "${username}", 密码长度: ${password?.length || 0}`);
-        console.log(`[Auth] 配置的用户名: "${config.auth?.username}", 配置的密码: "${config.auth?.password}"`);
+        console.log(`[Auth] 登录请求 - 用户名: "${username}"`);
         
         if (!config.auth?.password) {
             console.log('[Auth] 失败: 密码未配置');
@@ -1066,7 +1065,7 @@ async function askAI(question) {
     
     try {
         const apiUrl = (aiConfig.apiUrl || 'https://api.openai.com/v1').replace(/\/$/, '');
-        const response = await fetch(`${apiUrl}/chat/completions`, {
+        const response = await proxyFetch(`${apiUrl}/chat/completions`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${aiConfig.apiKey}`,
@@ -2990,19 +2989,26 @@ function setupReportScheduler() {
     console.log(`[Report] 日报时间: 每天 ${dailyTime}`);
     console.log(`[Report] 周报时间: 每周${['日','一','二','三','四','五','六'][weeklyDay]} ${weeklyTime}`);
     
+    // 记录上次发送时间，防止重复发送
+    let lastDailySent = '';
+    let lastWeeklySent = '';
+    
     // 每分钟检查是否需要发送报告
     setInterval(() => {
         const now = new Date();
         const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
         const currentDay = now.getDay();
+        const today = now.toDateString();
         
-        // 检查日报时间
-        if (currentTime === dailyTime) {
+        // 检查日报时间 (同一天只发一次)
+        if (currentTime === dailyTime && lastDailySent !== today) {
+            lastDailySent = today;
             sendDailyReport();
         }
         
-        // 检查周报时间
-        if (currentDay === weeklyDay && currentTime === weeklyTime) {
+        // 检查周报时间 (同一天只发一次)
+        if (currentDay === weeklyDay && currentTime === weeklyTime && lastWeeklySent !== today) {
+            lastWeeklySent = today;
             sendWeeklyReport();
         }
     }, 60000); // 每分钟检查
