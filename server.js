@@ -763,28 +763,30 @@ app.post('/api/proxy/moviepilot', requireAuth, async (req, res) => {
         }
 
         console.log(`[Proxy] ${method} -> ${target_url}`);
-        // 打印 incoming Authorization header (mask token for安全)
-        const incomingAuth = req.headers['authorization'] || '';
-        const mask = (s) => {
-            if (!s) return '';
-            const t = s.replace(/^Bearer\s+/i, '');
-            if (t.length > 8) return `${t.slice(0,4)}...${t.slice(-4)}`;
-            return t;
-        };
-        console.log(`[Proxy] Incoming Authorization: Bearer ${mask(incomingAuth)}`);
-        console.log(`[Proxy] Headers:`, headers);
-        console.log(`[Proxy] Body type:`, typeof body);
         
         // Parse the URL
         const urlObj = new URL(target_url);
         const isHttps = urlObj.protocol === 'https:';
         const requestModule = isHttps ? https : http;
         
+        // Filter headers
+        const proxyHeaders = { ...headers };
+        delete proxyHeaders['host'];
+        delete proxyHeaders['content-length'];
+        delete proxyHeaders['connection'];
+        proxyHeaders['Connection'] = 'close'; // Force close to avoid keep-alive issues
+        
+        // If no content-type, default to json
+        if (!proxyHeaders['Content-Type'] && !proxyHeaders['content-type']) {
+            proxyHeaders['Content-Type'] = 'application/json';
+        }
+
         const requestOptions = {
             method: method || 'POST',
-            headers: headers || { 'Content-Type': 'application/json' },
+            headers: proxyHeaders,
             rejectUnauthorized: false, // CRITICAL: Ignore SSL errors for HTTPS
-            agent: false // Create a new agent for this request
+            agent: false, // Create a new agent for this request
+            timeout: 30000 // 30 seconds timeout
         };
 
         const proxyReq = requestModule.request(target_url, requestOptions, (proxyRes) => {
@@ -796,7 +798,6 @@ app.post('/api/proxy/moviepilot', requireAuth, async (req, res) => {
 
             proxyRes.on('end', () => {
                 console.log(`[Proxy] Response Status: ${proxyRes.statusCode}`);
-                console.log(`[Proxy] Response Body:`, data.substring(0, 200));
                 
                 // Try to parse JSON
                 let responseData = data;
@@ -813,20 +814,32 @@ app.post('/api/proxy/moviepilot', requireAuth, async (req, res) => {
             });
         });
 
+        proxyReq.on('timeout', () => {
+            console.error('[Proxy] Request Timeout');
+            proxyReq.destroy();
+            res.status(504).json({ 
+                error: 'Proxy request timeout', 
+                details: 'The request to MoviePilot timed out after 30s',
+                code: 'ETIMEDOUT'
+            });
+        });
+
         proxyReq.on('error', (e) => {
             console.error('[Proxy] Request Error:', e);
-            res.status(500).json({ 
-                error: 'Proxy request failed', 
-                details: e.message,
-                code: e.code
-            });
+            if (!res.headersSent) {
+                res.status(500).json({ 
+                    error: 'Proxy request failed', 
+                    details: e.message,
+                    code: e.code
+                });
+            }
         });
 
         // Write body if exists
         if (body) {
             // Body can be either JSON or string (for form data)
             const bodyContent = typeof body === 'string' ? body : JSON.stringify(body);
-            console.log(`[Proxy] Sending body:`, bodyContent.substring(0, 200));
+            // console.log(`[Proxy] Sending body:`, bodyContent.substring(0, 200));
             proxyReq.write(bodyContent);
         }
         
