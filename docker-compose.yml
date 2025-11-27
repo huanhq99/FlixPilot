@@ -1,16 +1,17 @@
-version: "3"
-services:
-  streamhub:
-    image: ghcr.io/huanhq99/streamhub:latest
-    container_name: streamhub
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./data:/app/data  # 配置文件会自动生成到 data/config.json
-    restart: unless-stopped
+version: '3.8'
 
-# 使用方法:
-# 1. docker-compose up -d
-# 2. 编辑 ./data/config.json 填入 TMDB API Key
-# 3. docker-compose restart
+services:
+  app:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: streamhub
+    restart: unless-stopped
+    ports:
+      - "3000:8000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - DATA_DIR=/app/data
+      - TZ=Asia/Shanghai
 
