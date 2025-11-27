@@ -228,14 +228,17 @@ function AppContent() {
       }
   }, []); 
 
-  // 从后端加载配置 (config.json) - 后端配置优先!
+  // 🎯 从后端加载配置 (config.json) - 后端是唯一真实来源!
   useEffect(() => {
-      fetch('/api/config')
+      const token = localStorage.getItem('streamhub_token') || '';
+      fetch('/api/config', {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
           .then(res => res.json())
           .then(serverConfig => {
-              console.log('📦 后端配置:', serverConfig);
+              console.log('📦 [App] 后端配置:', serverConfig);
               
-              // 后端配置了 Emby 就用后端的 (后端优先!)
+              // ===== Emby 配置 =====
               if (serverConfig.emby?.configured && serverConfig.emby.serverUrl) {
                   console.log('✅ 使用后端 Emby 配置:', serverConfig.emby.serverUrl);
                   const newConfig = {
@@ -245,43 +248,24 @@ function AppContent() {
                       apiKey: serverConfig.emby.apiKey
                   };
                   setEmbyConfig(newConfig);
-                  storage.set(STORAGE_KEYS.EMBY_CONFIG, newConfig);
+                  // 不再写入 localStorage，后端是唯一来源
               }
               
-              // 后端配置了 MoviePilot 就用后端的
-              if (serverConfig.moviepilot?.configured && serverConfig.moviepilot.url) {
-                  console.log('✅ 使用后端 MoviePilot 配置:', serverConfig.moviepilot.url);
-                  const localNotify = storage.get(STORAGE_KEYS.NOTIFICATIONS, {}) as any;
-                  const newNotify = {
-                      ...localNotify,
-                      moviePilotUrl: serverConfig.moviepilot.url,
-                      moviePilotUsername: serverConfig.moviepilot.username,
-                      moviePilotPassword: serverConfig.moviepilot.password,
-                      moviePilotSubscribeUser: serverConfig.moviepilot.subscribeUser
-                  };
-                  storage.set(STORAGE_KEYS.NOTIFICATIONS, newNotify);
+              // ===== 系统设置 =====
+              if (serverConfig.system) {
+                  setSystemSettings(prev => ({
+                      ...prev,
+                      websiteTitle: serverConfig.system.websiteTitle || prev.websiteTitle,
+                      faviconUrl: serverConfig.system.faviconUrl || prev.faviconUrl,
+                      movieRequestLimit: serverConfig.system.movieRequestLimit ?? prev.movieRequestLimit,
+                      tvRequestLimit: serverConfig.system.tvRequestLimit ?? prev.tvRequestLimit
+                  }));
+                  if (serverConfig.system.syncInterval) {
+                      setSyncInterval(serverConfig.system.syncInterval);
+                  }
               }
               
-              // 后端配置了 Telegram 就用后端的
-              if (serverConfig.telegram?.configured && serverConfig.telegram.botToken) {
-                  console.log('✅ 使用后端 Telegram 配置');
-                  const localNotify = storage.get(STORAGE_KEYS.NOTIFICATIONS, {}) as any;
-                  const newNotify = {
-                      ...localNotify,
-                      telegramBotToken: serverConfig.telegram.botToken,
-                      telegramChatId: serverConfig.telegram.chatId
-                  };
-                  storage.set(STORAGE_KEYS.NOTIFICATIONS, newNotify);
-              }
-              
-              // 后端配置了 TMDB 就用后端的
-              if (serverConfig.tmdb?.configured && serverConfig.tmdb.apiKey) {
-                  console.log('✅ 使用后端 TMDB 配置');
-                  storage.set(STORAGE_KEYS.TMDB_CONFIG, {
-                      apiKey: serverConfig.tmdb.apiKey,
-                      baseUrl: serverConfig.tmdb.baseUrl
-                  });
-              }
+              // 注意: MoviePilot/Telegram/TMDB 配置由 SettingsModal 按需加载，App.tsx 不再缓存
           })
           .catch(err => console.error('获取后端配置失败:', err));
   }, []);

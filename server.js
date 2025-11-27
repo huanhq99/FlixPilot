@@ -506,11 +506,78 @@ app.get('/api/config', requireAuth, (req, res) => {
                 dailyTime: config.report?.dailyTime || '23:00',
                 weeklyDay: config.report?.weeklyDay ?? 0,
                 weeklyTime: config.report?.weeklyTime || '22:00'
+            },
+            // 系统设置
+            system: {
+                websiteTitle: config.system?.websiteTitle || 'StreamHub - Global Media Monitor',
+                faviconUrl: config.system?.faviconUrl || '',
+                movieRequestLimit: config.system?.movieRequestLimit || 0,
+                tvRequestLimit: config.system?.tvRequestLimit || 0,
+                syncInterval: config.system?.syncInterval || 15
             }
         });
     } catch (error) {
         console.error('Get Config Error:', error);
         res.status(500).json({ error: 'Failed to get configuration' });
+    }
+});
+
+// API: Save Configuration (前端保存配置到 config.json)
+app.post('/api/config', requireAuth, async (req, res) => {
+    try {
+        const updates = req.body;
+        console.log('[Config] 保存配置请求:', Object.keys(updates));
+        
+        // 读取当前配置
+        let configData = {};
+        if (fs.existsSync(configPath)) {
+            configData = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+        }
+        
+        // 合并更新 (深度合并)
+        const deepMerge = (target, source) => {
+            for (const key in source) {
+                if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+                    target[key] = target[key] || {};
+                    deepMerge(target[key], source[key]);
+                } else {
+                    target[key] = source[key];
+                }
+            }
+            return target;
+        };
+        
+        deepMerge(configData, updates);
+        
+        // 过滤掉空值和注释字段
+        const cleanConfig = (obj) => {
+            const cleaned = {};
+            for (const key in obj) {
+                if (key.startsWith('_')) continue; // 跳过注释字段
+                if (obj[key] === '' || obj[key] === null || obj[key] === undefined) continue;
+                if (typeof obj[key] === 'object' && !Array.isArray(obj[key])) {
+                    const nested = cleanConfig(obj[key]);
+                    if (Object.keys(nested).length > 0) {
+                        cleaned[key] = nested;
+                    }
+                } else {
+                    cleaned[key] = obj[key];
+                }
+            }
+            return cleaned;
+        };
+        
+        // 保存到文件
+        fs.writeFileSync(configPath, JSON.stringify(configData, null, 2));
+        
+        // 更新内存中的配置
+        config = deepMerge(config, updates);
+        
+        console.log('[Config] ✅ 配置已保存');
+        res.json({ success: true, message: '配置已保存' });
+    } catch (error) {
+        console.error('[Config] 保存失败:', error);
+        res.status(500).json({ error: '保存配置失败', details: error.message });
     }
 });
 

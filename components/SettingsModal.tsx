@@ -67,87 +67,91 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
     const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
     const [serverVersion, setServerVersion] = useState<string>(APP_VERSION);
 
+    // 配置加载状态
+    const [configLoading, setConfigLoading] = useState(true);
+    
     useEffect(() => {
         if (isOpen) {
-            setUrl(currentConfig.serverUrl || '');
-            setUrlInternal(currentConfig.serverUrlInternal || '');
-            setUrlExternal(currentConfig.serverUrlExternal || '');
-            setApiKey(currentConfig.apiKey || '');
+            setConfigLoading(true);
             setStatus('idle');
             setSyncProgress(0);
             setSyncStatusText('');
-            setSyncInterval(storage.get(STORAGE_KEYS.SYNC_INTERVAL, 15));
             
-            // Load requests
+            // Load requests (这些是用户数据，保留在 localStorage)
             setRequests(storage.get<RequestItem[]>(STORAGE_KEYS.REQUESTS, []));
             
             // Load users
             setUsers(storage.get(STORAGE_KEYS.USERS, []));
             
-            // 直接从后端加载配置，后端配置优先
+            // 🎯 核心改动：完全从后端加载配置，后端是唯一真实来源
             fetch('/api/config')
                 .then(res => res.json())
                 .then(data => {
-                    console.log('📦 后端配置返回:', JSON.stringify(data, null, 2));
+                    console.log('📦 [SettingsModal] 后端配置:', JSON.stringify(data, null, 2));
                     
                     if (data.version) {
                         setServerVersion(data.version);
                     }
                     
-                    // 先加载本地配置作为基础
-                    const localNotify = storage.get(STORAGE_KEYS.NOTIFICATIONS, {}) as any;
-                    const merged: any = { ...localNotify };
-                    
-                    // 后端 Telegram 配置直接覆盖
-                    if (data.telegram?.configured) {
-                        merged.telegramBotToken = data.telegram.botToken;
-                        merged.telegramChatId = data.telegram.chatId;
+                    // ===== Emby 配置 =====
+                    if (data.emby?.configured) {
+                        setUrl(data.emby.serverUrl || '');
+                        setUrlInternal(data.emby.serverUrlInternal || '');
+                        setUrlExternal(data.emby.serverUrlExternal || '');
+                        setApiKey(data.emby.apiKey || '');
+                    } else {
+                        // 使用 props 传入的配置作为备用
+                        setUrl(currentConfig.serverUrl || '');
+                        setUrlInternal(currentConfig.serverUrlInternal || '');
+                        setUrlExternal(currentConfig.serverUrlExternal || '');
+                        setApiKey(currentConfig.apiKey || '');
                     }
                     
-                    // 后端 MoviePilot 配置直接覆盖
+                    // ===== 通知配置 (Telegram + MoviePilot) =====
+                    const notifyData: NotificationConfig = {};
+                    
+                    if (data.telegram?.configured) {
+                        notifyData.telegramBotToken = data.telegram.botToken;
+                        notifyData.telegramChatId = data.telegram.chatId;
+                    }
+                    
                     if (data.moviepilot?.configured) {
                         console.log('✅ MoviePilot 配置:', data.moviepilot);
-                        merged.moviePilotUrl = data.moviepilot.url;
-                        merged.moviePilotUsername = data.moviepilot.username;
-                        merged.moviePilotPassword = data.moviepilot.password;
-                        merged.moviePilotSubscribeUser = data.moviepilot.subscribeUser;
-                    } else {
-                        console.log('❌ MoviePilot 未配置, data.moviepilot =', data.moviepilot);
+                        notifyData.moviePilotUrl = data.moviepilot.url;
+                        notifyData.moviePilotUsername = data.moviepilot.username;
+                        notifyData.moviePilotPassword = data.moviepilot.password;
+                        notifyData.moviePilotSubscribeUser = data.moviepilot.subscribeUser;
                     }
                     
-                    console.log('📝 最终 notifyConfig:', merged);
-                    setNotifyConfig(merged);
+                    console.log('📝 最终 notifyConfig:', notifyData);
+                    setNotifyConfig(notifyData);
                     
-                    // 后端 TMDB 配置直接覆盖
+                    // ===== TMDB 配置 =====
                     if (data.tmdb?.configured) {
                         setTmdbApiKey(data.tmdb.apiKey || '');
                         setTmdbProxyUrl(data.tmdb.baseUrl || '');
                     }
-                })
-                .catch(err => console.error('Failed to fetch server config:', err));
-
-             // Load system settings
-            try {
-                const savedSettings = localStorage.getItem('streamhub_settings');
-                if (savedSettings) {
-                    const parsed = JSON.parse(savedSettings);
-                    if (parsed.scanInterval) setSyncInterval(parsed.scanInterval); // Legacy support?
-                    if (parsed.websiteTitle) setWebsiteTitle(parsed.websiteTitle);
-                    if (parsed.faviconUrl) setFaviconUrl(parsed.faviconUrl);
-                    if (parsed.movieRequestLimit !== undefined) setMovieRequestLimit(parsed.movieRequestLimit);
-                    if (parsed.tvRequestLimit !== undefined) setTvRequestLimit(parsed.tvRequestLimit);
-                    // 向后兼容旧配置
-                    if (parsed.requestLimit && !parsed.movieRequestLimit) {
-                        setMovieRequestLimit(parsed.requestLimit);
-                        setTvRequestLimit(parsed.requestLimit);
+                    
+                    // ===== 系统设置 =====
+                    if (data.system) {
+                        setWebsiteTitle(data.system.websiteTitle || 'StreamHub - Global Media Monitor');
+                        setFaviconUrl(data.system.faviconUrl || '');
+                        setMovieRequestLimit(data.system.movieRequestLimit || 0);
+                        setTvRequestLimit(data.system.tvRequestLimit || 0);
+                        setSyncInterval(data.system.syncInterval || 15);
                     }
-                }
-                
-                // Load TMDB settings
-                const tmdbConfig = storage.get(STORAGE_KEYS.TMDB_CONFIG, {}) as any;
-                setTmdbApiKey(tmdbConfig.apiKey || '');
-                setTmdbProxyUrl(tmdbConfig.baseUrl || '');
-            } catch (e) { /* ignore */ }
+                    
+                    setConfigLoading(false);
+                })
+                .catch(err => {
+                    console.error('Failed to fetch server config:', err);
+                    // 后端加载失败时，使用 props 配置
+                    setUrl(currentConfig.serverUrl || '');
+                    setUrlInternal(currentConfig.serverUrlInternal || '');
+                    setUrlExternal(currentConfig.serverUrlExternal || '');
+                    setApiKey(currentConfig.apiKey || '');
+                    setConfigLoading(false);
+                });
 
             // Try fetch libraries if already configured
             if (currentConfig.serverUrl && currentConfig.apiKey) {
@@ -238,9 +242,41 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
         onSave(newConfig, ids, syncInterval, selectedLibraryIds);
     };
 
-    const handleSaveNotifications = () => {
-        storage.set(STORAGE_KEYS.NOTIFICATIONS, notifyConfig);
-        toast.showToast('通知设置已保存', 'success');
+    const handleSaveNotifications = async () => {
+        try {
+            // 保存到后端 config.json
+            const token = localStorage.getItem('streamhub_token') || '';
+            const response = await fetch('/api/config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    telegram: {
+                        botToken: notifyConfig.telegramBotToken || '',
+                        chatId: notifyConfig.telegramChatId || ''
+                    },
+                    moviepilot: {
+                        url: notifyConfig.moviePilotUrl || '',
+                        username: notifyConfig.moviePilotUsername || '',
+                        password: notifyConfig.moviePilotPassword || '',
+                        subscribeUser: notifyConfig.moviePilotSubscribeUser || ''
+                    }
+                })
+            });
+            
+            if (response.ok) {
+                toast.showToast('通知设置已保存到服务器', 'success');
+            } else {
+                throw new Error('保存失败');
+            }
+        } catch (e: any) {
+            console.error('保存通知配置失败:', e);
+            // 降级到 localStorage
+            storage.set(STORAGE_KEYS.NOTIFICATIONS, notifyConfig);
+            toast.showToast('通知设置已保存 (本地)', 'warning');
+        }
     };
 
     const handleTestTelegram = async () => {
@@ -421,16 +457,44 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
         }
     };
 
-    const handleSaveSystem = () => {
-        const settings = { scanInterval: syncInterval, websiteTitle, faviconUrl, movieRequestLimit, tvRequestLimit };
-        localStorage.setItem('streamhub_settings', JSON.stringify(settings));
-        
-        storage.set(STORAGE_KEYS.TMDB_CONFIG, {
-            apiKey: tmdbApiKey,
-            baseUrl: tmdbProxyUrl
-        });
-
-        toast.showToast('系统设置已保存 (请刷新页面生效)', 'success');
+    const handleSaveSystem = async () => {
+        try {
+            // 保存到后端 config.json
+            const token = localStorage.getItem('streamhub_token') || '';
+            const response = await fetch('/api/config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    tmdb: {
+                        apiKey: tmdbApiKey,
+                        baseUrl: tmdbProxyUrl || 'https://api.themoviedb.org/3'
+                    },
+                    system: {
+                        websiteTitle,
+                        faviconUrl,
+                        movieRequestLimit,
+                        tvRequestLimit,
+                        syncInterval
+                    }
+                })
+            });
+            
+            if (response.ok) {
+                toast.showToast('系统设置已保存到服务器 (刷新页面生效)', 'success');
+            } else {
+                throw new Error('保存失败');
+            }
+        } catch (e: any) {
+            console.error('保存系统配置失败:', e);
+            // 降级到 localStorage
+            const settings = { scanInterval: syncInterval, websiteTitle, faviconUrl, movieRequestLimit, tvRequestLimit };
+            localStorage.setItem('streamhub_settings', JSON.stringify(settings));
+            storage.set(STORAGE_KEYS.TMDB_CONFIG, { apiKey: tmdbApiKey, baseUrl: tmdbProxyUrl });
+            toast.showToast('系统设置已保存 (本地)', 'warning');
+        }
     };
 
     const handleCheckUpdate = async () => {

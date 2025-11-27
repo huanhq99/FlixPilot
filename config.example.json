@@ -101,6 +101,20 @@
     "_usage_note": "需要同时配置 telegram.botToken 和 telegram.chatId 才能推送"
   },
   
+  "system": {
+    "_comment": "系统设置 (前端面板也可配置)",
+    "websiteTitle": "StreamHub - Global Media Monitor",
+    "_websiteTitle_help": "网站标题",
+    "faviconUrl": "",
+    "_faviconUrl_help": "网站图标 URL",
+    "movieRequestLimit": 0,
+    "_movieRequestLimit_help": "每用户电影求片限额 (0=无限)",
+    "tvRequestLimit": 0,
+    "_tvRequestLimit_help": "每用户剧集求片限额 (0=无限)",
+    "syncInterval": 15,
+    "_syncInterval_help": "Emby 自动扫描间隔 (分钟)"
+  },
+  
   "_usage_notes": [
     "1. 必需配置: tmdb.apiKey",
     "2. 可选配置: emby, moviepilot, telegram, bot, proxy",
