@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url';
 import https from 'https';
 import http from 'http';
 import crypto from 'crypto';
-import { ProxyAgent, fetch as undiciFetch } from 'undici';
+import { ProxyAgent, fetch as undiciFetch, Agent } from 'undici';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -801,7 +801,7 @@ app.post('/api/proxy/moviepilot', requireAuth, async (req, res) => {
             });
         } else {
             // 无代理时，配置忽略 SSL 错误
-            fetchOptions.dispatcher = new undiciFetch.Polyfill.Agent({
+            fetchOptions.dispatcher = new Agent({
                 connect: {
                     rejectUnauthorized: false,
                     timeout: 30000
