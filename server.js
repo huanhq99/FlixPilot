@@ -323,9 +323,31 @@ app.use(express.static(path.join(__dirname, 'dist')));
 
 // ==================== 认证系统 ====================
 
-// Session store (简单的内存存储，生产环境建议使用 Redis)
-const sessions = new Map();
+// Session store (持久化到文件，重启不丢失)
+const SESSIONS_FILE = path.join(DATA_DIR, 'sessions.json');
 const SESSION_TIMEOUT = 24 * 60 * 60 * 1000; // 24小时
+
+// 加载已有 sessions
+let sessions = new Map();
+if (fs.existsSync(SESSIONS_FILE)) {
+    try {
+        const data = JSON.parse(fs.readFileSync(SESSIONS_FILE, 'utf-8'));
+        sessions = new Map(Object.entries(data));
+        console.log(`✅ 已加载 ${sessions.size} 个 session`);
+    } catch (e) {
+        console.warn('⚠️ 加载 sessions 失败，将使用空 sessions');
+    }
+}
+
+// 保存 sessions 到文件
+function saveSessions() {
+    try {
+        const data = Object.fromEntries(sessions);
+        fs.writeFileSync(SESSIONS_FILE, JSON.stringify(data, null, 2));
+    } catch (e) {
+        console.error('保存 sessions 失败:', e);
+    }
+}
 
 // 生成随机 token
 function generateToken() {
@@ -353,6 +375,7 @@ function requireAuth(req, res, next) {
     const session = sessions.get(token);
     if (!session || Date.now() > session.expiry) {
         sessions.delete(token);
+        saveSessions();
         return res.status(401).json({ error: '未授权：令牌无效或已过期' });
     }
     
@@ -364,10 +387,16 @@ function requireAuth(req, res, next) {
 // 清理过期 session
 setInterval(() => {
     const now = Date.now();
+    let deleted = 0;
     for (const [token, session] of sessions.entries()) {
         if (now > session.expiry) {
             sessions.delete(token);
+            deleted++;
         }
+    }
+    if (deleted > 0) {
+        saveSessions();
+        console.log(`[Auth] 清理了 ${deleted} 个过期 session`);
     }
 }, 60 * 60 * 1000); // 每小时清理一次
 
@@ -415,6 +444,7 @@ app.post('/api/auth/setup', async (req, res) => {
             createdAt: Date.now(),
             expiry: Date.now() + SESSION_TIMEOUT
         });
+        saveSessions();
         
         console.log(`✅ 管理员账号已设置: ${config.auth.username}`);
         
@@ -461,6 +491,7 @@ app.post('/api/auth/login', async (req, res) => {
             createdAt: Date.now(),
             expiry: Date.now() + SESSION_TIMEOUT
         });
+        saveSessions();
         
         console.log(`[Auth] ✅ 登录成功: ${adminUsername}`);
         
@@ -481,6 +512,7 @@ app.post('/api/auth/logout', (req, res) => {
     const token = req.headers['authorization']?.replace('Bearer ', '');
     if (token) {
         sessions.delete(token);
+        saveSessions();
     }
     res.json({ success: true, message: '登出成功' });
 });
@@ -496,6 +528,7 @@ app.post('/api/auth/verify', (req, res) => {
     const session = sessions.get(token);
     if (!session || Date.now() > session.expiry) {
         sessions.delete(token);
+        saveSessions();
         return res.status(401).json({ valid: false });
     }
     
