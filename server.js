@@ -762,92 +762,92 @@ app.post('/api/proxy/moviepilot', requireAuth, async (req, res) => {
             return res.status(400).json({ error: 'Missing target_url' });
         }
 
-        console.log(`[Proxy] ${method} -> ${target_url}`);
+        // 使用配置的代理 (如果有)
+        const currentProxyUrl = config.proxy?.https || config.proxy?.http || process.env.HTTPS_PROXY || process.env.HTTP_PROXY || '';
+        console.log(`[Proxy] ${method} -> ${target_url} ${currentProxyUrl ? '(via Proxy)' : ''}`);
         
-        // Parse the URL
-        const urlObj = new URL(target_url);
-        const isHttps = urlObj.protocol === 'https:';
-        const requestModule = isHttps ? https : http;
-        
-        // Filter headers
+        // 准备请求头
         const proxyHeaders = { ...headers };
+        // 移除可能引起问题的头
         delete proxyHeaders['host'];
         delete proxyHeaders['content-length'];
         delete proxyHeaders['connection'];
-        proxyHeaders['Connection'] = 'close'; // Force close to avoid keep-alive issues
         
-        // If no content-type, default to json
+        // 默认 Content-Type
         if (!proxyHeaders['Content-Type'] && !proxyHeaders['content-type']) {
             proxyHeaders['Content-Type'] = 'application/json';
         }
 
-        const requestOptions = {
+        // 准备 Body
+        let requestBody = body;
+        if (body && typeof body === 'object') {
+            requestBody = JSON.stringify(body);
+        }
+
+        // 使用 undici 发送请求 (支持代理和更好的连接处理)
+        const fetchOptions = {
             method: method || 'POST',
             headers: proxyHeaders,
-            rejectUnauthorized: false, // CRITICAL: Ignore SSL errors for HTTPS
-            agent: false, // Create a new agent for this request
-            timeout: 30000 // 30 seconds timeout
+            body: requestBody,
+            headersTimeout: 30000,
+            bodyTimeout: 30000,
         };
 
-        const proxyReq = requestModule.request(target_url, requestOptions, (proxyRes) => {
-            // Capture the body
-            let data = '';
-            proxyRes.on('data', (chunk) => {
-                data += chunk;
+        // 配置 Agent/Dispatcher
+        if (currentProxyUrl) {
+            fetchOptions.dispatcher = new ProxyAgent({
+                uri: currentProxyUrl,
+                connect: { timeout: 30000 }
             });
-
-            proxyRes.on('end', () => {
-                console.log(`[Proxy] Response Status: ${proxyRes.statusCode}`);
-                
-                // Try to parse JSON
-                let responseData = data;
-                const contentType = proxyRes.headers['content-type'];
-                if (contentType && contentType.includes('application/json')) {
-                    try {
-                        responseData = JSON.parse(data);
-                    } catch (e) {
-                        // ignore
-                    }
+        } else {
+            // 无代理时，配置忽略 SSL 错误
+            fetchOptions.dispatcher = new undiciFetch.Polyfill.Agent({
+                connect: {
+                    rejectUnauthorized: false,
+                    timeout: 30000
                 }
-
-                res.status(proxyRes.statusCode).json(responseData);
             });
-        });
-
-        proxyReq.on('timeout', () => {
-            console.error('[Proxy] Request Timeout');
-            proxyReq.destroy();
-            res.status(504).json({ 
-                error: 'Proxy request timeout', 
-                details: 'The request to MoviePilot timed out after 30s',
-                code: 'ETIMEDOUT'
-            });
-        });
-
-        proxyReq.on('error', (e) => {
-            console.error('[Proxy] Request Error:', e);
-            if (!res.headersSent) {
-                res.status(500).json({ 
-                    error: 'Proxy request failed', 
-                    details: e.message,
-                    code: e.code
-                });
-            }
-        });
-
-        // Write body if exists
-        if (body) {
-            // Body can be either JSON or string (for form data)
-            const bodyContent = typeof body === 'string' ? body : JSON.stringify(body);
-            // console.log(`[Proxy] Sending body:`, bodyContent.substring(0, 200));
-            proxyReq.write(bodyContent);
         }
+
+        const response = await undiciFetch(target_url, fetchOptions);
         
-        proxyReq.end();
+        console.log(`[Proxy] Response Status: ${response.status}`);
+        
+        // 读取响应
+        const responseText = await response.text();
+        
+        // 尝试解析 JSON
+        let responseData = responseText;
+        try {
+            if (response.headers.get('content-type')?.includes('application/json')) {
+                responseData = JSON.parse(responseText);
+            }
+        } catch (e) {
+            // ignore JSON parse error
+        }
+
+        res.status(response.status).json(responseData);
 
     } catch (error) {
-        console.error('[Proxy] Unexpected Error:', error);
-        res.status(500).json({ error: 'Internal Proxy Error', details: error.message });
+        console.error('[Proxy] Request Error:', error);
+        
+        // 区分错误类型
+        let statusCode = 500;
+        let errorCode = 'PROXY_ERROR';
+        
+        if (error.code === 'ETIMEDOUT' || error.code === 'ESOCKETTIMEDOUT' || error.message.includes('timeout')) {
+            statusCode = 504;
+            errorCode = 'ETIMEDOUT';
+        } else if (error.code === 'ECONNREFUSED') {
+            statusCode = 502;
+            errorCode = 'ECONNREFUSED';
+        }
+
+        res.status(statusCode).json({ 
+            error: 'Proxy request failed', 
+            details: error.message,
+            code: errorCode
+        });
     }
 });
 
