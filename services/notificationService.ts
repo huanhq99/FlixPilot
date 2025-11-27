@@ -203,10 +203,9 @@ export const testMoviePilotConnection = async (config: NotificationConfig): Prom
     
     // Endpoints to test
     const endpoints = [
-        '/api/v1/plugin/remotes', 
-        '/api/v1/system/message',
         '/api/v1/dashboard/statistic',
-        '/api/v1/system/info',
+        '/api/v1/system/message',
+        '/api/v1/user/current',
     ];
 
     let connectionError = '';
@@ -215,23 +214,23 @@ export const testMoviePilotConnection = async (config: NotificationConfig): Prom
     
     for (const endpoint of endpoints) {
         try {
-            // Construct target URL
-            const targetUrl = `${baseUrl}${endpoint}?token=${encodeURIComponent(cleanToken)}`;
+            // Construct target URL (不再用 query param，改用 header)
+            const targetUrl = `${baseUrl}${endpoint}`;
             
-            console.log(`\n📡 [代理] 尝试连接: ${targetUrl.replace(cleanToken, '***')}`);
+            console.log(`\n📡 [代理] 尝试连接: ${targetUrl}`);
             
             const response = await fetch(PROXY_URL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    // Authorization header for server.js requireAuth middleware if needed
                     'Authorization': `Bearer ${getLocalAuthToken()}`
                 },
                 body: JSON.stringify({
                     target_url: targetUrl,
                     method: 'GET',
                     headers: {
-                        'Accept': 'application/json'
+                        'Accept': 'application/json',
+                        'Authorization': `Bearer ${cleanToken}`  // MoviePilot token 放 header
                     }
                 })
             });
@@ -279,6 +278,7 @@ export const testMoviePilotConnection = async (config: NotificationConfig): Prom
     };
 };
 
+
 export const subscribeToMoviePilot = async (config: NotificationConfig, item: MediaItem): Promise<{ success: boolean, message: string }> => {
     if (!config.moviePilotUrl || !config.moviePilotToken) {
         return { success: false, message: '未配置 MoviePilot' };
@@ -301,8 +301,8 @@ export const subscribeToMoviePilot = async (config: NotificationConfig, item: Me
     console.log('Subscribing to MP (via Proxy):', `${baseUrl}${endpoint}`, payload);
 
     try {
-        // Try with token in query param first (most reliable based on logs)
-        const targetUrl = `${baseUrl}${endpoint}?token=${encodeURIComponent(cleanToken)}`;
+        // 使用 Authorization header 而不是 query param
+        const targetUrl = `${baseUrl}${endpoint}`;
         
         const response = await fetch(PROXY_URL, {
             method: 'POST',
@@ -315,7 +315,8 @@ export const subscribeToMoviePilot = async (config: NotificationConfig, item: Me
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Accept': 'application/json'
+                    'Accept': 'application/json',
+                    'Authorization': `Bearer ${cleanToken}`  // MoviePilot token 放 header
                 },
                 body: payload
             })
