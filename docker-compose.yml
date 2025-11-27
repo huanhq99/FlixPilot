@@ -3,7 +3,7 @@ version: '3.8'
 services:
   app:
     build: 
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
     container_name: streamhub
     restart: unless-stopped

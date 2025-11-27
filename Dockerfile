@@ -1,65 +1,37 @@
-# Build stage
-FROM node:20-alpine AS build
+# Stage 1: Build Frontend
+FROM node:18-alpine as frontend-builder
 
-# Install canvas dependencies for build
-RUN apk add --no-cache \
-    python3 \
-    make \
-    g++ \
-    cairo-dev \
-    pango-dev \
-    jpeg-dev \
-    giflib-dev \
-    librsvg-dev
+WORKDIR /app/frontend
 
-WORKDIR /app
+# Copy frontend dependency files
+COPY frontend/package.json ./
 
-COPY package*.json ./
+# Install dependencies
 RUN npm install
 
-COPY . .
+# Copy frontend source code
+COPY frontend/ ./
+
+# Build frontend
 RUN npm run build
 
-# Production stage
-FROM node:20-alpine
-
-# Install canvas runtime dependencies
-RUN apk add --no-cache \
-    cairo \
-    pango \
-    jpeg \
-    giflib \
-    librsvg \
-    font-noto-cjk
+# Stage 2: Build Backend & Final Image
+FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY package*.json ./
+# Install backend dependencies
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Install canvas build dependencies, install packages, then remove build deps
-RUN apk add --no-cache --virtual .build-deps \
-    python3 \
-    make \
-    g++ \
-    cairo-dev \
-    pango-dev \
-    jpeg-dev \
-    giflib-dev \
-    librsvg-dev \
-    && npm install --production \
-    && apk del .build-deps
+# Copy backend code
+COPY backend/app ./app
 
-COPY --from=build /app/dist ./dist
-COPY server.js .
-COPY config.example.json .
+# Copy built frontend assets from Stage 1
+COPY --from=frontend-builder /app/frontend/dist ./static
 
-# Create data directory
-RUN mkdir -p data
+# Expose port
+EXPOSE 8000
 
-ENV NODE_ENV=production
-ENV PORT=3000
-ENV DATA_DIR=/app/data
-
-EXPOSE 3000
-
-CMD ["node", "server.js"]
+# Run application
+CMD ["python", "-m", "app.main"]

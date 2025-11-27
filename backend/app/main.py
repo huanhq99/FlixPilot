@@ -1,9 +1,11 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from app.core.config import settings
 from app.services.proxy_service import proxy_service
 import logging
+import os
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -24,9 +26,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
-async def root():
-    return {"message": "StreamHub Backend is running", "version": settings.VERSION}
+# 挂载静态文件 (前端构建产物)
+# 确保 static 目录存在，避免启动报错
+if not os.path.exists("static"):
+    os.makedirs("static")
+
+app.mount("/assets", StaticFiles(directory="static/assets"), name="assets")
 
 @app.get("/api/config")
 async def get_config():
@@ -75,6 +80,19 @@ async def proxy_moviepilot(request: Request):
             content={"error": str(e), "code": "PROXY_ERROR"},
             status_code=500
         )
+
+# SPA 路由处理：所有非 API 请求返回 index.html
+@app.get("/{full_path:path}")
+async def serve_spa(full_path: str):
+    # 如果是 API 请求但未匹配到路由，返回 404
+    if full_path.startswith("api/"):
+        raise HTTPException(status_code=404, detail="API endpoint not found")
+    
+    # 否则返回前端入口文件
+    index_path = "static/index.html"
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return {"message": "Frontend not built or static files missing"}
 
 if __name__ == "__main__":
     import uvicorn
