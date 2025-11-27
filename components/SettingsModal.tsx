@@ -84,7 +84,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
             setUsers(storage.get(STORAGE_KEYS.USERS, []));
             
             // 🎯 核心改动：完全从后端加载配置，后端是唯一真实来源
-            fetch('/api/config')
+            const token = localStorage.getItem('streamhub_token') || '';
+            fetch('/api/config', {
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            })
                 .then(res => res.json())
                 .then(data => {
                     console.log('📦 [SettingsModal] 后端配置:', JSON.stringify(data, null, 2));
