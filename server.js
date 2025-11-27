@@ -262,11 +262,54 @@ const app = express();
 const PORT = config.server.port;
 const DATA_DIR = config.server.dataDir;
 const DB_FILE = path.join(DATA_DIR, 'db.json');
+const LOGS_DIR = path.join(DATA_DIR, 'logs');
+const REPORTS_DIR = path.join(DATA_DIR, 'reports');
 
 // Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
 }
+
+// Ensure logs directory exists
+if (!fs.existsSync(LOGS_DIR)) {
+    fs.mkdirSync(LOGS_DIR, { recursive: true });
+}
+
+// Ensure reports directory exists
+if (!fs.existsSync(REPORTS_DIR)) {
+    fs.mkdirSync(REPORTS_DIR, { recursive: true });
+}
+
+// ==================== 日志系统 ====================
+const LOG_FILE = path.join(LOGS_DIR, `streamhub-${new Date().toISOString().split('T')[0]}.log`);
+
+function writeLog(level, message) {
+    const timestamp = new Date().toISOString();
+    const logLine = `[${timestamp}] [${level}] ${message}\n`;
+    fs.appendFileSync(LOG_FILE, logLine);
+}
+
+// 包装 console.log 同时写入文件
+const originalLog = console.log;
+const originalError = console.error;
+const originalWarn = console.warn;
+
+console.log = (...args) => {
+    originalLog.apply(console, args);
+    writeLog('INFO', args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' '));
+};
+
+console.error = (...args) => {
+    originalError.apply(console, args);
+    writeLog('ERROR', args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' '));
+};
+
+console.warn = (...args) => {
+    originalWarn.apply(console, args);
+    writeLog('WARN', args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' '));
+};
+
+console.log(`📝 日志文件: ${LOG_FILE}`);
 
 // Initialize DB file if not exists
 if (!fs.existsSync(DB_FILE)) {
@@ -578,6 +621,75 @@ app.post('/api/config', requireAuth, async (req, res) => {
     } catch (error) {
         console.error('[Config] 保存失败:', error);
         res.status(500).json({ error: '保存配置失败', details: error.message });
+    }
+});
+
+// API: Get Server Logs (最近的日志)
+app.get('/api/logs', requireAuth, (req, res) => {
+    try {
+        const lines = parseInt(req.query.lines) || 100;
+        const files = fs.readdirSync(LOGS_DIR)
+            .filter(f => f.endsWith('.log'))
+            .sort()
+            .reverse();
+        
+        if (files.length === 0) {
+            return res.json({ logs: [], files: [] });
+        }
+        
+        // 读取最新的日志文件
+        const latestLog = path.join(LOGS_DIR, files[0]);
+        const content = fs.readFileSync(latestLog, 'utf-8');
+        const logLines = content.split('\n').filter(l => l.trim()).slice(-lines);
+        
+        res.json({ 
+            logs: logLines,
+            files: files.slice(0, 7), // 返回最近7天的日志文件列表
+            currentFile: files[0]
+        });
+    } catch (error) {
+        console.error('Read Logs Error:', error);
+        res.status(500).json({ error: 'Failed to read logs' });
+    }
+});
+
+// API: Get Reports List
+app.get('/api/reports', requireAuth, (req, res) => {
+    try {
+        const files = fs.readdirSync(REPORTS_DIR)
+            .filter(f => f.endsWith('.png'))
+            .sort()
+            .reverse()
+            .slice(0, 20); // 最近20个报告
+        
+        res.json({ 
+            reports: files.map(f => ({
+                name: f,
+                url: `/api/reports/${f}`,
+                date: f.match(/\d{4}-\d{2}-\d{2}/)?.[0] || ''
+            }))
+        });
+    } catch (error) {
+        console.error('Read Reports Error:', error);
+        res.status(500).json({ error: 'Failed to read reports' });
+    }
+});
+
+// API: Get Report Image
+app.get('/api/reports/:filename', requireAuth, (req, res) => {
+    try {
+        const filename = req.params.filename;
+        const filepath = path.join(REPORTS_DIR, filename);
+        
+        if (!fs.existsSync(filepath)) {
+            return res.status(404).json({ error: 'Report not found' });
+        }
+        
+        res.setHeader('Content-Type', 'image/png');
+        res.sendFile(filepath);
+    } catch (error) {
+        console.error('Send Report Error:', error);
+        res.status(500).json({ error: 'Failed to send report' });
     }
 });
 
@@ -2991,7 +3103,31 @@ async function generateReportImage(stats, type, dateStr) {
             ctx.fillText(topItem.name, WIDTH / 2, HEIGHT - 40);
         }
         
-        return canvas.toBuffer('image/png');
+        const imageBuffer = canvas.toBuffer('image/png');
+        
+        // 保存报告图片到本地
+        try {
+            const filename = `report-${type}-${new Date().toISOString().replace(/[:.]/g, '-')}.png`;
+            const filepath = path.join(REPORTS_DIR, filename);
+            fs.writeFileSync(filepath, imageBuffer);
+            console.log(`[Report] 报告图片已保存: ${filepath}`);
+            
+            // 清理7天前的报告
+            const files = fs.readdirSync(REPORTS_DIR);
+            const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+            files.forEach(file => {
+                const filePath = path.join(REPORTS_DIR, file);
+                const stat = fs.statSync(filePath);
+                if (stat.mtimeMs < sevenDaysAgo) {
+                    fs.unlinkSync(filePath);
+                    console.log(`[Report] 清理旧报告: ${file}`);
+                }
+            });
+        } catch (e) {
+            console.warn('[Report] 保存报告图片失败:', e.message);
+        }
+        
+        return imageBuffer;
     } catch (e) {
         console.error('[Report] 生成图片报告失败:', e.message);
         return null;
