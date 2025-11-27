@@ -241,16 +241,34 @@ if (proxyUrl) {
   console.log('⚠️  代理未配置 (国内用户需要配置代理才能访问 TMDB/Telegram)');
 }
 
-// 带代理的 fetch 封装 - 使用 undici ProxyAgent
+// 带代理的 fetch 封装 - 使用 undici 统一处理
 async function proxyFetch(url, options = {}) {
+  const fetchOptions = {
+    ...options,
+    headersTimeout: 30000,
+    bodyTimeout: 30000,
+  };
+
   if (proxyUrl) {
-    const dispatcher = new ProxyAgent(proxyUrl);
-    return undiciFetch(url, {
-      ...options,
-      dispatcher
+    // 有代理：使用 ProxyAgent
+    fetchOptions.dispatcher = new ProxyAgent({
+      uri: proxyUrl,
+      connect: {
+        rejectUnauthorized: false, // 忽略 SSL 错误
+        timeout: 30000
+      }
+    });
+  } else {
+    // 无代理：使用 Agent (忽略 SSL)
+    fetchOptions.dispatcher = new Agent({
+      connect: {
+        rejectUnauthorized: false,
+        timeout: 30000
+      }
     });
   }
-  return fetch(url, options);
+
+  return undiciFetch(url, fetchOptions);
 }
 
 // Create an HTTPS agent that ignores SSL errors
@@ -762,18 +780,14 @@ app.post('/api/proxy/moviepilot', requireAuth, async (req, res) => {
             return res.status(400).json({ error: 'Missing target_url' });
         }
 
-        // 使用配置的代理 (如果有)
-        const currentProxyUrl = config.proxy?.https || config.proxy?.http || process.env.HTTPS_PROXY || process.env.HTTP_PROXY || '';
-        console.log(`[Proxy] ${method} -> ${target_url} ${currentProxyUrl ? '(via Proxy)' : ''}`);
+        console.log(`[Proxy] ${method} -> ${target_url}`);
         
         // 准备请求头
         const proxyHeaders = { ...headers };
-        // 移除可能引起问题的头
         delete proxyHeaders['host'];
         delete proxyHeaders['content-length'];
         delete proxyHeaders['connection'];
         
-        // 默认 Content-Type
         if (!proxyHeaders['Content-Type'] && !proxyHeaders['content-type']) {
             proxyHeaders['Content-Type'] = 'application/json';
         }
@@ -784,32 +798,12 @@ app.post('/api/proxy/moviepilot', requireAuth, async (req, res) => {
             requestBody = JSON.stringify(body);
         }
 
-        // 使用 undici 发送请求 (支持代理和更好的连接处理)
-        const fetchOptions = {
+        // 使用统一的 proxyFetch
+        const response = await proxyFetch(target_url, {
             method: method || 'POST',
             headers: proxyHeaders,
-            body: requestBody,
-            headersTimeout: 30000,
-            bodyTimeout: 30000,
-        };
-
-        // 配置 Agent/Dispatcher
-        if (currentProxyUrl) {
-            fetchOptions.dispatcher = new ProxyAgent({
-                uri: currentProxyUrl,
-                connect: { timeout: 30000 }
-            });
-        } else {
-            // 无代理时，配置忽略 SSL 错误
-            fetchOptions.dispatcher = new Agent({
-                connect: {
-                    rejectUnauthorized: false,
-                    timeout: 30000
-                }
-            });
-        }
-
-        const response = await undiciFetch(target_url, fetchOptions);
+            body: requestBody
+        });
         
         console.log(`[Proxy] Response Status: ${response.status}`);
         
@@ -823,7 +817,7 @@ app.post('/api/proxy/moviepilot', requireAuth, async (req, res) => {
                 responseData = JSON.parse(responseText);
             }
         } catch (e) {
-            // ignore JSON parse error
+            // ignore
         }
 
         res.status(response.status).json(responseData);
@@ -831,11 +825,10 @@ app.post('/api/proxy/moviepilot', requireAuth, async (req, res) => {
     } catch (error) {
         console.error('[Proxy] Request Error:', error);
         
-        // 区分错误类型
         let statusCode = 500;
         let errorCode = 'PROXY_ERROR';
         
-        if (error.code === 'ETIMEDOUT' || error.code === 'ESOCKETTIMEDOUT' || error.message.includes('timeout')) {
+        if (error.code === 'ETIMEDOUT' || error.code === 'ESOCKETTIMEDOUT' || error.message?.includes('timeout')) {
             statusCode = 504;
             errorCode = 'ETIMEDOUT';
         } else if (error.code === 'ECONNREFUSED') {
