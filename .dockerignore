@@ -1,6 +1,48 @@
+# Dependencies
 node_modules
+.pnpm-store
+
+# Build output
+.next
+out
 dist
+
+# Git
 .git
 .gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Data (will be mounted as volume)
+data/*
+!data/.gitkeep
+!data/config.example.json
+
+# Environment files
 .env
 .env.local
+.env.*.local
+
+# Documentation
+*.md
+LICENSE
+
+# Test
+coverage
+.nyc_output
+
+# Misc
+tsconfig.tsbuildinfo

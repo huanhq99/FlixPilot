@@ -1,0 +1,45 @@
+{
+  "license": {
+    "domain": "your-subdomain.example.com",
+    "licenseKey": "SH-XXXX-XXXX-XXXX-XXXX"
+  },
+  "site": {
+    "name": "StreamHub",
+    "description": "您的私人流媒体管理中心",
+    "logo": ""
+  },
+  "register": {
+    "enabled": true,
+    "minPasswordLength": 6,
+    "requireUppercase": false,
+    "requireNumber": false,
+    "defaultPopcorn": 20
+  },
+  "tmdb": {
+    "apiKey": "YOUR_TMDB_API_KEY",
+    "baseUrl": "https://api.themoviedb.org/3",
+    "imageBaseUrl": "https://image.tmdb.org/t/p"
+  },
+  "moviepilot": {
+    "serverUrl": "https://your-moviepilot-server.com",
+    "username": "your_username",
+    "password": "your_password",
+    "enabled": false
+  },
+  "emby": [
+    {
+      "name": "主服务器",
+      "serverUrl": "https://your-emby-server.com",
+      "apiKey": "YOUR_EMBY_API_KEY"
+    }
+  ],
+  "telegram": {
+    "enabled": false,
+    "botToken": "YOUR_BOT_TOKEN",
+    "chatId": "YOUR_CHAT_ID"
+  },
+  "proxy": {
+    "enabled": false,
+    "url": ""
+  }
+}

@@ -23,42 +23,22 @@ dist-ssr
 *.sln
 *.sw?
 
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-venv/
-env/
-ENV/
-.venv
-*.egg-info/
-dist/
-build/
-.pytest_cache/
-.coverage
-htmlcov/
+# Data directory - 包含用户敏感配置，绝不提交！
+data/*
+!data/.gitkeep
+!data/config.example.json
 
-# Environment variables and sensitive data
+# Next.js
+.next/
+out/
+
+# Environment files
 .env
 .env.local
-.env.*.local
 .env.production
-env-config.js
-config.local.js
-config.json
+.env*.local
 
-# Data directory (contains user data and configurations)
-data/
-*.db
-*.sqlite
-*.sqlite3
+# Build info
+tsconfig.tsbuildinfo
 
-# Vite
-.vite/
-
-# 测试文件 (包含敏感信息)
-test-*.js
-test-*.ts
-*.test.local.js
+backend/data

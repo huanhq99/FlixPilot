@@ -1,37 +1,69 @@
-# Stage 1: Build Frontend
-FROM node:18-alpine as frontend-builder
+# ============================================
+# StreamHub - Next.js Docker 构建
+# ============================================
 
-WORKDIR /app/frontend
-
-# Copy frontend dependency files
-COPY frontend/package.json ./
-
-# Install dependencies
-RUN npm install
-
-# Copy frontend source code
-COPY frontend/ ./
-
-# Build frontend
-RUN npm run build
-
-# Stage 2: Build Backend & Final Image
-FROM python:3.11-slim
-
+# Stage 1: 依赖安装
+FROM node:20-alpine AS deps
+RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Install backend dependencies
-COPY backend/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# 安装 pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
 
-# Copy backend code
-COPY backend/app ./app
+# 复制依赖文件
+COPY package.json pnpm-lock.yaml ./
 
-# Copy built frontend assets from Stage 1
-COPY --from=frontend-builder /app/frontend/dist ./static
+# 安装依赖
+RUN pnpm install --frozen-lockfile
 
-# Expose port
-EXPOSE 8000
+# ============================================
+# Stage 2: 构建应用
+FROM node:20-alpine AS builder
+WORKDIR /app
 
-# Run application
-CMD ["python", "-m", "app.main"]
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# 复制依赖
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+# 构建环境变量
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
+
+# 构建应用
+RUN pnpm build
+
+# ============================================
+# Stage 3: 生产运行
+FROM node:20-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# 创建非 root 用户
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+# 复制构建产物
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# 创建数据目录
+RUN mkdir -p /app/data && chown -R nextjs:nodejs /app/data
+
+# 切换到非 root 用户
+USER nextjs
+
+# 暴露端口
+EXPOSE 3005
+
+# 环境变量
+ENV PORT=3005
+ENV HOSTNAME="0.0.0.0"
+ENV DATA_DIR=/app/data
+
+# 启动应用
+CMD ["node", "server.js"]
