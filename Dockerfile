@@ -36,9 +36,6 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
-# 创建数据目录
-RUN mkdir -p /app/data
-
 # 暴露端口
 EXPOSE 3005
 
