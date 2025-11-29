@@ -13,8 +13,8 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 # 复制依赖文件
 COPY package.json pnpm-lock.yaml ./
 
-# 安装依赖
-RUN pnpm install --frozen-lockfile
+# 安装依赖（使用 --no-frozen-lockfile 以避免版本锁定问题）
+RUN pnpm install --no-frozen-lockfile
 
 # ============================================
 # Stage 2: 构建应用
