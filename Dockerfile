@@ -24,27 +24,20 @@ ENV NODE_ENV=production
 RUN pnpm build
 
 # ============================================
-# Stage 3: 生产运行
+# Stage 2: 生产运行
 FROM node:20-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# 创建非 root 用户
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-
 # 复制构建产物
 COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 
 # 创建数据目录
-RUN mkdir -p /app/data && chown -R nextjs:nodejs /app/data
-
-# 切换到非 root 用户
-USER nextjs
+RUN mkdir -p /app/data
 
 # 暴露端口
 EXPOSE 3005
