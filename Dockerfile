@@ -2,29 +2,21 @@
 # StreamHub - Next.js Docker 构建
 # ============================================
 
-# Stage 1: 依赖安装
-FROM node:20-alpine AS deps
+# Stage 1: 依赖安装和构建
+FROM node:20-alpine AS builder
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 # 安装 pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN npm install -g pnpm@9
 
 # 复制依赖文件
 COPY package.json pnpm-lock.yaml ./
 
-# 安装依赖（使用 --no-frozen-lockfile 以避免版本锁定问题）
-RUN pnpm install --no-frozen-lockfile
+# 安装依赖
+RUN pnpm install
 
-# ============================================
-# Stage 2: 构建应用
-FROM node:20-alpine AS builder
-WORKDIR /app
-
-RUN corepack enable && corepack prepare pnpm@latest --activate
-
-# 复制依赖
-COPY --from=deps /app/node_modules ./node_modules
+# 复制源码
 COPY . .
 
 # 构建环境变量
