@@ -13,11 +13,14 @@ RUN npm install -g pnpm@9
 # 复制依赖文件
 COPY package.json pnpm-lock.yaml ./
 
-# 安装依赖
-RUN pnpm install
+# 安装依赖（跳过 postinstall，因为源码还没复制）
+RUN pnpm install --ignore-scripts
 
 # 复制源码
 COPY . .
+
+# 手动运行 build:icons
+RUN pnpm run build:icons
 
 # 构建环境变量
 ENV NEXT_TELEMETRY_DISABLED=1
