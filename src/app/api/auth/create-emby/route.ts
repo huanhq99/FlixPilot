@@ -38,7 +38,7 @@ async function createEmbyUser(username: string, password: string, embyConfig: an
     const usersRes = await fetch(`${serverUrl}/emby/Users?api_key=${apiKey}`, {
       headers: {
         'Accept': 'application/json',
-        'X-Emby-Authorization': `MediaBrowser Client="StreamHub", Device="Server", DeviceId="streamhub", Version="1.0", Token="${apiKey}"`
+        'X-Emby-Authorization': `MediaBrowser Client="FlixPilot", Device="Server", DeviceId="flixpilot", Version="1.0", Token="${apiKey}"`
       }
     })
 
@@ -57,7 +57,7 @@ async function createEmbyUser(username: string, password: string, embyConfig: an
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'X-Emby-Authorization': `MediaBrowser Client="StreamHub", Device="Server", DeviceId="streamhub", Version="1.0", Token="${apiKey}"`
+        'X-Emby-Authorization': `MediaBrowser Client="FlixPilot", Device="Server", DeviceId="flixpilot", Version="1.0", Token="${apiKey}"`
       },
       body: JSON.stringify({
         Name: username
@@ -78,7 +78,7 @@ async function createEmbyUser(username: string, password: string, embyConfig: an
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Emby-Authorization': `MediaBrowser Client="StreamHub", Device="Server", DeviceId="streamhub", Version="1.0", Token="${apiKey}"`
+        'X-Emby-Authorization': `MediaBrowser Client="FlixPilot", Device="Server", DeviceId="flixpilot", Version="1.0", Token="${apiKey}"`
       },
       body: JSON.stringify({
         NewPw: password,

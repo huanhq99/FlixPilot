@@ -44,7 +44,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<void> {
     }
   })
   
-  const fromName = emailConfig.from || 'StreamHub'
+  const fromName = emailConfig.from || 'FlixPilot'
   
   await transporter.sendMail({
     from: `"${fromName}" <${emailConfig.user}>`,
@@ -193,8 +193,8 @@ function getSiteName(): string {
   try {
     if (fs.existsSync(configPath)) {
       const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'))
-      return config.site?.name || 'StreamHub'
+      return config.site?.name || 'FlixPilot'
     }
   } catch (e) {}
-  return 'StreamHub'
+  return 'FlixPilot'
 }

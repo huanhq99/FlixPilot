@@ -76,7 +76,7 @@ interface EmbyLibrary {
 }
 
 const defaultConfig: Config = {
-  site: { name: 'StreamHub', description: '您的私人流媒体管理中心', logo: '' },
+  site: { name: 'FlixPilot', description: '您的私人流媒体管理中心', logo: '' },
   register: { enabled: false, minPasswordLength: 6, requireUppercase: false, requireNumber: false, defaultPopcorn: 50 },
   tmdb: { apiKey: '', baseUrl: 'https://api.themoviedb.org/3' },
   moviepilot: { serverUrl: '', username: '', password: '', enabled: false },
@@ -455,7 +455,7 @@ export default function SettingsPage() {
                   激活授权
                 </Typography>
                 <Typography variant="body2" color="text.secondary" mb={3}>
-                  输入您购买的授权码和绑定的域名来激活 StreamHub
+                  输入您购买的授权码和绑定的域名来激活 FlixPilot
                 </Typography>
                 <Grid container spacing={3}>
                   <Grid item xs={12}>
@@ -465,7 +465,7 @@ export default function SettingsPage() {
                       placeholder="your-site.example.com"
                       value={licenseForm.domain}
                       onChange={e => setLicenseForm(prev => ({ ...prev, domain: e.target.value }))}
-                      helperText="填写您用于访问 StreamHub 的域名（不含 http://）"
+                      helperText="填写您用于访问 FlixPilot 的域名（不含 http://）"
                     />
                   </Grid>
                   <Grid item xs={12}>
@@ -532,7 +532,7 @@ export default function SettingsPage() {
                     <TextField
                       fullWidth
                       label="网站名称"
-                      placeholder="StreamHub"
+                      placeholder="FlixPilot"
                       value={config.site?.name || ''}
                       onChange={e => setConfig(prev => ({
                         ...prev,
@@ -1305,7 +1305,7 @@ export default function SettingsPage() {
                     <TextField
                       fullWidth
                       label="发件人名称"
-                      placeholder="StreamHub"
+                      placeholder="FlixPilot"
                       value={config.email?.from || ''}
                       onChange={e => setConfig(prev => ({
                         ...prev,

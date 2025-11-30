@@ -34,7 +34,7 @@ export async function createEmbyUser(
     const usersRes = await fetch(`${serverUrl}/emby/Users?api_key=${apiKey}`, {
       headers: {
         'Accept': 'application/json',
-        'X-Emby-Authorization': `MediaBrowser Client="StreamHub", Device="Server", DeviceId="streamhub", Version="1.0", Token="${apiKey}"`
+        'X-Emby-Authorization': `MediaBrowser Client="FlixPilot", Device="Server", DeviceId="flixpilot", Version="1.0", Token="${apiKey}"`
       }
     })
 
@@ -54,7 +54,7 @@ export async function createEmbyUser(
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'X-Emby-Authorization': `MediaBrowser Client="StreamHub", Device="Server", DeviceId="streamhub", Version="1.0", Token="${apiKey}"`
+        'X-Emby-Authorization': `MediaBrowser Client="FlixPilot", Device="Server", DeviceId="flixpilot", Version="1.0", Token="${apiKey}"`
       },
       body: JSON.stringify({
         Name: username
@@ -75,7 +75,7 @@ export async function createEmbyUser(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Emby-Authorization': `MediaBrowser Client="StreamHub", Device="Server", DeviceId="streamhub", Version="1.0", Token="${apiKey}"`
+        'X-Emby-Authorization': `MediaBrowser Client="FlixPilot", Device="Server", DeviceId="flixpilot", Version="1.0", Token="${apiKey}"`
       },
       body: JSON.stringify({
         NewPw: password,
@@ -100,7 +100,7 @@ export async function disableEmbyUser(userId: string, embyConfig: any): Promise<
     const userRes = await fetch(`${serverUrl}/emby/Users/${userId}?api_key=${apiKey}`, {
       headers: {
         'Accept': 'application/json',
-        'X-Emby-Authorization': `MediaBrowser Client="StreamHub", Device="Server", DeviceId="streamhub", Version="1.0", Token="${apiKey}"`
+        'X-Emby-Authorization': `MediaBrowser Client="FlixPilot", Device="Server", DeviceId="flixpilot", Version="1.0", Token="${apiKey}"`
       }
     })
 
@@ -114,7 +114,7 @@ export async function disableEmbyUser(userId: string, embyConfig: any): Promise<
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Emby-Authorization': `MediaBrowser Client="StreamHub", Device="Server", DeviceId="streamhub", Version="1.0", Token="${apiKey}"`
+        'X-Emby-Authorization': `MediaBrowser Client="FlixPilot", Device="Server", DeviceId="flixpilot", Version="1.0", Token="${apiKey}"`
       },
       body: JSON.stringify({
         ...policy,
@@ -139,7 +139,7 @@ export async function enableEmbyUser(userId: string, embyConfig: any): Promise<b
     const userRes = await fetch(`${serverUrl}/emby/Users/${userId}?api_key=${apiKey}`, {
       headers: {
         'Accept': 'application/json',
-        'X-Emby-Authorization': `MediaBrowser Client="StreamHub", Device="Server", DeviceId="streamhub", Version="1.0", Token="${apiKey}"`
+        'X-Emby-Authorization': `MediaBrowser Client="FlixPilot", Device="Server", DeviceId="flixpilot", Version="1.0", Token="${apiKey}"`
       }
     })
 
@@ -153,7 +153,7 @@ export async function enableEmbyUser(userId: string, embyConfig: any): Promise<b
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Emby-Authorization': `MediaBrowser Client="StreamHub", Device="Server", DeviceId="streamhub", Version="1.0", Token="${apiKey}"`
+        'X-Emby-Authorization': `MediaBrowser Client="FlixPilot", Device="Server", DeviceId="flixpilot", Version="1.0", Token="${apiKey}"`
       },
       body: JSON.stringify({
         ...policy,
@@ -177,7 +177,7 @@ export async function isEmbyUserDisabled(userId: string, embyConfig: any): Promi
     const userRes = await fetch(`${serverUrl}/emby/Users/${userId}?api_key=${apiKey}`, {
       headers: {
         'Accept': 'application/json',
-        'X-Emby-Authorization': `MediaBrowser Client="StreamHub", Device="Server", DeviceId="streamhub", Version="1.0", Token="${apiKey}"`
+        'X-Emby-Authorization': `MediaBrowser Client="FlixPilot", Device="Server", DeviceId="flixpilot", Version="1.0", Token="${apiKey}"`
       }
     })
 

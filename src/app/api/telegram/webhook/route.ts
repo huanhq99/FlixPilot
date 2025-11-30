@@ -98,7 +98,7 @@ async function sendPhoto(chatId: string | number, photo: string, caption: string
 
 async function handleStart(chatId: number, userId: number, username: string) {
   const config = await loadConfig()
-  const siteName = config.siteName || 'StreamHub'
+  const siteName = config.siteName || 'FlixPilot'
   const siteUrl = config.siteUrl || ''
   
   const text = `🎬 <b>欢迎使用 ${siteName} 机器人！</b>

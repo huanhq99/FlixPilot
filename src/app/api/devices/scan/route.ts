@@ -104,7 +104,7 @@ export async function POST() {
     const devicesRes = await fetch(devicesUrl, {
       headers: {
         'Accept': 'application/json',
-        'X-Emby-Authorization': `MediaBrowser Client="StreamHub", Device="Web", DeviceId="streamhub-web", Version="1.0", Token="${embyConfig.apiKey}"`
+        'X-Emby-Authorization': `MediaBrowser Client="FlixPilot", Device="Web", DeviceId="flixpilot-web", Version="1.0", Token="${embyConfig.apiKey}"`
       }
     })
     
@@ -148,7 +148,7 @@ export async function POST() {
           const deleteRes = await fetch(deleteUrl, {
             method: 'DELETE',
             headers: {
-              'X-Emby-Authorization': `MediaBrowser Client="StreamHub", Device="Web", DeviceId="streamhub-web", Version="1.0", Token="${embyConfig.apiKey}"`
+              'X-Emby-Authorization': `MediaBrowser Client="FlixPilot", Device="Web", DeviceId="flixpilot-web", Version="1.0", Token="${embyConfig.apiKey}"`
             }
           })
           
@@ -181,7 +181,7 @@ export async function POST() {
           const deleteRes = await fetch(deleteUrl, {
             method: 'DELETE',
             headers: {
-              'X-Emby-Authorization': `MediaBrowser Client="StreamHub", Device="Web", DeviceId="streamhub-web", Version="1.0", Token="${embyConfig.apiKey}"`
+              'X-Emby-Authorization': `MediaBrowser Client="FlixPilot", Device="Web", DeviceId="flixpilot-web", Version="1.0", Token="${embyConfig.apiKey}"`
             }
           })
           
@@ -243,7 +243,7 @@ export async function GET() {
     const devicesRes = await fetch(devicesUrl, {
       headers: {
         'Accept': 'application/json',
-        'X-Emby-Authorization': `MediaBrowser Client="StreamHub", Device="Web", DeviceId="streamhub-web", Version="1.0", Token="${embyConfig.apiKey}"`
+        'X-Emby-Authorization': `MediaBrowser Client="FlixPilot", Device="Web", DeviceId="flixpilot-web", Version="1.0", Token="${embyConfig.apiKey}"`
       }
     })
     

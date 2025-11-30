@@ -66,7 +66,7 @@ export async function GET(request: Request) {
     // 简单的安全验证
     const url = new URL(request.url)
     const secret = url.searchParams.get('secret')
-    const expectedSecret = process.env.AUTO_SCAN_SECRET || 'streamhub-auto-scan'
+    const expectedSecret = process.env.AUTO_SCAN_SECRET || 'flixpilot-auto-scan'
     
     if (secret !== expectedSecret) {
       return NextResponse.json({ error: '无效的密钥' }, { status: 401 })
@@ -91,7 +91,7 @@ export async function GET(request: Request) {
     const sessionsRes = await fetch(`${baseUrl}/emby/Sessions?api_key=${apiKey}`, {
       headers: {
         'Accept': 'application/json',
-        'X-Emby-Authorization': `MediaBrowser Client="StreamHub", Device="Monitor", DeviceId="streamhub-monitor", Version="1.0", Token="${apiKey}"`
+        'X-Emby-Authorization': `MediaBrowser Client="FlixPilot", Device="Monitor", DeviceId="flixpilot-monitor", Version="1.0", Token="${apiKey}"`
       }
     })
     
@@ -131,7 +131,7 @@ export async function GET(request: Request) {
             await fetch(`${baseUrl}/emby/Sessions/${sessionId}/Playing/Stop?api_key=${apiKey}`, {
               method: 'POST',
               headers: {
-                'X-Emby-Authorization': `MediaBrowser Client="StreamHub", Device="Monitor", DeviceId="streamhub-monitor", Version="1.0", Token="${apiKey}"`
+                'X-Emby-Authorization': `MediaBrowser Client="FlixPilot", Device="Monitor", DeviceId="flixpilot-monitor", Version="1.0", Token="${apiKey}"`
               }
             })
           } catch (e) {
@@ -145,7 +145,7 @@ export async function GET(request: Request) {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'X-Emby-Authorization': `MediaBrowser Client="StreamHub", Device="Monitor", DeviceId="streamhub-monitor", Version="1.0", Token="${apiKey}"`
+              'X-Emby-Authorization': `MediaBrowser Client="FlixPilot", Device="Monitor", DeviceId="flixpilot-monitor", Version="1.0", Token="${apiKey}"`
             },
             body: JSON.stringify({
               Header: '客户端已被禁止',
@@ -162,7 +162,7 @@ export async function GET(request: Request) {
           await fetch(`${baseUrl}/emby/Devices?Id=${encodeURIComponent(deviceId)}&api_key=${apiKey}`, {
             method: 'DELETE',
             headers: {
-              'X-Emby-Authorization': `MediaBrowser Client="StreamHub", Device="Monitor", DeviceId="streamhub-monitor", Version="1.0", Token="${apiKey}"`
+              'X-Emby-Authorization': `MediaBrowser Client="FlixPilot", Device="Monitor", DeviceId="flixpilot-monitor", Version="1.0", Token="${apiKey}"`
             }
           })
         } catch (e) {
@@ -188,7 +188,7 @@ export async function GET(request: Request) {
             await fetch(`${baseUrl}/emby/Sessions/${sessionId}/Playing/Stop?api_key=${apiKey}`, {
               method: 'POST',
               headers: {
-                'X-Emby-Authorization': `MediaBrowser Client="StreamHub", Device="Monitor", DeviceId="streamhub-monitor", Version="1.0", Token="${apiKey}"`
+                'X-Emby-Authorization': `MediaBrowser Client="FlixPilot", Device="Monitor", DeviceId="flixpilot-monitor", Version="1.0", Token="${apiKey}"`
               }
             })
           } catch (e) {
@@ -202,7 +202,7 @@ export async function GET(request: Request) {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'X-Emby-Authorization': `MediaBrowser Client="StreamHub", Device="Monitor", DeviceId="streamhub-monitor", Version="1.0", Token="${apiKey}"`
+              'X-Emby-Authorization': `MediaBrowser Client="FlixPilot", Device="Monitor", DeviceId="flixpilot-monitor", Version="1.0", Token="${apiKey}"`
             },
             body: JSON.stringify({
               Header: '客户端不在白名单',
@@ -219,7 +219,7 @@ export async function GET(request: Request) {
           await fetch(`${baseUrl}/emby/Devices?Id=${encodeURIComponent(deviceId)}&api_key=${apiKey}`, {
             method: 'DELETE',
             headers: {
-              'X-Emby-Authorization': `MediaBrowser Client="StreamHub", Device="Monitor", DeviceId="streamhub-monitor", Version="1.0", Token="${apiKey}"`
+              'X-Emby-Authorization': `MediaBrowser Client="FlixPilot", Device="Monitor", DeviceId="flixpilot-monitor", Version="1.0", Token="${apiKey}"`
             }
           })
         } catch (e) {

@@ -28,7 +28,7 @@ async function verifyEmbyCredentials(serverUrl: string, username: string, passwo
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Emby-Authorization': 'MediaBrowser Client="StreamHub", Device="Web", DeviceId="streamhub", Version="1.0"'
+        'X-Emby-Authorization': 'MediaBrowser Client="FlixPilot", Device="Web", DeviceId="flixpilot", Version="1.0"'
       },
       body: JSON.stringify({
         Username: username,

@@ -28,7 +28,7 @@ export async function POST() {
   }
   
   try {
-    const siteName = config.site?.name || 'StreamHub'
+    const siteName = config.site?.name || 'FlixPilot'
     
     await sendEmail({
       to: config.email.user, // 发送给自己作为测试

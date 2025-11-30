@@ -36,7 +36,7 @@ async function embyFetch(embyConfig: any, embyPath: string, method: string = 'GE
     method,
     headers: {
       'Accept': 'application/json',
-      'X-Emby-Authorization': `MediaBrowser Client="StreamHub", Device="Web", DeviceId="streamhub-web", Version="1.0", Token="${embyConfig.apiKey}"`
+      'X-Emby-Authorization': `MediaBrowser Client="FlixPilot", Device="Web", DeviceId="flixpilot-web", Version="1.0", Token="${embyConfig.apiKey}"`
     }
   })
 }
@@ -71,7 +71,7 @@ export async function GET(
     const response = await fetch(embyUrl, {
       headers: {
         'Accept': 'application/json',
-        'X-Emby-Authorization': `MediaBrowser Client="StreamHub", Device="Web", DeviceId="streamhub-web", Version="1.0", Token="${embyConfig.apiKey}"`
+        'X-Emby-Authorization': `MediaBrowser Client="FlixPilot", Device="Web", DeviceId="flixpilot-web", Version="1.0", Token="${embyConfig.apiKey}"`
       }
     })
 

@@ -83,7 +83,7 @@ export async function GET(request: Request) {
     // 检查是否有 secret key（简单的安全验证）
     const url = new URL(request.url)
     const secret = url.searchParams.get('secret')
-    const expectedSecret = process.env.AUTO_SCAN_SECRET || 'streamhub-auto-scan'
+    const expectedSecret = process.env.AUTO_SCAN_SECRET || 'flixpilot-auto-scan'
     
     if (secret !== expectedSecret) {
       return NextResponse.json({ error: '无效的密钥' }, { status: 401 })
@@ -116,7 +116,7 @@ export async function GET(request: Request) {
     const devicesRes = await fetch(devicesUrl, {
       headers: {
         'Accept': 'application/json',
-        'X-Emby-Authorization': `MediaBrowser Client="StreamHub", Device="Web", DeviceId="streamhub-auto-scan", Version="1.0", Token="${embyConfig.apiKey}"`
+        'X-Emby-Authorization': `MediaBrowser Client="FlixPilot", Device="Web", DeviceId="flixpilot-auto-scan", Version="1.0", Token="${embyConfig.apiKey}"`
       }
     })
     
@@ -143,7 +143,7 @@ export async function GET(request: Request) {
           const deleteRes = await fetch(deleteUrl, {
             method: 'DELETE',
             headers: {
-              'X-Emby-Authorization': `MediaBrowser Client="StreamHub", Device="Web", DeviceId="streamhub-auto-scan", Version="1.0", Token="${embyConfig.apiKey}"`
+              'X-Emby-Authorization': `MediaBrowser Client="FlixPilot", Device="Web", DeviceId="flixpilot-auto-scan", Version="1.0", Token="${embyConfig.apiKey}"`
             }
           })
           
@@ -164,7 +164,7 @@ export async function GET(request: Request) {
           const deleteRes = await fetch(deleteUrl, {
             method: 'DELETE',
             headers: {
-              'X-Emby-Authorization': `MediaBrowser Client="StreamHub", Device="Web", DeviceId="streamhub-auto-scan", Version="1.0", Token="${embyConfig.apiKey}"`
+              'X-Emby-Authorization': `MediaBrowser Client="FlixPilot", Device="Web", DeviceId="flixpilot-auto-scan", Version="1.0", Token="${embyConfig.apiKey}"`
             }
           })
           

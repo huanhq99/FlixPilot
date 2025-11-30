@@ -1,53 +1,38 @@
 // React Imports
 import type { SVGAttributes } from 'react'
 
+// FlixPilot Logo - 飞机/导航图标，代表"Pilot"概念
 const Logo = (props: SVGAttributes<SVGElement>) => {
   return (
-    <svg width='1.2658em' height='1em' viewBox='0 0 100 79' fill='none' xmlns='http://www.w3.org/2000/svg' {...props}>
+    <svg width='1em' height='1em' viewBox='0 0 100 100' fill='none' xmlns='http://www.w3.org/2000/svg' {...props}>
+      {/* 主体 - 播放按钮形状的飞机机身 */}
       <path
-        fillRule='evenodd'
-        clipRule='evenodd'
-        d='M4.92008 0.501904L22.662 11.4573C23.614 12.0451 24.1936 13.0844 24.1936 14.2036V64.2521C24.1936 65.3871 23.5976 66.4387 22.6241 67.0214L4.8822 77.6429C3.35344 78.5581 1.37254 78.0602 0.457741 76.5307C0.158194 76.0299 0 75.4572 0 74.8736V3.24818C0 1.46582 1.44424 0.0209274 3.22581 0.0209274C3.82422 0.0209274 4.41085 0.18746 4.92008 0.501904Z'
+        d='M20 15 L85 50 L20 85 L20 15 Z'
         fill='currentColor'
       />
+      {/* 机翼上 */}
       <path
-        opacity='0.077704'
-        fillRule='evenodd'
-        clipRule='evenodd'
-        d='M0 26.1063L24.1936 39.9852V53.5915L0 26.1063Z'
-        fill='black'
-      />
-      <path
-        opacity='0.077704'
-        fillRule='evenodd'
-        clipRule='evenodd'
-        d='M0 26.1063L24.1936 39.6319V47.9438L0 26.1063Z'
-        fill='black'
-      />
-      <path
-        fillRule='evenodd'
-        clipRule='evenodd'
-        d='M95.084 0.489601L77.3421 11.4083C76.3878 11.9956 75.8064 13.0362 75.8064 14.1571V64.2526C75.8064 65.3875 76.4024 66.4391 77.3759 67.0219L95.1178 77.6433C96.6466 78.5585 98.6275 78.0606 99.5423 76.5312C99.8418 76.0303 100 75.4576 100 74.874V3.23842C100 1.45605 98.5558 0.0111618 96.7742 0.0111618C96.1774 0.0111618 95.5923 0.176782 95.084 0.489601Z'
+        d='M35 35 L75 50 L35 45 Z'
         fill='currentColor'
+        opacity='0.7'
       />
+      {/* 机翼下 */}
       <path
-        opacity='0.077704'
-        fillRule='evenodd'
-        clipRule='evenodd'
-        d='M100 26.1063L75.8064 39.956V54.0023L100 26.1063Z'
-        fill='black'
+        d='M35 55 L75 50 L35 65 Z'
+        fill='currentColor'
+        opacity='0.7'
       />
+      {/* 尾翼 */}
       <path
-        opacity='0.077704'
-        fillRule='evenodd'
-        clipRule='evenodd'
-        d='M100 26.1063L75.8064 39.6199V48.3546L100 26.1063Z'
-        fill='black'
+        d='M20 25 L30 50 L20 75 L15 50 Z'
+        fill='currentColor'
+        opacity='0.5'
       />
-      <path
-        fillRule='evenodd'
-        clipRule='evenodd'
-        d='M4.91149 0.475694L50 28.123V54.7479L0 26.0986V3.22726C0 1.44489 1.44424 0 3.22581 0C3.8208 0 4.4042 0.164633 4.91149 0.475694Z'
+    </svg>
+  )
+}
+
+export default Logo
         fill='currentColor'
       />
       <path

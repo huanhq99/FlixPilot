@@ -4,7 +4,7 @@ import crypto from 'crypto'
 
 const DATA_DIR = process.env.DATA_DIR || './data'
 const USERS_FILE = path.join(DATA_DIR, 'users.json')
-const JWT_SECRET = process.env.JWT_SECRET || 'streamhub-secret-key-2024'
+const JWT_SECRET = process.env.JWT_SECRET || 'flixpilot-secret-key-2024'
 
 export interface User {
   id: string
@@ -119,7 +119,7 @@ export function initializeSystem(): { username: string; password: string } | nul
   
   // 打印到控制台
   console.log('\n' + '='.repeat(50))
-  console.log('🎬 StreamHub 首次启动')
+  console.log('🎬 FlixPilot 首次启动')
   console.log('='.repeat(50))
   console.log(`📧 管理员账号: ${username}`)
   console.log(`🔑 管理员密码: ${password}`)

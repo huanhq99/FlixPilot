@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { loadUsers, saveUsers } from '@/lib/auth'
 import crypto from 'crypto'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'streamhub-secret-key-2024'
+const JWT_SECRET = process.env.JWT_SECRET || 'flixpilot-secret-key-2024'
 
 function hashPassword(password: string): string {
   return crypto.createHash('sha256').update(password + JWT_SECRET).digest('hex')

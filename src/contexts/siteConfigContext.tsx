@@ -15,7 +15,7 @@ interface SiteConfigContextType {
 }
 
 const defaultConfig: SiteConfig = {
-  name: 'StreamHub',
+  name: 'FlixPilot',
   description: '您的私人流媒体管理中心',
   logo: ''
 }

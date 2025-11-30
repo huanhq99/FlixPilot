@@ -197,25 +197,25 @@ export const cache = {
 // 缓存键定义
 export const CACHE_KEYS = {
   // 媒体库缓存
-  LIBRARY: 'streamhub:library',
-  LIBRARY_ITEM: (id: string) => `streamhub:library:${id}`,
+  LIBRARY: 'flixpilot:library',
+  LIBRARY_ITEM: (id: string) => `flixpilot:library:${id}`,
   
   // TMDB 缓存
-  TMDB_MOVIE: (id: number) => `streamhub:tmdb:movie:${id}`,
-  TMDB_TV: (id: number) => `streamhub:tmdb:tv:${id}`,
-  TMDB_TRENDING: (type: string, page: number) => `streamhub:tmdb:trending:${type}:${page}`,
-  TMDB_SEARCH: (query: string, page: number) => `streamhub:tmdb:search:${query}:${page}`,
+  TMDB_MOVIE: (id: number) => `flixpilot:tmdb:movie:${id}`,
+  TMDB_TV: (id: number) => `flixpilot:tmdb:tv:${id}`,
+  TMDB_TRENDING: (type: string, page: number) => `flixpilot:tmdb:trending:${type}:${page}`,
+  TMDB_SEARCH: (query: string, page: number) => `flixpilot:tmdb:search:${query}:${page}`,
   
   // Emby 缓存
-  EMBY_SESSIONS: 'streamhub:emby:sessions',
-  EMBY_LIBRARIES: 'streamhub:emby:libraries',
-  EMBY_STATS: 'streamhub:emby:stats',
+  EMBY_SESSIONS: 'flixpilot:emby:sessions',
+  EMBY_LIBRARIES: 'flixpilot:emby:libraries',
+  EMBY_STATS: 'flixpilot:emby:stats',
   
   // 用户会话
-  USER_SESSION: (userId: string) => `streamhub:session:${userId}`,
+  USER_SESSION: (userId: string) => `flixpilot:session:${userId}`,
   
   // API 限流
-  RATE_LIMIT: (ip: string, endpoint: string) => `streamhub:ratelimit:${ip}:${endpoint}`,
+  RATE_LIMIT: (ip: string, endpoint: string) => `flixpilot:ratelimit:${ip}:${endpoint}`,
 }
 
 // 缓存 TTL（秒）

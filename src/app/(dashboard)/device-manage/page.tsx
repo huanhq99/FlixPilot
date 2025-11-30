@@ -294,7 +294,7 @@ export default function DeviceManagePage() {
   const handleMonitor = async () => {
     setMonitoring(true)
     try {
-      const res = await fetch('/api/devices/monitor?secret=streamhub-auto-scan')
+      const res = await fetch('/api/devices/monitor?secret=flixpilot-auto-scan')
       const data = await res.json()
       if (res.ok) {
         setMonitorResult(data)
@@ -912,7 +912,7 @@ export default function DeviceManagePage() {
                       borderRadius: 4,
                       fontSize: '0.85em'
                     }}>
-                      GET /api/devices/auto-scan?secret=streamhub-auto-scan
+                      GET /api/devices/auto-scan?secret=flixpilot-auto-scan
                     </code>
                     <br />
                     可使用 cron 定时任务或其他调度工具定期调用此接口。
