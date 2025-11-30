@@ -9,8 +9,16 @@ import path from 'path'
 const DATA_DIR = process.env.DATA_DIR || './data'
 const CONFIG_FILE = path.join(DATA_DIR, 'config.json')
 
-// 获取授权服务器地址（优先从 config.json，其次环境变量）
-function getLicenseServer(): string | null {
+// 内置授权服务器地址（用户无需配置）
+const BUILT_IN_LICENSE_SERVER = 'https://flixpilot.ovh'
+
+// 获取授权服务器地址（优先环境变量覆盖，否则使用内置地址）
+function getLicenseServer(): string {
+  // 允许通过环境变量覆盖（用于测试或私有部署）
+  if (process.env.LICENSE_SERVER) {
+    return process.env.LICENSE_SERVER
+  }
+  // 允许通过 config.json 覆盖
   try {
     if (fs.existsSync(CONFIG_FILE)) {
       const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'))
@@ -19,7 +27,8 @@ function getLicenseServer(): string | null {
       }
     }
   } catch {}
-  return process.env.LICENSE_SERVER || null
+  // 默认使用内置地址
+  return BUILT_IN_LICENSE_SERVER
 }
 
 // 授权缓存（避免频繁请求）
@@ -82,15 +91,6 @@ export async function verifyLicense(forceRefresh = false): Promise<LicenseInfo> 
   }
 
   const licenseServer = getLicenseServer()
-  if (!licenseServer) {
-    const result: LicenseInfo = {
-      valid: false,
-      message: '未配置授权服务器地址'
-    }
-    licenseCache = result
-    lastVerifyTime = now
-    return result
-  }
 
   try {
     const response = await fetch(`${licenseServer}/api/verify`, {
