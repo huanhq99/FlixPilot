@@ -1,5 +1,5 @@
 /**
- * StreamHub 授权验证服务
+ * FlixPilot 授权验证服务
  * 与授权服务器通信，验证部署实例的授权状态
  */
 
@@ -9,8 +9,18 @@ import path from 'path'
 const DATA_DIR = process.env.DATA_DIR || './data'
 const CONFIG_FILE = path.join(DATA_DIR, 'config.json')
 
-// 授权服务器地址（你的 VPS）
-const LICENSE_SERVER = process.env.LICENSE_SERVER || 'https://license.streamhub.com'
+// 获取授权服务器地址（优先从 config.json，其次环境变量）
+function getLicenseServer(): string | null {
+  try {
+    if (fs.existsSync(CONFIG_FILE)) {
+      const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'))
+      if (config.licenseServer) {
+        return config.licenseServer
+      }
+    }
+  } catch {}
+  return process.env.LICENSE_SERVER || null
+}
 
 // 授权缓存（避免频繁请求）
 let licenseCache: LicenseInfo | null = null
@@ -71,8 +81,19 @@ export async function verifyLicense(forceRefresh = false): Promise<LicenseInfo> 
     return result
   }
 
+  const licenseServer = getLicenseServer()
+  if (!licenseServer) {
+    const result: LicenseInfo = {
+      valid: false,
+      message: '未配置授权服务器地址'
+    }
+    licenseCache = result
+    lastVerifyTime = now
+    return result
+  }
+
   try {
-    const response = await fetch(`${LICENSE_SERVER}/api/verify`, {
+    const response = await fetch(`${licenseServer}/api/verify`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -120,8 +141,16 @@ export async function verifyLicense(forceRefresh = false): Promise<LicenseInfo> 
 
 // 激活授权
 export async function activateLicense(domain: string, licenseKey: string): Promise<{ success: boolean; message: string; license?: LicenseInfo }> {
+  const licenseServer = getLicenseServer()
+  if (!licenseServer) {
+    return {
+      success: false,
+      message: '未配置授权服务器地址，请在 config.json 或环境变量中配置 LICENSE_SERVER'
+    }
+  }
+
   try {
-    const response = await fetch(`${LICENSE_SERVER}/api/activate`, {
+    const response = await fetch(`${licenseServer}/api/activate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

@@ -1,7 +1,7 @@
 services:
-  streamhub:
-    image: ghcr.io/huanhq99/streamhub:latest
-    container_name: streamhub
+  flixpilot:
+    image: ghcr.io/huanhq99/flixpilot:latest
+    container_name: flixpilot
     restart: unless-stopped
     ports:
       - "3005:3005"
@@ -13,7 +13,7 @@ services:
       - TZ=Asia/Shanghai
       - REDIS_URL=redis://redis:6379
       # 授权服务器地址（用于功能授权验证）
-      - LICENSE_SERVER=https://license.aelita.me
+      - LICENSE_SERVER=http://54.39.102.63:3100
       # 可选：设置强 JWT 密钥（生产环境建议设置）
       # - JWT_SECRET=your-super-secret-key-here
     depends_on:
@@ -28,7 +28,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: streamhub-redis
+    container_name: flixpilot-redis
     restart: unless-stopped
     volumes:
       - redis_data:/data

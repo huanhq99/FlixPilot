@@ -50,9 +50,9 @@ export type Config = {
 }
 
 const themeConfig: Config = {
-  templateName: 'StreamHub',
+  templateName: 'FlixPilot',
   homePageUrl: '/home',
-  settingsCookieName: 'streamhub-settings',
+  settingsCookieName: 'flixpilot-settings',
   mode: 'dark', // 'system', 'light', 'dark'
   skin: 'default', // 'default', 'bordered'
   semiDark: false, // true, false

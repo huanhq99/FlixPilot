@@ -1,8 +1,4 @@
-# StreamHub
-
-<p align="center">
-  <img src="public/images/illustrations/objects/streamhub-logo.png" alt="StreamHub Logo" width="128" />
-</p>
+# FlixPilot
 
 <p align="center">
   <strong>🎬 Emby/Jellyfin 媒体服务器管理面板</strong>
@@ -62,8 +58,8 @@
 
 ```bash
 # 克隆项目
-git clone https://github.com/huanhq99/streamhub.git
-cd streamhub
+git clone https://github.com/huanhq99/FlixPilot.git
+cd FlixPilot
 
 # 安装依赖
 pnpm install
@@ -90,16 +86,16 @@ pnpm start
 1. 创建项目目录：
 
 ```bash
-mkdir streamhub && cd streamhub
+mkdir flixpilot && cd flixpilot
 ```
 
 2. 创建 `docker-compose.yml`：
 
 ```yaml
 services:
-  streamhub:
-    image: ghcr.io/huanhq99/streamhub:latest
-    container_name: streamhub
+  flixpilot:
+    image: ghcr.io/huanhq99/flixpilot:latest
+    container_name: flixpilot
     restart: unless-stopped
     ports:
       - "3005:3005"
@@ -117,7 +113,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: streamhub-redis
+    container_name: flixpilot-redis
     restart: unless-stopped
     volumes:
       - redis_data:/data
@@ -193,30 +189,6 @@ data/
 - **语言**: TypeScript
 - **缓存**: Redis
 - **容器**: Docker
-
----
-
-## 📸 截图预览
-
-<details>
-<summary>点击展开截图</summary>
-
-### 仪表盘
-![Dashboard](docs/screenshots/dashboard.png)
-
-### 播放监控
-![Play Monitor](docs/screenshots/play-monitor.png)
-
-### 用户管理
-![User Management](docs/screenshots/user-manage.png)
-
-</details>
-
----
-
-## 🤝 贡献
-
-欢迎提交 Issue 和 Pull Request！
 
 ---
 
