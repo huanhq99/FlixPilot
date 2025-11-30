@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     
     response.cookies.set('auth-token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: false,  // 支持 HTTP 和 HTTPS
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60  // 7天
     })
