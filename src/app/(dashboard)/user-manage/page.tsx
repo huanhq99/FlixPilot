@@ -95,9 +95,21 @@ export default function UserManagePage() {
   const [embyLoading, setEmbyLoading] = useState(false)
   const [embySessions, setEmbySessions] = useState<EmbySession[]>([])
   
-  // Emby用户独立流量统计
+  // Emby用户独立流量统计（新结构：支持当月+累计+历史）
   const [embyTrafficData, setEmbyTrafficData] = useState<{
-    users: { [embyUserId: string]: { downloadBytes: number; uploadBytes: number } }
+    users: { 
+      [embyUserId: string]: { 
+        totalDownloadBytes: number
+        totalUploadBytes: number
+        currentMonth: string
+        monthlyDownloadBytes: number
+        monthlyUploadBytes: number
+        history: { [month: string]: { downloadBytes: number; uploadBytes: number } }
+        // 兼容旧格式
+        downloadBytes?: number
+        uploadBytes?: number
+      } 
+    }
   }>({ users: {} })
   // 筛选
   const [filterTab, setFilterTab] = useState(0)
@@ -186,19 +198,65 @@ export default function UserManagePage() {
   // 获取Emby用户流量（优先从独立存储，其次从绑定用户）
   const getEmbyUserTraffic = (embyUserId: string) => {
     // 1. 优先从独立流量存储获取
-    const independentTraffic = embyTrafficData.users[embyUserId]
+    const independentTraffic = embyTrafficData.users[embyUserId] as Record<string, unknown> | undefined
     if (independentTraffic) {
+      // 新格式（带当月和累计）
+      if ('totalDownloadBytes' in independentTraffic) {
+        const monthlyDown = (independentTraffic.monthlyDownloadBytes as number) || 0
+        const monthlyUp = (independentTraffic.monthlyUploadBytes as number) || 0
+        const totalDown = (independentTraffic.totalDownloadBytes as number) || 0
+        const totalUp = (independentTraffic.totalUploadBytes as number) || 0
+        return {
+          // 当月流量
+          monthlyDownloadBytes: monthlyDown,
+          monthlyUploadBytes: monthlyUp,
+          monthlyTotalBytes: monthlyDown + monthlyUp,
+          // 累计流量
+          totalDownloadBytes: totalDown,
+          totalUploadBytes: totalUp,
+          totalBytes: totalDown + totalUp,
+          // 当前月份
+          currentMonth: (independentTraffic.currentMonth as string) || '',
+          // 历史记录
+          history: (independentTraffic.history as Record<string, unknown>) || {},
+          // 兼容旧字段
+          downloadBytes: totalDown,
+          uploadBytes: totalUp
+        }
+      }
+      // 旧格式兼容
+      const downBytes = (independentTraffic.downloadBytes as number) || 0
+      const upBytes = (independentTraffic.uploadBytes as number) || 0
       return {
-        downloadBytes: independentTraffic.downloadBytes || 0,
-        uploadBytes: independentTraffic.uploadBytes || 0,
-        totalBytes: (independentTraffic.downloadBytes || 0) + (independentTraffic.uploadBytes || 0)
+        monthlyDownloadBytes: downBytes,
+        monthlyUploadBytes: upBytes,
+        monthlyTotalBytes: downBytes + upBytes,
+        totalDownloadBytes: downBytes,
+        totalUploadBytes: upBytes,
+        totalBytes: downBytes + upBytes,
+        currentMonth: '',
+        history: {},
+        downloadBytes: downBytes,
+        uploadBytes: upBytes
       }
     }
     
     // 2. 如果没有，尝试从绑定的本站用户获取
     const boundUser = users.find(u => u.embyUserId === embyUserId)
     if (boundUser) {
-      return getTrafficUsage(boundUser)
+      const usage = getTrafficUsage(boundUser)
+      return {
+        monthlyDownloadBytes: usage.downloadBytes,
+        monthlyUploadBytes: usage.uploadBytes,
+        monthlyTotalBytes: usage.totalBytes,
+        totalDownloadBytes: usage.downloadBytes,
+        totalUploadBytes: usage.uploadBytes,
+        totalBytes: usage.totalBytes,
+        currentMonth: '',
+        history: {},
+        downloadBytes: usage.downloadBytes,
+        uploadBytes: usage.uploadBytes
+      }
     }
     
     // 3. 都没有，返回null
@@ -997,7 +1055,8 @@ export default function UserManagePage() {
                         <TableCell>用户</TableCell>
                         <TableCell>角色</TableCell>
                         <TableCell>状态</TableCell>
-                        <TableCell>流量使用</TableCell>
+                        <TableCell>当月流量</TableCell>
+                        <TableCell>累计流量</TableCell>
                         <TableCell>最后活动</TableCell>
                       </TableRow>
                     </TableHead>
@@ -1033,19 +1092,46 @@ export default function UserManagePage() {
                               )}
                             </TableCell>
                             <TableCell>
-                              {traffic ? (
+                              {traffic && traffic.monthlyTotalBytes > 0 ? (
                                 <Stack direction="row" spacing={0.5} flexWrap="wrap">
                                   <Chip
                                     size="small"
                                     variant="outlined"
                                     icon={<i className="ri-download-cloud-2-line" />}
-                                    label={`下 ${formatBytes(traffic.downloadBytes)}`}
+                                    label={`下 ${formatBytes(traffic.monthlyDownloadBytes)}`}
                                   />
                                   <Chip
                                     size="small"
                                     variant="outlined"
                                     icon={<i className="ri-upload-cloud-2-line" />}
-                                    label={`上 ${formatBytes(traffic.uploadBytes)}`}
+                                    label={`上 ${formatBytes(traffic.monthlyUploadBytes)}`}
+                                  />
+                                  <Chip
+                                    size="small"
+                                    color="info"
+                                    variant="outlined"
+                                    icon={<i className="ri-donut-chart-line" />}
+                                    label={`总 ${formatBytes(traffic.monthlyTotalBytes)}`}
+                                  />
+                                </Stack>
+                              ) : (
+                                <Typography variant="body2" color="text.secondary">-</Typography>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {traffic && traffic.totalBytes > 0 ? (
+                                <Stack direction="row" spacing={0.5} flexWrap="wrap">
+                                  <Chip
+                                    size="small"
+                                    variant="outlined"
+                                    icon={<i className="ri-download-cloud-2-line" />}
+                                    label={`下 ${formatBytes(traffic.totalDownloadBytes)}`}
+                                  />
+                                  <Chip
+                                    size="small"
+                                    variant="outlined"
+                                    icon={<i className="ri-upload-cloud-2-line" />}
+                                    label={`上 ${formatBytes(traffic.totalUploadBytes)}`}
                                   />
                                   <Chip
                                     size="small"
@@ -1067,7 +1153,7 @@ export default function UserManagePage() {
                       })}
                       {filteredEmbyUsers.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={5} align="center">
+                          <TableCell colSpan={6} align="center">
                             <Typography color="text.secondary" sx={{ py: 4 }}>暂无Emby用户数据</Typography>
                           </TableCell>
                         </TableRow>

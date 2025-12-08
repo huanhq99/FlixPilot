@@ -21,13 +21,29 @@ interface GoEdgeConfig {
   syncInterval: number // 分钟
 }
 
+interface MonthlyTraffic {
+  downloadBytes: number
+  uploadBytes: number
+}
+
+interface UserTrafficData {
+  // 累计总流量
+  totalDownloadBytes: number
+  totalUploadBytes: number
+  // 当月流量
+  currentMonth: string  // 格式: "2025-12"
+  monthlyDownloadBytes: number
+  monthlyUploadBytes: number
+  // 历史记录（按月）
+  history: {
+    [month: string]: MonthlyTraffic  // "2025-11": { downloadBytes: xxx, uploadBytes: xxx }
+  }
+  lastUpdated: string
+}
+
 interface TrafficData {
   users: {
-    [embyUserId: string]: {
-      downloadBytes: number
-      uploadBytes: number
-      lastUpdated: string
-    }
+    [embyUserId: string]: UserTrafficData
   }
   lastUpdated: string | null
 }
@@ -181,21 +197,48 @@ async function syncFromGoEdge(config: GoEdgeConfig): Promise<{
     
     // 更新流量数据
     const trafficData = loadTrafficData()
-    const now = new Date().toISOString()
+    const now = new Date()
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    const nowISO = now.toISOString()
     
     for (const [userId, bytes] of Object.entries(trafficByUser)) {
       if (!trafficData.users[userId]) {
+        // 新用户，初始化数据结构
         trafficData.users[userId] = {
-          downloadBytes: 0,
-          uploadBytes: 0,
-          lastUpdated: now
+          totalDownloadBytes: 0,
+          totalUploadBytes: 0,
+          currentMonth: currentMonth,
+          monthlyDownloadBytes: 0,
+          monthlyUploadBytes: 0,
+          history: {},
+          lastUpdated: nowISO
         }
       }
-      trafficData.users[userId].downloadBytes += bytes
-      trafficData.users[userId].lastUpdated = now
+      
+      const userData = trafficData.users[userId]
+      
+      // 检查是否需要切换月份
+      if (userData.currentMonth !== currentMonth) {
+        // 保存上个月的数据到历史
+        if (userData.currentMonth && (userData.monthlyDownloadBytes > 0 || userData.monthlyUploadBytes > 0)) {
+          userData.history[userData.currentMonth] = {
+            downloadBytes: userData.monthlyDownloadBytes,
+            uploadBytes: userData.monthlyUploadBytes
+          }
+        }
+        // 重置当月计数
+        userData.currentMonth = currentMonth
+        userData.monthlyDownloadBytes = 0
+        userData.monthlyUploadBytes = 0
+      }
+      
+      // 累加流量
+      userData.totalDownloadBytes += bytes
+      userData.monthlyDownloadBytes += bytes
+      userData.lastUpdated = nowISO
     }
     
-    trafficData.lastUpdated = now
+    trafficData.lastUpdated = nowISO
     saveTrafficData(trafficData)
     
     // 保存状态
