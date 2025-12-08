@@ -243,7 +243,7 @@ async function syncFromGoEdge(config: GoEdgeConfig): Promise<{
     
     // 保存状态
     state.lastId = maxId
-    state.lastSyncTime = now
+    state.lastSyncTime = nowISO
     saveSyncState(state)
     
     return {
