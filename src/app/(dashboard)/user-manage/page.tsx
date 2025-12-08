@@ -166,9 +166,13 @@ export default function UserManagePage() {
     }
   }
 
-  // 加载Emby用户独立流量统计
+  // 加载Emby用户独立流量统计（会自动触发同步）
   const fetchEmbyTraffic = async () => {
     try {
+      // 先触发同步检查（如果超过间隔会自动同步）
+      await fetch('/api/traffic/sync')
+      
+      // 然后获取流量数据
       const res = await fetch('/api/traffic/report')
       if (res.ok) {
         const data = await res.json()

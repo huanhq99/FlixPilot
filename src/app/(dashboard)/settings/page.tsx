@@ -79,6 +79,18 @@ interface Config {
     trafficExchangeRate: number // 爆米花兑换流量比例（多少爆米花兑换1GB流量）
     downloadCostPerGB: number  // 下载消耗流量（每GB消耗多少流量）
   }
+  goedge?: {
+    enabled: boolean
+    mysql: {
+      host: string
+      port: number
+      user: string
+      password: string
+      database: string
+    }
+    embyDomain: string
+    syncInterval: number
+  }
 }
 
 interface EmbyLibrary {
@@ -116,7 +128,13 @@ const defaultConfig: Config = {
   },
   proxy: { http: '', https: '' },
   sync: { libraries: [], interval: 24 },
-  request: { monthlyQuota: 3, quotaExchangeRate: 50, trafficExchangeRate: 10, downloadCostPerGB: 1 }
+  request: { monthlyQuota: 3, quotaExchangeRate: 50, trafficExchangeRate: 10, downloadCostPerGB: 1 },
+  goedge: {
+    enabled: false,
+    mysql: { host: '', port: 3306, user: '', password: '', database: 'mysql' },
+    embyDomain: '',
+    syncInterval: 5
+  }
 }
 
 export default function SettingsPage() {
@@ -133,6 +151,14 @@ export default function SettingsPage() {
   const [syncing, setSyncing] = useState(false)
   const [syncProgress, setSyncProgress] = useState<{ current: number; total: number; library: string } | null>(null)
   const [syncedCount, setSyncedCount] = useState(0)
+
+  // GoEdge sync states
+  const [goedgeSyncing, setGoedgeSyncing] = useState(false)
+  const [goedgeSyncStatus, setGoedgeSyncStatus] = useState<{
+    lastSyncTime: string | null
+    lastId: number
+    date: string
+  } | null>(null)
 
   // License related states
   const [licenseStatus, setLicenseStatus] = useState<{
@@ -210,6 +236,16 @@ export default function SettingsPage() {
 
     // Load license status
     loadLicenseStatus()
+
+    // Load GoEdge sync status
+    fetch('/api/traffic/sync')
+      .then(res => res.json())
+      .then(data => {
+        if (data.state) {
+          setGoedgeSyncStatus(data.state)
+        }
+      })
+      .catch(() => {})
   }, [])
 
   // Load libraries when switching to media server tab
@@ -403,7 +439,7 @@ export default function SettingsPage() {
     )
   }
 
-  const tabLabels = ['授权', '网站', '首页', '用户', '系统', '媒体服务器', '通知', '网络']
+  const tabLabels = ['授权', '网站', '首页', '用户', '系统', '媒体服务器', '通知', '网络', '流量统计']
 
   return (
     <Box>
@@ -1627,6 +1663,211 @@ export default function SettingsPage() {
             </Box>
           </CardContent>
         </Card>
+      )}
+
+      {/* Tab: 流量统计 */}
+      {activeTab === 8 && (
+        <Grid container spacing={4}>
+          <Grid item xs={12}>
+            <Card>
+              <CardContent>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                  <Typography variant="h6">GoEdge 流量统计</Typography>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={config.goedge?.enabled || false}
+                        onChange={e => {
+                          setConfig(prev => ({
+                            ...prev,
+                            goedge: { ...prev.goedge!, enabled: e.target.checked }
+                          }))
+                        }}
+                      />
+                    }
+                    label="启用"
+                  />
+                </Box>
+                <Typography variant="body2" color="text.secondary" mb={3}>
+                  从 GoEdge CDN 日志中统计 Emby 用户流量，自动同步到用户管理页面
+                </Typography>
+                
+                {config.goedge?.enabled && (
+                  <>
+                    <Divider sx={{ my: 3 }} />
+                    <Typography variant="subtitle1" fontWeight={600} gutterBottom>MySQL 连接配置</Typography>
+                    <Typography variant="body2" color="text.secondary" mb={2}>
+                      GoEdge 日志存储的 MySQL 数据库连接信息
+                    </Typography>
+                    <Grid container spacing={3}>
+                      <Grid item xs={12} md={4}>
+                        <TextField
+                          fullWidth
+                          label="MySQL 地址"
+                          placeholder="172.22.0.3"
+                          value={config.goedge?.mysql?.host || ''}
+                          onChange={e => {
+                            setConfig(prev => ({
+                              ...prev,
+                              goedge: { 
+                                ...prev.goedge!, 
+                                mysql: { ...prev.goedge!.mysql, host: e.target.value }
+                              }
+                            }))
+                          }}
+                          helperText="GoEdge MySQL 容器的 IP 地址"
+                        />
+                      </Grid>
+                      <Grid item xs={12} md={2}>
+                        <TextField
+                          fullWidth
+                          label="端口"
+                          type="number"
+                          value={config.goedge?.mysql?.port || 3306}
+                          onChange={e => {
+                            setConfig(prev => ({
+                              ...prev,
+                              goedge: { 
+                                ...prev.goedge!, 
+                                mysql: { ...prev.goedge!.mysql, port: parseInt(e.target.value) || 3306 }
+                              }
+                            }))
+                          }}
+                        />
+                      </Grid>
+                      <Grid item xs={12} md={3}>
+                        <TextField
+                          fullWidth
+                          label="用户名"
+                          value={config.goedge?.mysql?.user || ''}
+                          onChange={e => {
+                            setConfig(prev => ({
+                              ...prev,
+                              goedge: { 
+                                ...prev.goedge!, 
+                                mysql: { ...prev.goedge!.mysql, user: e.target.value }
+                              }
+                            }))
+                          }}
+                        />
+                      </Grid>
+                      <Grid item xs={12} md={3}>
+                        <TextField
+                          fullWidth
+                          label="密码"
+                          type="password"
+                          value={config.goedge?.mysql?.password || ''}
+                          onChange={e => {
+                            setConfig(prev => ({
+                              ...prev,
+                              goedge: { 
+                                ...prev.goedge!, 
+                                mysql: { ...prev.goedge!.mysql, password: e.target.value }
+                              }
+                            }))
+                          }}
+                        />
+                      </Grid>
+                      <Grid item xs={12} md={4}>
+                        <TextField
+                          fullWidth
+                          label="数据库名"
+                          value={config.goedge?.mysql?.database || 'mysql'}
+                          onChange={e => {
+                            setConfig(prev => ({
+                              ...prev,
+                              goedge: { 
+                                ...prev.goedge!, 
+                                mysql: { ...prev.goedge!.mysql, database: e.target.value }
+                              }
+                            }))
+                          }}
+                        />
+                      </Grid>
+                    </Grid>
+
+                    <Divider sx={{ my: 3 }} />
+                    <Typography variant="subtitle1" fontWeight={600} gutterBottom>同步配置</Typography>
+                    <Grid container spacing={3}>
+                      <Grid item xs={12} md={6}>
+                        <TextField
+                          fullWidth
+                          label="Emby 域名"
+                          placeholder="emby.example.com"
+                          value={config.goedge?.embyDomain || ''}
+                          onChange={e => {
+                            setConfig(prev => ({
+                              ...prev,
+                              goedge: { ...prev.goedge!, embyDomain: e.target.value }
+                            }))
+                          }}
+                          helperText="GoEdge 日志中的 Emby 域名（不含 https://）"
+                        />
+                      </Grid>
+                      <Grid item xs={12} md={3}>
+                        <TextField
+                          fullWidth
+                          label="同步间隔（分钟）"
+                          type="number"
+                          value={config.goedge?.syncInterval || 5}
+                          onChange={e => {
+                            setConfig(prev => ({
+                              ...prev,
+                              goedge: { ...prev.goedge!, syncInterval: parseInt(e.target.value) || 5 }
+                            }))
+                          }}
+                        />
+                      </Grid>
+                    </Grid>
+
+                    <Divider sx={{ my: 3 }} />
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <Button 
+                        variant="outlined" 
+                        onClick={async () => {
+                          setGoedgeSyncing(true)
+                          try {
+                            const res = await fetch('/api/traffic/sync', { method: 'POST' })
+                            const data = await res.json()
+                            if (res.ok) {
+                              setMessage({ type: 'success', text: `同步成功！处理 ${data.logsProcessed} 条日志，更新 ${data.usersUpdated} 个用户` })
+                              // 刷新状态
+                              const statusRes = await fetch('/api/traffic/sync')
+                              if (statusRes.ok) {
+                                const status = await statusRes.json()
+                                setGoedgeSyncStatus(status.state)
+                              }
+                            } else {
+                              setMessage({ type: 'error', text: data.error || '同步失败' })
+                            }
+                          } catch {
+                            setMessage({ type: 'error', text: '同步请求失败' })
+                          }
+                          setGoedgeSyncing(false)
+                        }}
+                        disabled={goedgeSyncing}
+                      >
+                        {goedgeSyncing ? <CircularProgress size={20} sx={{ mr: 1 }} /> : null}
+                        立即同步
+                      </Button>
+                      {goedgeSyncStatus?.lastSyncTime && (
+                        <Typography variant="body2" color="text.secondary">
+                          上次同步: {new Date(goedgeSyncStatus.lastSyncTime).toLocaleString()}
+                        </Typography>
+                      )}
+                    </Box>
+                  </>
+                )}
+
+                <Box mt={3}>
+                  <Button variant="contained" onClick={handleSave} disabled={saving}>
+                    保存配置
+                  </Button>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
       )}
     </Box>
   )
