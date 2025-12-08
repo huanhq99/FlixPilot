@@ -23,6 +23,7 @@ import FormControl from '@mui/material/FormControl'
 import InputLabel from '@mui/material/InputLabel'
 import LinearProgress from '@mui/material/LinearProgress'
 import Chip from '@mui/material/Chip'
+import { useSiteConfig } from '@/contexts/siteConfigContext'
 
 interface Config {
   site?: {
@@ -36,6 +37,17 @@ interface Config {
     requireUppercase: boolean  // 需要大写字母
     requireNumber: boolean     // 需要数字
     defaultPopcorn: number     // 新用户默认爆米花
+  }
+  homeModules?: {
+    // 对已有 Emby 账号用户的模块可见性
+    welcome: boolean           // 欢迎卡片
+    libraryOverview: boolean   // 媒体库概览
+    libraryList: boolean       // 媒体库列表
+    systemStatus: boolean      // 系统状态
+    livePlayback: boolean      // 正在热播
+    todayStats: boolean        // 今日播放统计
+    recentItems: boolean       // 最新入库
+    quickActions: boolean      // 快捷操作
   }
   tmdb: { apiKey: string; baseUrl: string }
   moviepilot: { serverUrl: string; username: string; password: string; enabled: boolean }
@@ -78,6 +90,16 @@ interface EmbyLibrary {
 const defaultConfig: Config = {
   site: { name: 'FlixPilot', description: '您的私人流媒体管理中心', logo: '' },
   register: { enabled: false, minPasswordLength: 6, requireUppercase: false, requireNumber: false, defaultPopcorn: 50 },
+  homeModules: {
+    welcome: true,
+    libraryOverview: true,
+    libraryList: true,
+    systemStatus: true,
+    livePlayback: true,
+    todayStats: true,
+    recentItems: true,
+    quickActions: true
+  },
   tmdb: { apiKey: '', baseUrl: 'https://api.themoviedb.org/3' },
   moviepilot: { serverUrl: '', username: '', password: '', enabled: false },
   emby: [{ name: '服务器1', serverUrl: '', apiKey: '' }],
@@ -98,6 +120,7 @@ const defaultConfig: Config = {
 }
 
 export default function SettingsPage() {
+  const { refresh: refreshSiteConfig } = useSiteConfig()
   const [config, setConfig] = useState<Config>(defaultConfig)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -169,7 +192,7 @@ export default function SettingsPage() {
   }
 
   useEffect(() => {
-    fetch('/api/config')
+    fetch('/api/admin/config')
       .then(res => res.json())
       .then(data => {
         setConfig({ ...defaultConfig, ...data })
@@ -191,7 +214,7 @@ export default function SettingsPage() {
 
   // Load libraries when switching to media server tab
   useEffect(() => {
-    if (activeTab === 4 && config.emby[0]?.serverUrl && config.emby[0]?.apiKey) {
+    if (activeTab === 5 && config.emby[0]?.serverUrl && config.emby[0]?.apiKey) {
       loadLibraries()
     }
   }, [activeTab, config.emby])
@@ -250,7 +273,7 @@ export default function SettingsPage() {
       setConfig(newConfig as Config)
       
       // Save config with last sync time
-      await fetch('/api/config', {
+      await fetch('/api/admin/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newConfig)
@@ -297,17 +320,44 @@ export default function SettingsPage() {
     setSaving(true)
     setMessage(null)
     try {
-      const res = await fetch('/api/config', {
+      console.log('[Settings] 正在保存配置...', config)
+      const res = await fetch('/api/admin/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config)
       })
+      console.log('[Settings] 响应状态:', res.status)
+      const data = await res.json().catch(() => ({}))
+      console.log('[Settings] 响应数据:', data)
+      
       if (res.ok) {
+        // 如果配置了 Telegram Bot Token 和 Webhook URL，自动重新设置 Webhook
+        if (config.telegram?.botToken && config.telegram?.webhookUrl) {
+          try {
+            const webhookRes = await fetch(`/api/telegram/webhook?action=setWebhook&url=${encodeURIComponent(config.telegram.webhookUrl)}`)
+            const webhookData = await webhookRes.json()
+            if (webhookData.ok) {
+              console.log('[Settings] Telegram Webhook 已自动更新')
+            } else {
+              console.warn('[Settings] Telegram Webhook 设置失败:', webhookData.description)
+            }
+          } catch (e) {
+            console.warn('[Settings] 自动设置 Webhook 失败:', e)
+          }
+        }
+        
         setMessage({ type: 'success', text: '配置保存成功！' })
+        // 刷新全局站点配置，使更改立即生效
+        await refreshSiteConfig()
+        // 如果在媒体服务器 Tab 且配置了 Emby，刷新媒体库列表
+        if (activeTab === 5 && config.emby[0]?.serverUrl && config.emby[0]?.apiKey) {
+          loadLibraries()
+        }
       } else {
-        throw new Error('保存失败')
+        throw new Error(data.error || '保存失败')
       }
     } catch (e: any) {
+      console.error('[Settings] 保存失败:', e)
       setMessage({ type: 'error', text: e.message })
     } finally {
       setSaving(false)
@@ -353,7 +403,7 @@ export default function SettingsPage() {
     )
   }
 
-  const tabLabels = ['授权', '网站', '用户', '系统', '媒体服务器', '通知', '网络']
+  const tabLabels = ['授权', '网站', '首页', '用户', '系统', '媒体服务器', '通知', '网络']
 
   return (
     <Box>
@@ -372,6 +422,9 @@ export default function SettingsPage() {
       <Tabs 
         value={activeTab} 
         onChange={(_, v) => setActiveTab(v)} 
+        variant="scrollable"
+        scrollButtons="auto"
+        allowScrollButtonsMobile
         sx={{ mb: 4, borderBottom: 1, borderColor: 'divider' }}
       >
         {tabLabels.map((label, i) => (
@@ -517,7 +570,7 @@ export default function SettingsPage() {
       )}
 
       {/* Tab: 网站 */}
-      {activeTab === 6 && (
+      {activeTab === 1 && (
         <Grid container spacing={4}>
           {/* 网站基本信息 */}
           <Grid item xs={12}>
@@ -578,8 +631,146 @@ export default function SettingsPage() {
         </Grid>
       )}
 
+      {/* Tab: 首页模块 */}
+      {activeTab === 2 && (
+        <Grid container spacing={4}>
+          <Grid item xs={12}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  <i className="ri-layout-grid-line" style={{ marginRight: 8, verticalAlign: 'middle' }} />
+                  首页模块可见性
+                </Typography>
+                <Typography variant="body2" color="text.secondary" mb={3}>
+                  配置已有 Emby 账号的普通用户可以看到哪些首页模块（管理员始终可见所有模块）
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6} md={4}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={config.homeModules?.welcome ?? true}
+                          onChange={e => setConfig(prev => ({
+                            ...prev,
+                            homeModules: { ...prev.homeModules!, welcome: e.target.checked }
+                          }))}
+                        />
+                      }
+                      label="欢迎卡片"
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={4}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={config.homeModules?.libraryOverview ?? true}
+                          onChange={e => setConfig(prev => ({
+                            ...prev,
+                            homeModules: { ...prev.homeModules!, libraryOverview: e.target.checked }
+                          }))}
+                        />
+                      }
+                      label="媒体库概览"
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={4}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={config.homeModules?.libraryList ?? true}
+                          onChange={e => setConfig(prev => ({
+                            ...prev,
+                            homeModules: { ...prev.homeModules!, libraryList: e.target.checked }
+                          }))}
+                        />
+                      }
+                      label="媒体库列表"
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={4}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={config.homeModules?.systemStatus ?? true}
+                          onChange={e => setConfig(prev => ({
+                            ...prev,
+                            homeModules: { ...prev.homeModules!, systemStatus: e.target.checked }
+                          }))}
+                        />
+                      }
+                      label="系统状态"
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={4}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={config.homeModules?.livePlayback ?? true}
+                          onChange={e => setConfig(prev => ({
+                            ...prev,
+                            homeModules: { ...prev.homeModules!, livePlayback: e.target.checked }
+                          }))}
+                        />
+                      }
+                      label="正在热播"
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={4}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={config.homeModules?.todayStats ?? true}
+                          onChange={e => setConfig(prev => ({
+                            ...prev,
+                            homeModules: { ...prev.homeModules!, todayStats: e.target.checked }
+                          }))}
+                        />
+                      }
+                      label="今日播放统计"
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={4}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={config.homeModules?.recentItems ?? true}
+                          onChange={e => setConfig(prev => ({
+                            ...prev,
+                            homeModules: { ...prev.homeModules!, recentItems: e.target.checked }
+                          }))}
+                        />
+                      }
+                      label="最新入库"
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={4}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={config.homeModules?.quickActions ?? true}
+                          onChange={e => setConfig(prev => ({
+                            ...prev,
+                            homeModules: { ...prev.homeModules!, quickActions: e.target.checked }
+                          }))}
+                        />
+                      }
+                      label="快捷操作"
+                    />
+                  </Grid>
+                </Grid>
+                <Box mt={3}>
+                  <Button variant="contained" onClick={handleSave} disabled={saving}>
+                    保存
+                  </Button>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      )}
+
       {/* Tab: 用户 */}
-      {activeTab === 6 && (
+      {activeTab === 3 && (
         <Grid container spacing={4}>
           {/* 注册设置 */}
           <Grid item xs={12}>
@@ -764,7 +955,7 @@ export default function SettingsPage() {
       )}
 
       {/* Tab: 系统 */}
-      {activeTab === 6 && (
+      {activeTab === 4 && (
         <Grid container spacing={4}>
           {/* MoviePilot */}
           <Grid item xs={12}>
@@ -865,7 +1056,7 @@ export default function SettingsPage() {
       )}
 
       {/* Tab: 媒体服务器 */}
-      {activeTab === 6 && (
+      {activeTab === 5 && (
         <>
         <Card>
           <CardContent>
@@ -1402,7 +1593,7 @@ export default function SettingsPage() {
       )}
 
       {/* Tab: 网络 */}
-      {activeTab === 6 && (
+      {activeTab === 7 && (
         <Card>
           <CardContent>
             <Typography variant="h6" gutterBottom>网络代理</Typography>

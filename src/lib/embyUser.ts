@@ -190,3 +190,23 @@ export async function isEmbyUserDisabled(userId: string, embyConfig: any): Promi
     return false
   }
 }
+
+// 删除 Emby 用户
+export async function deleteEmbyUser(userId: string, embyConfig: any): Promise<boolean> {
+  try {
+    const serverUrl = embyConfig.serverUrl.replace(/\/$/, '')
+    const apiKey = embyConfig.apiKey
+
+    const res = await fetch(`${serverUrl}/emby/Users/${userId}?api_key=${apiKey}`, {
+      method: 'DELETE',
+      headers: {
+        'X-Emby-Authorization': `MediaBrowser Client="FlixPilot", Device="Server", DeviceId="flixpilot", Version="1.0", Token="${apiKey}"`
+      }
+    })
+
+    return res.ok
+  } catch (error) {
+    console.error('deleteEmbyUser error:', error)
+    return false
+  }
+}

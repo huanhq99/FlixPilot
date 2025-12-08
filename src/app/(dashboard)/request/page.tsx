@@ -20,6 +20,7 @@ import LinearProgress from '@mui/material/LinearProgress'
 import Grid from '@mui/material/Grid'
 import TextField from '@mui/material/TextField'
 import InputAdornment from '@mui/material/InputAdornment'
+import MembershipGuard from '@/components/MembershipGuard'
 
 interface MediaRequest {
   id: string
@@ -153,6 +154,7 @@ export default function RequestPage() {
   const usedPercent = totalQuota > 0 ? (quota.used / totalQuota) * 100 : 0
 
   return (
+    <MembershipGuard>
     <Box>
       {/* 消息提示 */}
       {message && (
@@ -405,5 +407,6 @@ export default function RequestPage() {
         </DialogActions>
       </Dialog>
     </Box>
+    </MembershipGuard>
   )
 }

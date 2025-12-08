@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 // 不需要登录的路径
-const publicPaths = ['/login', '/api/auth/login', '/api/auth/register', '/api/announcements', '/api/devices/auto-scan', '/api/devices/monitor']
+const publicPaths = ['/login', '/api/auth/login', '/api/auth/register', '/api/announcements', '/api/devices/auto-scan', '/api/devices/monitor', '/api/telegram/webhook', '/api/traffic/report']
 
 // 普通用户可访问的路径
 const userPaths = ['/home', '/streaming', '/trending', '/request', '/account', '/tickets', '/knowledge', '/devices']

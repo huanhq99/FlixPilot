@@ -34,6 +34,18 @@ const verticalMenuData = (): VerticalMenuDataType[] => [
     icon: 'ri-user-line'
   },
   {
+    label: '插件',
+    href: '/plugins',
+    icon: 'ri-puzzle-line',
+    adminOnly: true
+  },
+  {
+    label: '用户管理',
+    href: '/user-manage',
+    icon: 'ri-user-settings-line',
+    adminOnly: true
+  },
+  {
     label: '卡密管理',
     href: '/card-manage',
     icon: 'ri-coupon-3-line',
@@ -42,7 +54,8 @@ const verticalMenuData = (): VerticalMenuDataType[] => [
   {
     label: '设置',
     href: '/settings',
-    icon: 'ri-settings-3-line'
+    icon: 'ri-settings-3-line',
+    adminOnly: true
   }
 ]
 

@@ -28,11 +28,32 @@ export default function AutoSyncChecker() {
       }
     }
 
+    const checkExpiredUsers = async () => {
+      try {
+        // 检查过期用户并禁用 Emby 账号
+        const res = await fetch('/api/cron/check-expiry')
+        if (res.ok) {
+          const data = await res.json()
+          if (data.disabledCount > 0) {
+            console.log('[AutoSync] 禁用过期用户:', data.message)
+          }
+        }
+      } catch (error) {
+        console.error('[AutoSync] 检查过期用户失败:', error)
+      }
+    }
+
     // 延迟 5 秒后执行检查，避免影响页面加载
-    const timer = setTimeout(checkAndSync, 5000)
+    const timer = setTimeout(() => {
+      checkAndSync()
+      checkExpiredUsers()
+    }, 5000)
 
     // 每小时检查一次
-    const interval = setInterval(checkAndSync, 60 * 60 * 1000)
+    const interval = setInterval(() => {
+      checkAndSync()
+      checkExpiredUsers()
+    }, 60 * 60 * 1000)
 
     return () => {
       clearTimeout(timer)

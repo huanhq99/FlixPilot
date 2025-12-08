@@ -11,6 +11,7 @@ import TextField from '@mui/material/TextField'
 import InputAdornment from '@mui/material/InputAdornment'
 import Box from '@mui/material/Box'
 import MediaDetailModal from '@/components/MediaDetailModal'
+import MembershipGuard from '@/components/MembershipGuard'
 
 // 筛选选项
 const categories = [
@@ -267,6 +268,7 @@ export default function StreamingPage() {
   )
 
   return (
+    <MembershipGuard>
     <>
       <Grid container spacing={6}>
         {/* 搜索和筛选 */}
@@ -480,5 +482,6 @@ export default function StreamingPage() {
         isInLibrary={selectedMedia ? libraryItems.has(`${selectedMedia.type}-${selectedMedia.id}`) : false}
       />
     </>
+    </MembershipGuard>
   )
 }

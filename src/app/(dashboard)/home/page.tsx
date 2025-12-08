@@ -25,6 +25,7 @@ import type { TimelineProps } from '@mui/lab/Timeline'
 import CustomAvatar from '@core/components/mui/Avatar'
 import OptionMenu from '@core/components/option-menu'
 import { useSiteConfig } from '@/contexts/siteConfigContext'
+import MembershipGuard from '@/components/MembershipGuard'
 import { 
   getServerInfo, 
   getLibraries, 
@@ -226,12 +227,36 @@ function RecentItemsCarousel({ items, getItemImageUrl }: { items: RecentItem[], 
   )
 }
 
+// 首页模块配置接口
+interface HomeModulesConfig {
+  welcome: boolean
+  libraryOverview: boolean
+  libraryList: boolean
+  systemStatus: boolean
+  livePlayback: boolean
+  todayStats: boolean
+  recentItems: boolean
+  quickActions: boolean
+}
+
+const defaultHomeModules: HomeModulesConfig = {
+  welcome: true,
+  libraryOverview: true,
+  libraryList: true,
+  systemStatus: true,
+  livePlayback: true,
+  todayStats: true,
+  recentItems: true,
+  quickActions: true
+}
+
 export default function HomePage() {
   const [serverInfo, setServerInfo] = useState<EmbyServerInfo | null>(null)
   const [libraries, setLibraries] = useState<EmbyLibrary[]>([])
   const [stats, setStats] = useState<EmbyStats | null>(null)
   const [userCount, setUserCount] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [userLoading, setUserLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [currentUser, setCurrentUser] = useState<any>(null)
   
@@ -240,13 +265,31 @@ export default function HomePage() {
   const [recentItems, setRecentItems] = useState<RecentItem[]>([])
   const [todayStats, setTodayStats] = useState<TodayStats | null>(null)
   
+  // 首页模块配置
+  const [homeModules, setHomeModules] = useState<HomeModulesConfig>(defaultHomeModules)
+  
   // 网站配置
   const { config: siteConfig } = useSiteConfig()
 
   useEffect(() => {
     loadData()
     loadCurrentUser()
+    loadHomeModules()
   }, [])
+
+  const loadHomeModules = async () => {
+    try {
+      const res = await fetch('/api/config')
+      if (res.ok) {
+        const data = await res.json()
+        if (data.homeModules) {
+          setHomeModules({ ...defaultHomeModules, ...data.homeModules })
+        }
+      }
+    } catch (e) {
+      console.error('Load home modules config failed:', e)
+    }
+  }
 
   const loadCurrentUser = async () => {
     try {
@@ -257,6 +300,8 @@ export default function HomePage() {
       }
     } catch (e) {
       console.error('Load user failed:', e)
+    } finally {
+      setUserLoading(false)
     }
   }
 
@@ -375,8 +420,8 @@ export default function HomePage() {
     return ''
   }
 
-  // 加载状态
-  if (loading) {
+  // 加载状态（等待数据和用户信息都加载完成）
+  if (loading || userLoading) {
     return (
       <Grid container spacing={6}>
         <Grid size={{ xs: 12, md: 4 }}><Skeleton variant="rounded" height={180} /></Grid>
@@ -416,13 +461,17 @@ export default function HomePage() {
     )
   }
 
-  // 检查普通用户是否已激活会员
+  // 用户状态判断
   const isAdmin = currentUser?.role === 'admin'
-  const isMember = currentUser?.isWhitelist || 
+  const hasEmby = !!currentUser?.embyUserId
+  const isWhitelist = currentUser?.isWhitelist
+  const isMemberValid = isWhitelist || 
     (currentUser?.membershipExpiry && new Date(currentUser.membershipExpiry) > new Date())
+  // 管理员永不过期
+  const isExpired = !isAdmin && hasEmby && !isMemberValid
   
-  // 普通用户且未激活会员，显示激活提示
-  if (!isAdmin && !isMember) {
+  // 普通用户且没有 Emby 账号 - 提示激活/绑定
+  if (!isAdmin && !hasEmby) {
     return (
       <Card>
         <CardContent className='flex flex-col gap-4 items-center text-center pbs-10 pbe-10'>
@@ -430,12 +479,11 @@ export default function HomePage() {
             <i className='ri-vip-crown-2-line text-4xl' />
           </CustomAvatar>
           <div>
-            <Typography variant='h5' className='mbe-2'>欢迎使用 {siteConfig.name}</Typography>
-            <Typography color='text.secondary' className='mbe-2'>
-              您尚未激活会员，请先使用卡密激活后即可访问媒体库
+            <Typography variant='h5' className='mbe-2'>
+              欢迎使用 {siteConfig.name}
             </Typography>
-            <Typography variant='body2' color='text.secondary'>
-              激活后可畅享海量高清影视资源
+            <Typography color='text.secondary' className='mbe-2'>
+              您尚未激活会员，请先使用卡密激活或绑定已有 Emby 账号
             </Typography>
           </div>
           <Button variant='contained' href='/account'>
@@ -446,9 +494,49 @@ export default function HomePage() {
     )
   }
 
+  // 判断模块是否可见（管理员始终可见，普通用户根据配置）
+  const isModuleVisible = (moduleName: keyof HomeModulesConfig) => {
+    if (isAdmin) return true
+    return homeModules[moduleName] ?? true
+  }
+
   return (
     <Grid container spacing={6}>
+      {/* 会员过期提醒 - 有 Emby 但会员过期 */}
+      {isExpired && (
+        <Grid size={{ xs: 12 }}>
+          <Card sx={{ bgcolor: 'error.lighter', border: '1px solid', borderColor: 'error.main' }}>
+            <CardContent sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <CustomAvatar skin='light' color='error' size={40}>
+                  <i className='ri-error-warning-line text-xl' />
+                </CustomAvatar>
+                <Box>
+                  <Typography fontWeight={600} color='error.main'>会员已过期</Typography>
+                  <Typography variant='body2' color='text.secondary'>
+                    您的 Emby 账号已被暂停，续费后即可恢复使用
+                    {currentUser?.membershipExpiry && (
+                      <> · 到期时间：{new Date(currentUser.membershipExpiry).toLocaleDateString('zh-CN')}</>
+                    )}
+                  </Typography>
+                </Box>
+              </Box>
+              <Button 
+                variant='contained' 
+                color='error'
+                size='small'
+                href='/account'
+                startIcon={<i className='ri-vip-crown-line' />}
+              >
+                立即续费
+              </Button>
+            </CardContent>
+          </Card>
+        </Grid>
+      )}
+
       {/* 欢迎卡片 - 仿 Award 组件风格 */}
+      {isModuleVisible('welcome') && (
       <Grid size={{ xs: 12, md: 4 }}>
         <Card>
           <CardContent className='flex flex-col gap-2 relative items-start'>
@@ -477,9 +565,11 @@ export default function HomePage() {
           </CardContent>
         </Card>
       </Grid>
+      )}
 
       {/* 统计概览 - 仿 Transactions 组件风格 */}
-      <Grid size={{ xs: 12, md: 8 }}>
+      {isModuleVisible('libraryOverview') && (
+      <Grid size={{ xs: 12, md: isModuleVisible('welcome') ? 8 : 12 }}>
         <Card>
           <CardHeader
             title='媒体库概览'
@@ -541,8 +631,10 @@ export default function HomePage() {
           </CardContent>
         </Card>
       </Grid>
+      )}
 
       {/* 媒体库列表 - 仿 TotalEarning 组件风格 */}
+      {isModuleVisible('libraryList') && (
       <Grid size={{ xs: 12, md: 6 }}>
         <Card>
           <CardHeader
@@ -591,8 +683,10 @@ export default function HomePage() {
           </CardContent>
         </Card>
       </Grid>
+      )}
 
       {/* 系统状态 - 仿 ActivityTimeline 组件风格 */}
+      {isModuleVisible('systemStatus') && (
       <Grid size={{ xs: 12, md: 6 }}>
         <Card>
           <CardHeader title='系统状态' />
@@ -676,8 +770,10 @@ export default function HomePage() {
           </CardContent>
         </Card>
       </Grid>
+      )}
 
       {/* 🔥 正在热播 */}
+      {isModuleVisible('livePlayback') && (
       <Grid size={{ xs: 12, md: 6 }}>
         <Card>
           <CardHeader 
@@ -690,7 +786,7 @@ export default function HomePage() {
               </Box>
             }
             action={
-              <Button size="small" href="/live-monitor">
+              <Button size="small" href="/play-monitor">
                 查看全部
               </Button>
             }
@@ -745,8 +841,10 @@ export default function HomePage() {
           </CardContent>
         </Card>
       </Grid>
+      )}
 
       {/* 📊 今日播放统计 */}
+      {isModuleVisible('todayStats') && (
       <Grid size={{ xs: 12, md: 6 }}>
         <Card>
           <CardHeader 
@@ -797,13 +895,17 @@ export default function HomePage() {
           </CardContent>
         </Card>
       </Grid>
+      )}
 
       {/* 🆕 最新入库 - 自动轮播 */}
+      {isModuleVisible('recentItems') && (
       <Grid size={{ xs: 12 }}>
         <RecentItemsCarousel items={recentItems} getItemImageUrl={getItemImageUrl} />
       </Grid>
+      )}
 
       {/* 快捷操作 */}
+      {isModuleVisible('quickActions') && (
       <Grid size={{ xs: 12 }}>
         <Card>
           <CardHeader title='快捷操作' />
@@ -877,6 +979,7 @@ export default function HomePage() {
           </CardContent>
         </Card>
       </Grid>
+      )}
     </Grid>
   )
 }

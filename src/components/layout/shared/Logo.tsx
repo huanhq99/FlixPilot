@@ -76,7 +76,7 @@ const Logo = ({ color }: { color?: CSSProperties['color'] }) => {
 
   return (
     <div className='flex items-center min-bs-[24px]'>
-      <MaterioLogo className='text-[22px] text-primary' />
+      <img src='/logo.png' alt='Logo' className='w-[28px] h-[28px]' />
       <LogoText
         color={color}
         ref={logoTextRef}

@@ -8,8 +8,19 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'IP is required' }, { status: 400 })
   }
   
-  // 过滤内网 IP 和 IPv6
-  if (ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.') || ip === '127.0.0.1' || ip === 'localhost' || ip.includes(':')) {
+  // 过滤内网 IPv4
+  if (ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.16.') || ip.startsWith('172.17.') || ip.startsWith('172.18.') || ip.startsWith('172.19.') || ip.startsWith('172.2') || ip.startsWith('172.30.') || ip.startsWith('172.31.') || ip === '127.0.0.1' || ip === 'localhost') {
+    return NextResponse.json({
+      ip,
+      regionName: '内网',
+      city: '本地网络',
+      country: '内网',
+      isp: '-'
+    })
+  }
+
+  // 过滤内网 IPv6 (fe80::, fc00::, fd00::, ::1)
+  if (ip === '::1' || ip.toLowerCase().startsWith('fe80:') || ip.toLowerCase().startsWith('fc00:') || ip.toLowerCase().startsWith('fd00:')) {
     return NextResponse.json({
       ip,
       regionName: '内网',
@@ -20,7 +31,7 @@ export async function GET(request: Request) {
   }
   
   try {
-    // 用 ip-api.com 支持中文
+    // 用 ip-api.com 支持中文，也支持 IPv6
     const res = await fetch(`http://ip-api.com/json/${ip}?lang=zh-CN&fields=status,country,regionName,city,isp`)
     
     if (res.ok) {

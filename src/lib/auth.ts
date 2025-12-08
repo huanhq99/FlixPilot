@@ -6,12 +6,20 @@ const DATA_DIR = process.env.DATA_DIR || './data'
 const USERS_FILE = path.join(DATA_DIR, 'users.json')
 const JWT_SECRET = process.env.JWT_SECRET || 'flixpilot-secret-key-2024'
 
+export interface UserTrafficStats {
+  downloadBytes?: number
+  uploadBytes?: number
+}
+
 export interface User {
   id: string
   username: string
   passwordHash: string
   role: 'admin' | 'user'
   popcorn: number  // 爆米花余额
+  monthlyTraffic?: number  // 本月剩余流量（GB）
+  usedTraffic?: number     // 本月已用流量（GB）
+  trafficStats?: UserTrafficStats  // 细化的上下行流量
   embyUserId?: string  // 绑定的 Emby 用户 ID
   embyUsername?: string
   lastSignIn?: string  // 最后签到时间
@@ -19,6 +27,7 @@ export interface User {
   createdAt: string
   // 会员相关
   membershipExpiry?: string  // 会员到期时间 (ISO string)，null 表示未激活
+  membershipStartedAt?: string  // 会员开通时间
   isWhitelist?: boolean      // 是否白名单（永久会员）
   // 邮箱通知
   email?: string             // 用户邮箱
@@ -60,7 +69,19 @@ export function loadUsersData(): UsersData {
   try {
     if (fs.existsSync(USERS_FILE)) {
       const data = fs.readFileSync(USERS_FILE, 'utf-8')
-      return JSON.parse(data)
+      const parsed = JSON.parse(data)
+      // 确保返回正确的数据结构
+      if (parsed && Array.isArray(parsed.users)) {
+        return {
+          users: parsed.users,
+          initialized: parsed.initialized ?? false
+        }
+      }
+      // 如果是旧格式（直接是数组），转换为新格式
+      if (Array.isArray(parsed)) {
+        return { users: parsed, initialized: true }
+      }
+      console.error('用户数据格式无效，使用默认值')
     }
   } catch (e) {
     console.error('加载用户数据失败:', e)

@@ -8,7 +8,7 @@ import Box from '@mui/material/Box'
 import Chip from '@mui/material/Chip'
 import Avatar from '@mui/material/Avatar'
 import Skeleton from '@mui/material/Skeleton'
-import Button from '@mui/material/Button'
+import Button from '../../components/Button'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
@@ -18,6 +18,7 @@ import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import InputAdornment from '@mui/material/InputAdornment'
 import Alert from '@mui/material/Alert'
+import LinearProgress from '@mui/material/LinearProgress'
 
 interface PlayRecord {
   id: string
@@ -35,6 +36,22 @@ interface PlayRecord {
   posterUrl?: string
   backdropUrl?: string
   isAbnormal?: boolean
+  // 播放进度相关
+  positionTicks?: number
+  runtimeTicks?: number
+  isPaused?: boolean
+}
+
+// 格式化时间 (ticks -> HH:MM:SS)
+function formatTime(ticks: number): string {
+  const totalSeconds = Math.floor(ticks / 10000000)
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+  }
+  return `${minutes}:${String(seconds).padStart(2, '0')}`
 }
 
 interface AbnormalAlert {
@@ -57,6 +74,11 @@ interface PlaySession {
     Type: string
     IndexNumber?: number
     ParentIndexNumber?: number
+    RunTimeTicks?: number
+  }
+  PlayState?: {
+    PositionTicks?: number
+    IsPaused?: boolean
   }
   RemoteEndPoint?: string
 }
@@ -129,11 +151,6 @@ export default function PlayMonitorPage() {
       if (res.ok) {
         const sessions: PlaySession[] = await res.json()
         
-        const configRes = await fetch('/api/config')
-        const config = await configRes.json()
-        const embyUrl = config.emby?.[0]?.serverUrl || ''
-        const apiKey = config.emby?.[0]?.apiKey || ''
-        
         const playingSessions = sessions.filter(s => s.NowPlayingItem)
         
         // 检测同账号多设备
@@ -185,12 +202,11 @@ export default function PlayMonitorPage() {
 
           const itemId = item.Id
           const seriesId = item.SeriesId
-          // 海报：剧集用剧的海报，电影用电影海报
+          // 使用代理 API 获取图片，apiKey 在服务端处理
           const posterId = item.Type === 'Episode' && seriesId ? seriesId : itemId
-          const posterUrl = embyUrl ? `${embyUrl}/emby/Items/${posterId}/Images/Primary?maxHeight=100&api_key=${apiKey}` : ''
-          // 背景图：剧集用剧的背景，电影用电影背景
+          const posterUrl = `/api/emby/Items/${posterId}/Images/Primary?maxHeight=100`
           const backdropId = item.Type === 'Episode' && seriesId ? seriesId : itemId
-          const backdropUrl = embyUrl ? `${embyUrl}/emby/Items/${backdropId}/Images/Backdrop?maxWidth=600&api_key=${apiKey}` : ''
+          const backdropUrl = `/api/emby/Items/${backdropId}/Images/Backdrop?maxWidth=600`
           
           return {
             id: `${session.Id}-${Date.now()}`,
@@ -207,14 +223,31 @@ export default function PlayMonitorPage() {
             seriesId,
             posterUrl,
             backdropUrl,
-            isAbnormal: abnormalUsers.has(session.UserName)
+            isAbnormal: abnormalUsers.has(session.UserName),
+            positionTicks: session.PlayState?.PositionTicks || 0,
+            runtimeTicks: item.RunTimeTicks || 0,
+            isPaused: session.PlayState?.IsPaused || false
           }
         })
 
+        // 更新现有记录的进度（而不是只添加新记录）
         setRecords(prev => {
-          const existingIds = new Set(prev.map(r => `${r.userName}-${r.content}`))
-          const uniqueNew = newRecords.filter(r => !existingIds.has(`${r.userName}-${r.content}`))
-          return [...uniqueNew, ...prev].slice(0, 100)
+          const updatedMap = new Map<string, PlayRecord>()
+          
+          // 先添加新记录
+          newRecords.forEach(r => {
+            updatedMap.set(`${r.userName}-${r.content}`, r)
+          })
+          
+          // 保留不在当前播放中的历史记录
+          prev.forEach(r => {
+            const key = `${r.userName}-${r.content}`
+            if (!updatedMap.has(key)) {
+              updatedMap.set(key, r)
+            }
+          })
+          
+          return Array.from(updatedMap.values()).slice(0, 100)
         })
       }
     } catch (e) {
@@ -470,11 +503,46 @@ export default function PlayMonitorPage() {
                         <Typography variant='body2' color='primary.main' fontWeight={500}>
                           {record.seriesName ? `${record.seriesName} ${record.seasonEpisode} - ${record.content}` : record.content}
                         </Typography>
-                        <Chip 
-                          label={record.contentType === 'Episode' ? '剧集' : record.contentType === 'Movie' ? '电影' : record.contentType}
-                          size='small' variant='outlined'
-                          sx={{ mt: 0.5, height: 20, fontSize: '0.7rem' }}
-                        />
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+                          <Chip 
+                            label={record.contentType === 'Episode' ? '剧集' : record.contentType === 'Movie' ? '电影' : record.contentType}
+                            size='small' variant='outlined'
+                            sx={{ height: 20, fontSize: '0.7rem' }}
+                          />
+                          {record.isPaused && (
+                            <Chip 
+                              icon={<i className='ri-pause-fill' style={{ fontSize: 12 }} />}
+                              label='已暂停' 
+                              size='small' 
+                              color='warning'
+                              sx={{ height: 20, fontSize: '0.7rem' }}
+                            />
+                          )}
+                        </Box>
+                        {/* 播放进度条 */}
+                        {record.runtimeTicks && record.runtimeTicks > 0 && (
+                          <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <LinearProgress 
+                              variant='determinate' 
+                              value={Math.min(100, (record.positionTicks || 0) / record.runtimeTicks * 100)}
+                              sx={{ 
+                                flex: 1, 
+                                height: 6, 
+                                borderRadius: 3,
+                                bgcolor: 'action.hover',
+                                '& .MuiLinearProgress-bar': {
+                                  borderRadius: 3,
+                                  background: record.isPaused 
+                                    ? 'linear-gradient(90deg, #f59e0b, #d97706)'
+                                    : 'linear-gradient(90deg, #8b5cf6, #6366f1)'
+                                }
+                              }}
+                            />
+                            <Typography variant='caption' color='text.secondary' sx={{ minWidth: 85, textAlign: 'right', fontFamily: 'monospace' }}>
+                              {formatTime(record.positionTicks || 0)} / {formatTime(record.runtimeTicks)}
+                            </Typography>
+                          </Box>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

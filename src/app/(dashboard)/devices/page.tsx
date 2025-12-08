@@ -21,6 +21,7 @@ import Skeleton from '@mui/material/Skeleton'
 import Accordion from '@mui/material/Accordion'
 import AccordionSummary from '@mui/material/AccordionSummary'
 import AccordionDetails from '@mui/material/AccordionDetails'
+import MembershipGuard from '@/components/MembershipGuard'
 
 interface Device {
   id: string
@@ -141,6 +142,7 @@ export default function DevicesPage() {
   }
 
   return (
+    <MembershipGuard>
     <Box>
       <Box sx={{ mb: 4 }}>
         <Typography variant='h4' fontWeight={700}>设备管理</Typography>
@@ -325,5 +327,6 @@ export default function DevicesPage() {
         </AccordionDetails>
       </Accordion>
     </Box>
+    </MembershipGuard>
   )
 }

@@ -101,7 +101,7 @@ const VerticalMenu = ({ scrollMenu }: Props) => {
         </SubMenu>
         {isAdmin && (
           <SubMenu label='用户管理' icon={<i className='ri-user-settings-line' />}>
-            <MenuItem href='/users' icon={<i className='ri-user-line' />}>
+            <MenuItem href='/user-manage' icon={<i className='ri-user-line' />}>
               用户列表
             </MenuItem>
             <MenuItem href='/user-activity' icon={<i className='ri-history-line' />}>
@@ -129,6 +129,11 @@ const VerticalMenu = ({ scrollMenu }: Props) => {
         <MenuItem href='/tickets' icon={<i className='ri-customer-service-2-line' />}>
           工单
         </MenuItem>
+        {isAdmin && (
+          <MenuItem href='/plugins' icon={<i className='ri-puzzle-line' />}>
+            插件
+          </MenuItem>
+        )}
         <SubMenu label='知识库' icon={<i className='ri-book-open-line' />}>
           <MenuItem href='/knowledge' icon={<i className='ri-book-read-line' />}>
             浏览
@@ -142,11 +147,6 @@ const VerticalMenu = ({ scrollMenu }: Props) => {
         {isAdmin && (
           <MenuItem href='/announcements' icon={<i className='ri-megaphone-line' />}>
             公告管理
-          </MenuItem>
-        )}
-        {isAdmin && (
-          <MenuItem href='/user-manage' icon={<i className='ri-admin-line' />}>
-            系统用户
           </MenuItem>
         )}
         {isAdmin && (

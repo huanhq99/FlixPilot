@@ -30,6 +30,8 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+# 禁用 TLS 证书验证（用于连接自签名证书的服务）
+ENV NODE_TLS_REJECT_UNAUTHORIZED=0
 
 # 复制构建产物
 COPY --from=builder /app/public ./public

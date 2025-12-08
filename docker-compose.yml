@@ -16,6 +16,10 @@ services:
       - LICENSE_SERVER=http://54.39.102.63:3100
       # 可选：设置强 JWT 密钥（生产环境建议设置）
       # - JWT_SECRET=your-super-secret-key-here
+    # 配置说明：
+    # 所有配置都在 ./data/config.json 文件中管理
+    # 包括：TMDB、Emby、MoviePilot、Telegram Bot、Gemini AI 等
+    # 详见 ./data/config.example.json 示例文件
     depends_on:
       redis:
         condition: service_healthy

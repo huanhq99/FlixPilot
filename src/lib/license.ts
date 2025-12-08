@@ -10,7 +10,7 @@ const DATA_DIR = process.env.DATA_DIR || './data'
 const CONFIG_FILE = path.join(DATA_DIR, 'config.json')
 
 // 内置授权服务器地址（用户无需配置）
-const BUILT_IN_LICENSE_SERVER = 'https://flixpilot.ovh'
+const BUILT_IN_LICENSE_SERVER = 'https://license.flixpilot.ovh'
 
 // 获取授权服务器地址（优先环境变量覆盖，否则使用内置地址）
 function getLicenseServer(): string {

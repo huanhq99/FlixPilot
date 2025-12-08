@@ -13,9 +13,16 @@ const horizontalMenuData = (): HorizontalMenuDataType[] => [
     icon: 'ri-movie-2-line'
   },
   {
+    label: '插件',
+    href: '/plugins',
+    icon: 'ri-puzzle-line',
+    adminOnly: true
+  },
+  {
     label: '设置',
     href: '/settings',
-    icon: 'ri-settings-3-line'
+    icon: 'ri-settings-3-line',
+    adminOnly: true
   }
 ]
 

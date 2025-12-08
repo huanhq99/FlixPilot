@@ -73,21 +73,37 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '无权限' }, { status: 403 })
     }
     
-    const { type, count = 1 } = await request.json()
+    const { type, count = 1, customStartDate, customEndDate } = await request.json()
     
-    if (!['day', 'month', 'quarter', 'year', 'whitelist'].includes(type)) {
+    if (!['day', 'month', 'quarter', 'year', 'whitelist', 'custom'].includes(type)) {
       return NextResponse.json({ error: '无效的卡密类型' }, { status: 400 })
+    }
+    
+    // 自定义类型需要开始和结束日期
+    if (type === 'custom') {
+      if (!customStartDate || !customEndDate) {
+        return NextResponse.json({ error: '自定义卡密需要设置开通日期和到期日期' }, { status: 400 })
+      }
+      const start = new Date(customStartDate)
+      const end = new Date(customEndDate)
+      if (end <= start) {
+        return NextResponse.json({ error: '到期日期必须晚于开通日期' }, { status: 400 })
+      }
     }
     
     if (count < 1 || count > 100) {
       return NextResponse.json({ error: '生成数量应在1-100之间' }, { status: 400 })
     }
     
-    const cards = createCard(type as CardType, count)
+    const cards = createCard(type as CardType, count, customStartDate, customEndDate)
+    
+    const typeName = type === 'custom' 
+      ? `自定义卡密（${customStartDate} 至 ${customEndDate}）`
+      : CARD_TYPE_NAMES[type as CardType]
     
     return NextResponse.json({ 
       success: true, 
-      message: `成功创建 ${count} 张${CARD_TYPE_NAMES[type as CardType]}`,
+      message: `成功创建 ${count} 张${typeName}`,
       cards 
     })
   } catch (error) {

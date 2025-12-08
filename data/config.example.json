@@ -26,6 +26,11 @@
     "password": "your_password",
     "enabled": false
   },
+  "gemini": {
+    "apiKey": "YOUR_GEMINI_API_KEY",
+    "model": "gemini-2.0-flash",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta"
+  },
   "emby": [
     {
       "name": "主服务器",

@@ -79,6 +79,12 @@ export default function AccountPage() {
   const [cardError, setCardError] = useState('')
   const [cardSuccess, setCardSuccess] = useState('')
 
+  // 修改用户名弹窗
+  const [usernameOpen, setUsernameOpen] = useState(false)
+  const [newUsername, setNewUsername] = useState('')
+  const [usernameLoading, setUsernameLoading] = useState(false)
+  const [usernameError, setUsernameError] = useState('')
+
   // 创建 Emby 账号
   const [createEmbyOpen, setCreateEmbyOpen] = useState(false)
   const [createEmbyPassword, setCreateEmbyPassword] = useState('')
@@ -91,10 +97,40 @@ export default function AccountPage() {
   const [emailSaving, setEmailSaving] = useState(false)
   const [emailMessage, setEmailMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
+  // Telegram 绑定
+  const [telegramBound, setTelegramBound] = useState(false)
+  const [telegramUsername, setTelegramUsername] = useState('')
+  const [telegramBindCode, setTelegramBindCode] = useState('')
+  const [telegramCodeExpiry, setTelegramCodeExpiry] = useState<Date | null>(null)
+  const [telegramLoading, setTelegramLoading] = useState(false)
+  const [telegramCountdown, setTelegramCountdown] = useState(0)
+
   useEffect(() => {
     loadUserInfo()
     loadEmbyInfo()
+    loadTelegramBinding()
   }, [])
+
+  // 倒计时更新 - 每秒刷新
+  useEffect(() => {
+    if (!telegramCodeExpiry) {
+      setTelegramCountdown(0)
+      return
+    }
+    
+    const updateCountdown = () => {
+      const remaining = Math.max(0, Math.ceil((telegramCodeExpiry.getTime() - Date.now()) / 1000))
+      setTelegramCountdown(remaining)
+      if (remaining <= 0) {
+        setTelegramBindCode('')
+        setTelegramCodeExpiry(null)
+      }
+    }
+    
+    updateCountdown() // 立即更新一次
+    const timer = setInterval(updateCountdown, 1000)
+    return () => clearInterval(timer)
+  }, [telegramCodeExpiry])
 
   const loadUserInfo = async () => {
     try {
@@ -122,6 +158,48 @@ export default function AccountPage() {
       }
     } catch (e) {
       console.error('Load emby info failed:', e)
+    }
+  }
+
+  const loadTelegramBinding = async () => {
+    try {
+      const res = await fetch('/api/user/telegram-binding')
+      if (res.ok) {
+        const data = await res.json()
+        setTelegramBound(data.bound)
+        setTelegramUsername(data.telegramUsername || '')
+      }
+    } catch (e) {
+      console.error('Load telegram binding failed:', e)
+    }
+  }
+
+  const handleGetTelegramCode = async () => {
+    setTelegramLoading(true)
+    try {
+      const res = await fetch('/api/user/telegram-binding', { method: 'POST' })
+      const data = await res.json()
+      if (res.ok) {
+        setTelegramBindCode(data.code)
+        setTelegramCodeExpiry(new Date(Date.now() + data.expiresIn * 1000))
+      }
+    } catch (e) {
+      console.error('Get telegram code failed:', e)
+    } finally {
+      setTelegramLoading(false)
+    }
+  }
+
+  const handleUnbindTelegram = async () => {
+    if (!confirm('确定要解除 Telegram 绑定吗？')) return
+    try {
+      const res = await fetch('/api/user/telegram-binding', { method: 'DELETE' })
+      if (res.ok) {
+        setTelegramBound(false)
+        setTelegramUsername('')
+      }
+    } catch (e) {
+      console.error('Unbind telegram failed:', e)
     }
   }
 
@@ -230,6 +308,46 @@ export default function AccountPage() {
     }
   }
 
+  const handleChangeUsername = async () => {
+    setUsernameError('')
+    
+    if (!newUsername.trim()) {
+      setUsernameError('请输入新用户名')
+      return
+    }
+    
+    if (newUsername.trim().length < 2) {
+      setUsernameError('用户名至少2个字符')
+      return
+    }
+
+    if (newUsername.trim() === user?.username) {
+      setUsernameError('新用户名与当前相同')
+      return
+    }
+
+    setUsernameLoading(true)
+    try {
+      const res = await fetch('/api/auth/change-username', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newUsername: newUsername.trim() })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setUser(prev => prev ? { ...prev, username: newUsername.trim() } : null)
+        setNewUsername('')
+        setUsernameOpen(false)
+      } else {
+        setUsernameError(data.error || '修改失败')
+      }
+    } catch (e) {
+      setUsernameError('网络错误')
+    } finally {
+      setUsernameLoading(false)
+    }
+  }
+
   const handleUseCard = async () => {
     setCardError('')
     setCardSuccess('')
@@ -279,11 +397,7 @@ export default function AccountPage() {
 
   const handleCreateEmby = async () => {
     if (!createEmbyPassword.trim()) {
-      setCreateEmbyResult({ success: false, message: '请输入 Emby 账号密码' })
-      return
-    }
-    if (createEmbyPassword.length < 4) {
-      setCreateEmbyResult({ success: false, message: '密码至少4位' })
+      setCreateEmbyResult({ success: false, message: '请输入网站密码' })
       return
     }
 
@@ -314,6 +428,7 @@ export default function AccountPage() {
 
   // 检查用户是否有会员资格
   const hasMembership = () => {
+    if (user?.role === 'admin') return true // 管理员永久有效
     if (user?.isWhitelist) return true
     if (user?.membershipExpiry) {
       return new Date(user.membershipExpiry) > new Date()
@@ -322,6 +437,7 @@ export default function AccountPage() {
   }
 
   const getMemberTypeLabel = () => {
+    if (user?.role === 'admin') return '管理员'
     if (user?.isWhitelist) return '永久会员'
     if (user?.membershipExpiry) {
       const expiry = new Date(user.membershipExpiry)
@@ -332,6 +448,10 @@ export default function AccountPage() {
   }
 
   const getMemberStatus = () => {
+    if (user?.role === 'admin') {
+      return { active: true, text: '永久有效' }
+    }
+    
     if (user?.isWhitelist) {
       return { active: true, text: '永久有效' }
     }
@@ -438,6 +558,17 @@ export default function AccountPage() {
               </Box>
             </Box>
 
+            <Button
+              variant='outlined'
+              startIcon={<i className='ri-edit-line' />}
+              onClick={() => {
+                setNewUsername(user?.username || '')
+                setUsernameOpen(true)
+              }}
+              sx={{ mt: 2, mr: 2 }}
+            >
+              修改用户名
+            </Button>
             <Button
               variant='outlined'
               startIcon={<i className='ri-lock-password-line' />}
@@ -672,32 +803,117 @@ export default function AccountPage() {
                   </Box>
                 </Box>
               </Box>
-            ) : hasMembership() ? (
-              // 有会员但没绑定 Emby，显示创建按钮
-              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                <Button
-                  variant='contained'
-                  startIcon={<i className='ri-add-circle-line' />}
-                  onClick={() => setCreateEmbyOpen(true)}
-                  sx={{
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-                  }}
-                >
-                  创建 Emby 账号
-                </Button>
-                <Button
-                  variant='outlined'
-                  startIcon={<i className='ri-link' />}
-                  onClick={() => setBindOpen(true)}
-                >
-                  绑定已有账号
-                </Button>
+            ) : (
+              // 未绑定 Emby，显示绑定/创建选项
+              <Box>
+                {!hasMembership() && (
+                  <Alert severity='info' icon={<i className='ri-information-line' />} sx={{ mb: 2 }}>
+                    使用卡密激活会员可自动创建 Emby 账号，或者您也可以绑定已有的 Emby 账号
+                  </Alert>
+                )}
+                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                  <Button
+                    variant='outlined'
+                    startIcon={<i className='ri-link' />}
+                    onClick={() => setBindOpen(true)}
+                  >
+                    绑定已有 Emby 账号
+                  </Button>
+                  {hasMembership() && (
+                    <Button
+                      variant='contained'
+                      startIcon={<i className='ri-add-circle-line' />}
+                      onClick={() => setCreateEmbyOpen(true)}
+                      sx={{
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                      }}
+                    >
+                      创建新 Emby 账号
+                    </Button>
+                  )}
+                </Box>
+              </Box>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Telegram 绑定卡片 */}
+        <Card sx={{ gridColumn: { md: '1 / -1' } }}>
+          <CardContent>
+            <Typography variant='h6' fontWeight={600} gutterBottom>
+              <i className='ri-telegram-line' style={{ marginRight: 8 }} />
+              Telegram 绑定
+            </Typography>
+            <Typography variant='body2' color='text.secondary' sx={{ mb: 3 }}>
+              绑定 Telegram 后可使用机器人签到、查看求片状态、接收通知等功能
+            </Typography>
+
+            {telegramBound ? (
+              <Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2, bgcolor: 'success.lighter', borderRadius: 2, mb: 2 }}>
+                  <i className='ri-checkbox-circle-line text-2xl' style={{ color: 'var(--mui-palette-success-main)' }} />
+                  <Box sx={{ flex: 1 }}>
+                    <Typography fontWeight={600}>已绑定</Typography>
+                    <Typography variant='body2' color='text.secondary'>
+                      Telegram: @{telegramUsername || '未知'}
+                    </Typography>
+                  </Box>
+                  <Button
+                    variant='outlined'
+                    color='error'
+                    size='small'
+                    onClick={handleUnbindTelegram}
+                  >
+                    解除绑定
+                  </Button>
+                </Box>
               </Box>
             ) : (
-              // 没有会员，提示激活
-              <Alert severity='info' icon={<i className='ri-information-line' />}>
-                请先使用卡密激活会员，激活后将自动创建 Emby 账号
-              </Alert>
+              <Box>
+                {telegramBindCode && telegramCountdown > 0 ? (
+                  <Box sx={{ textAlign: 'center', p: 3, bgcolor: 'primary.lighter', borderRadius: 2 }}>
+                    <Typography variant='body2' color='text.secondary' sx={{ mb: 2 }}>
+                      在 Telegram 中发送以下命令给机器人：
+                    </Typography>
+                    <Box sx={{ 
+                      p: 2, 
+                      bgcolor: 'background.paper', 
+                      borderRadius: 1, 
+                      fontFamily: 'monospace',
+                      fontSize: '1.2rem',
+                      fontWeight: 700,
+                      mb: 2
+                    }}>
+                      /bind {telegramBindCode}
+                    </Box>
+                    <Typography variant='caption' color='text.secondary'>
+                      绑定码将在 {telegramCountdown} 秒后过期
+                    </Typography>
+                    <LinearProgress 
+                      variant='determinate' 
+                      value={(telegramCountdown / 300) * 100} 
+                      sx={{ mt: 1, borderRadius: 1 }}
+                    />
+                  </Box>
+                ) : (
+                  <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <Button
+                      variant='contained'
+                      startIcon={<i className='ri-key-line' />}
+                      onClick={handleGetTelegramCode}
+                      disabled={telegramLoading}
+                      sx={{
+                        background: 'linear-gradient(135deg, #0088cc 0%, #00a8e8 100%)'
+                      }}
+                    >
+                      {telegramLoading ? '生成中...' : '获取绑定码'}
+                    </Button>
+                    <Typography variant='body2' color='text.secondary'>
+                      点击获取绑定码，然后在 Telegram 机器人中完成绑定
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
             )}
           </CardContent>
         </Card>
@@ -792,6 +1008,40 @@ export default function AccountPage() {
             disabled={bindLoading || !embyUsername || !embyPassword}
           >
             {bindLoading ? '绑定中...' : '确认绑定'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 修改用户名弹窗 */}
+      <Dialog open={usernameOpen} onClose={() => setUsernameOpen(false)} maxWidth='xs' fullWidth>
+        <DialogTitle>修改用户名</DialogTitle>
+        <DialogContent>
+          <Typography variant='body2' color='text.secondary' sx={{ mb: 2, mt: 1 }}>
+            请输入新的用户名
+          </Typography>
+          
+          {usernameError && (
+            <Alert severity='error' sx={{ mb: 2 }}>
+              {usernameError}
+            </Alert>
+          )}
+
+          <TextField
+            fullWidth
+            label='新用户名'
+            value={newUsername}
+            onChange={e => setNewUsername(e.target.value)}
+            placeholder='请输入新用户名'
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setUsernameOpen(false)}>取消</Button>
+          <Button
+            variant='contained'
+            onClick={handleChangeUsername}
+            disabled={usernameLoading || !newUsername.trim()}
+          >
+            {usernameLoading ? '提交中...' : '确认修改'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -976,12 +1226,12 @@ export default function AccountPage() {
 
           <TextField
             fullWidth
-            label='设置 Emby 密码'
+            label='输入网站密码确认'
             type='password'
-            placeholder='请输入 Emby 账号密码'
+            placeholder='请输入您的网站登录密码'
             value={createEmbyPassword}
             onChange={e => setCreateEmbyPassword(e.target.value)}
-            helperText='密码至少4位'
+            helperText='Emby 密码将与您的网站密码保持一致'
           />
         </DialogContent>
         <DialogActions>

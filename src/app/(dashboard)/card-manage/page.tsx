@@ -36,12 +36,14 @@ import CustomAvatar from '@core/components/mui/Avatar'
 interface CardItem {
   id: string
   code: string
-  type: 'day' | 'month' | 'quarter' | 'year' | 'whitelist'
+  type: 'day' | 'month' | 'quarter' | 'year' | 'whitelist' | 'custom'
   status: 'unused' | 'used'
   createdAt: string
   usedAt?: string
   usedBy?: string
   usedByUsername?: string
+  customStartDate?: string
+  customEndDate?: string
 }
 
 interface Stats {
@@ -56,7 +58,8 @@ const typeNames: Record<string, string> = {
   month: '月卡',
   quarter: '季卡',
   year: '年卡',
-  whitelist: '白名单'
+  whitelist: '白名单',
+  custom: '自定义'
 }
 
 const typeColors: Record<string, 'default' | 'primary' | 'success' | 'warning' | 'error' | 'info'> = {
@@ -64,7 +67,8 @@ const typeColors: Record<string, 'default' | 'primary' | 'success' | 'warning' |
   month: 'primary',
   quarter: 'success',
   year: 'warning',
-  whitelist: 'error'
+  whitelist: 'error',
+  custom: 'info'
 }
 
 export default function CardManagePage() {
@@ -78,6 +82,8 @@ export default function CardManagePage() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [activeTab, setActiveTab] = useState(0) // 0: 未使用, 1: 已使用
   const [copySnackbar, setCopySnackbar] = useState(false)
+  const [customStartDate, setCustomStartDate] = useState('')
+  const [customEndDate, setCustomEndDate] = useState('')
 
   useEffect(() => {
     loadCards()
@@ -99,17 +105,34 @@ export default function CardManagePage() {
   }
 
   const handleCreate = async () => {
+    if (createType === 'custom') {
+      if (!customStartDate || !customEndDate) {
+        setMessage({ type: 'error', text: '请选择开通日期和到期日期' })
+        return
+      }
+      if (new Date(customEndDate) <= new Date(customStartDate)) {
+        setMessage({ type: 'error', text: '到期日期必须晚于开通日期' })
+        return
+      }
+    }
     setCreateLoading(true)
     try {
+      const body: any = { type: createType, count: createCount }
+      if (createType === 'custom') {
+        body.customStartDate = customStartDate
+        body.customEndDate = customEndDate
+      }
       const res = await fetch('/api/admin/cards', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: createType, count: createCount })
+        body: JSON.stringify(body)
       })
       const data = await res.json()
       if (res.ok) {
         setMessage({ type: 'success', text: data.message })
         setCreateOpen(false)
+        setCustomStartDate('')
+        setCustomEndDate('')
         loadCards()
       } else {
         setMessage({ type: 'error', text: data.error })
@@ -315,7 +338,9 @@ export default function CardManagePage() {
                     </TableCell>
                     <TableCell>
                       <Chip 
-                        label={typeNames[card.type]} 
+                        label={card.type === 'custom' && card.customStartDate && card.customEndDate
+                          ? `${card.customStartDate} ~ ${card.customEndDate}`
+                          : typeNames[card.type]} 
                         size='small' 
                         color={typeColors[card.type]}
                       />
@@ -353,7 +378,7 @@ export default function CardManagePage() {
       </Card>
 
       {/* 生成卡密弹窗 */}
-      <Dialog open={createOpen} onClose={() => setCreateOpen(false)} maxWidth='xs' fullWidth>
+      <Dialog open={createOpen} onClose={() => setCreateOpen(false)} maxWidth='sm' fullWidth>
         <DialogTitle>生成卡密</DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -362,15 +387,48 @@ export default function CardManagePage() {
               <Select
                 value={createType}
                 label='卡密类型'
-                onChange={e => setCreateType(e.target.value)}
+                onChange={e => {
+                  setCreateType(e.target.value)
+                  if (e.target.value !== 'custom') {
+                    setCustomStartDate('')
+                    setCustomEndDate('')
+                  }
+                }}
               >
                 <MenuItem value='day'>天卡 (1天)</MenuItem>
                 <MenuItem value='month'>月卡 (30天)</MenuItem>
                 <MenuItem value='quarter'>季卡 (90天)</MenuItem>
                 <MenuItem value='year'>年卡 (365天)</MenuItem>
                 <MenuItem value='whitelist'>白名单 (永久)</MenuItem>
+                <MenuItem value='custom'>自定义时间</MenuItem>
               </Select>
             </FormControl>
+            
+            {createType === 'custom' && (
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <TextField
+                  fullWidth
+                  type='date'
+                  label='开通日期'
+                  value={customStartDate}
+                  onChange={e => setCustomStartDate(e.target.value)}
+                  slotProps={{
+                    inputLabel: { shrink: true }
+                  }}
+                />
+                <TextField
+                  fullWidth
+                  type='date'
+                  label='到期日期'
+                  value={customEndDate}
+                  onChange={e => setCustomEndDate(e.target.value)}
+                  slotProps={{
+                    inputLabel: { shrink: true }
+                  }}
+                />
+              </Box>
+            )}
+            
             <TextField
               fullWidth
               type='number'

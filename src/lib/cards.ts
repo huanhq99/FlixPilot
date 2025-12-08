@@ -5,8 +5,8 @@ import crypto from 'crypto'
 const DATA_DIR = process.env.DATA_DIR || './data'
 const CARDS_FILE = path.join(DATA_DIR, 'cards.json')
 
-// 卡密类型：天卡(1天)、月卡(30天)、季卡(90天)、年卡(365天)、白名单(永久)
-export type CardType = 'day' | 'month' | 'quarter' | 'year' | 'whitelist'
+// 卡密类型：天卡(1天)、月卡(30天)、季卡(90天)、年卡(365天)、白名单(永久)、自定义
+export type CardType = 'day' | 'month' | 'quarter' | 'year' | 'whitelist' | 'custom'
 
 // 卡密类型对应的天数
 export const CARD_DAYS: Record<CardType, number> = {
@@ -14,7 +14,8 @@ export const CARD_DAYS: Record<CardType, number> = {
   month: 30,
   quarter: 90,
   year: 365,
-  whitelist: -1  // -1 表示永久
+  whitelist: -1,  // -1 表示永久
+  custom: 0       // 自定义时间
 }
 
 // 卡密类型名称
@@ -23,7 +24,8 @@ export const CARD_TYPE_NAMES: Record<CardType, string> = {
   month: '月卡',
   quarter: '季卡',
   year: '年卡',
-  whitelist: '白名单'
+  whitelist: '白名单',
+  custom: '自定义'
 }
 
 export interface Card {
@@ -35,6 +37,9 @@ export interface Card {
   usedAt?: string        // 使用时间
   usedBy?: string        // 使用者用户ID
   usedByUsername?: string // 使用者用户名
+  // 自定义时间字段
+  customStartDate?: string  // 自定义开通日期
+  customEndDate?: string    // 自定义到期日期
 }
 
 interface CardsData {
@@ -79,7 +84,12 @@ export function saveCardsData(data: CardsData): void {
 }
 
 // 创建卡密
-export function createCard(type: CardType, count: number = 1): Card[] {
+export function createCard(
+  type: CardType, 
+  count: number = 1,
+  customStartDate?: string,
+  customEndDate?: string
+): Card[] {
   const data = loadCardsData()
   const newCards: Card[] = []
   
@@ -91,6 +101,13 @@ export function createCard(type: CardType, count: number = 1): Card[] {
       status: 'unused',
       createdAt: new Date().toISOString()
     }
+    
+    // 如果是自定义类型，添加自定义时间
+    if (type === 'custom' && customStartDate && customEndDate) {
+      card.customStartDate = customStartDate
+      card.customEndDate = customEndDate
+    }
+    
     newCards.push(card)
     data.cards.push(card)
   }

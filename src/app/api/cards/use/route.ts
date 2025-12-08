@@ -90,8 +90,31 @@ export async function POST(request: NextRequest) {
       // 白名单，永久会员
       users[userIndex].isWhitelist = true
       users[userIndex].membershipExpiry = undefined
+    } else if (cardType === 'custom' && card.customStartDate && card.customEndDate) {
+      // 自定义时间卡密
+      const now = new Date()
+      const customStart = new Date(card.customStartDate)
+      const customEnd = new Date(card.customEndDate)
+      
+      // 如果自定义开始时间在未来，则从开始时间算起
+      // 否则从当前时间算起，但保持总时长不变
+      if (customStart > now) {
+        // 开始时间在未来，直接使用自定义的结束时间
+        users[userIndex].membershipExpiry = customEnd.toISOString()
+      } else {
+        // 开始时间已过，从现在开始，加上剩余时长
+        const remainingMs = customEnd.getTime() - Math.max(now.getTime(), customStart.getTime())
+        if (remainingMs > 0) {
+          const expiryDate = new Date(now.getTime() + remainingMs)
+          users[userIndex].membershipExpiry = expiryDate.toISOString()
+        } else {
+          // 已过期的自定义卡密
+          return NextResponse.json({ error: '该卡密的有效期已过' }, { status: 400 })
+        }
+      }
+      users[userIndex].isWhitelist = false
     } else {
-      // 计算新的到期时间
+      // 普通卡密，计算新的到期时间
       const now = new Date()
       let expiryDate: Date
       
@@ -114,13 +137,15 @@ export async function POST(request: NextRequest) {
     saveUsers(users)
     
     const typeName = CARD_TYPE_NAMES[cardType]
-    const expiryStr = new Date(users[userIndex].membershipExpiry!).toLocaleString('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
+    const expiryStr = users[userIndex].membershipExpiry 
+      ? new Date(users[userIndex].membershipExpiry!).toLocaleString('zh-CN', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+      : '永久'
     const message = days === -1 
       ? `🎉 恭喜！您已成为永久会员（白名单）${embyMessage}`
       : `🎉 恭喜！${typeName}激活成功，会员有效期至 ${expiryStr}${embyMessage}`

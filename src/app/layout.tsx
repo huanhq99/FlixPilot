@@ -18,7 +18,11 @@ import '@assets/iconify-icons/generated-icons.css'
 
 export const metadata = {
   title: 'FlixPilot - 私人流媒体管理中心',
-  description: '您的私人流媒体管理中心'
+  description: '您的私人流媒体管理中心',
+  icons: {
+    icon: '/logo.png',
+    apple: '/logo.png',
+  }
 }
 
 const RootLayout = async (props: ChildrenType) => {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { verifyToken, getUser, loadUsers, saveUsers } from '@/lib/auth'
+import { verifyToken, getUser, loadUsers, saveUsers, verifyPassword } from '@/lib/auth'
 import fs from 'fs/promises'
 import path from 'path'
 
@@ -119,8 +119,13 @@ export async function POST(request: NextRequest) {
 
     const { password } = await request.json()
 
-    if (!password || password.length < 4) {
-      return NextResponse.json({ error: '请设置密码（至少4位）' }, { status: 400 })
+    if (!password) {
+      return NextResponse.json({ error: '请输入网站密码' }, { status: 400 })
+    }
+
+    // 验证用户密码是否正确
+    if (!verifyPassword(password, user.passwordHash)) {
+      return NextResponse.json({ error: '密码错误' }, { status: 400 })
     }
 
     // 检查是否已有 Emby 账号

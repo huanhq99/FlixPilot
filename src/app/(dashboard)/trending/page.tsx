@@ -7,6 +7,7 @@ import Typography from '@mui/material/Typography'
 import Skeleton from '@mui/material/Skeleton'
 import Box from '@mui/material/Box'
 import IconButton from '@mui/material/IconButton'
+import MembershipGuard from '@/components/MembershipGuard'
 
 interface MediaItem {
   id: number
@@ -284,6 +285,7 @@ export default function TrendingPage() {
   )
 
   return (
+    <MembershipGuard>
     <Box>
       {/* 页面标题 */}
       <Box sx={{ mb: 4 }}>
@@ -301,5 +303,6 @@ export default function TrendingPage() {
         <SectionRow key={section.id} section={section} />
       ))}
     </Box>
+    </MembershipGuard>
   )
 }
