@@ -96,7 +96,8 @@ function saveSyncState(state: SyncState) {
   fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2))
 }
 
-function extractUserId(content: Record<string, unknown>): string | null {
+// 从 X-Emby-Authorization 头提取 UserId
+function extractUserIdFromHeader(content: Record<string, unknown>): string | null {
   try {
     const header = content.header as Record<string, { values?: string[] }> | undefined
     if (!header) return null
@@ -113,6 +114,66 @@ function extractUserId(content: Record<string, unknown>): string | null {
   } catch {
     return null
   }
+}
+
+// 从 requestURI 提取 api_key
+function extractApiKey(content: Record<string, unknown>): string | null {
+  try {
+    const requestURI = content.requestURI as string
+    if (!requestURI) return null
+    
+    const match = requestURI.match(/api_key=([a-fA-F0-9]+)/)
+    return match ? match[1] : null
+  } catch {
+    return null
+  }
+}
+
+// api_key -> userId 缓存（避免重复查询 Emby）
+const apiKeyToUserIdCache: Map<string, string | null> = new Map()
+
+// 通过 api_key 查询 Emby 获取 UserId
+async function getUserIdByApiKey(apiKey: string, embyConfig: { serverUrl: string; apiKey: string }): Promise<string | null> {
+  // 检查缓存
+  if (apiKeyToUserIdCache.has(apiKey)) {
+    return apiKeyToUserIdCache.get(apiKey) || null
+  }
+  
+  try {
+    // 调用 Emby API 获取当前用户信息
+    const res = await fetch(`${embyConfig.serverUrl}/emby/Users/Me?api_key=${apiKey}`, {
+      headers: { 'X-Emby-Token': embyConfig.apiKey }
+    })
+    
+    if (res.ok) {
+      const user = await res.json()
+      const userId = user.Id || null
+      apiKeyToUserIdCache.set(apiKey, userId)
+      return userId
+    }
+  } catch (e) {
+    console.error('[GoEdge Sync] Failed to get user by api_key:', e)
+  }
+  
+  apiKeyToUserIdCache.set(apiKey, null)
+  return null
+}
+
+// 加载 Emby 配置
+function loadEmbyConfig(): { serverUrl: string; apiKey: string } | null {
+  try {
+    const data = fs.readFileSync(CONFIG_FILE, 'utf-8')
+    const config = JSON.parse(data)
+    if (config.emby && config.emby[0]) {
+      return {
+        serverUrl: config.emby[0].serverUrl,
+        apiKey: config.emby[0].apiKey
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return null
 }
 
 async function syncFromGoEdge(config: GoEdgeConfig, fullSync: boolean = false): Promise<{
@@ -186,6 +247,9 @@ async function syncFromGoEdge(config: GoEdgeConfig, fullSync: boolean = false): 
       tablesProcessed++
       let maxId = tableState
       
+      // 加载 Emby 配置用于 api_key 查询
+      const embyConfig = loadEmbyConfig()
+      
       for (const log of logs) {
         maxId = Math.max(maxId, log.id)
         
@@ -196,7 +260,17 @@ async function syncFromGoEdge(config: GoEdgeConfig, fullSync: boolean = false): 
           continue
         }
         
-        const userId = extractUserId(content)
+        // 优先从 X-Emby-Authorization 头提取 UserId
+        let userId = extractUserIdFromHeader(content)
+        
+        // 如果没有，尝试从 api_key 查询
+        if (!userId && embyConfig) {
+          const apiKey = extractApiKey(content)
+          if (apiKey) {
+            userId = await getUserIdByApiKey(apiKey, embyConfig)
+          }
+        }
+        
         if (!userId) continue
         
         const bytesSent = (content.bytesSent as number) || (content.bodyBytesSent as number) || 0
