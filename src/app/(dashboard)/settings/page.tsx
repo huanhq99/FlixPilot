@@ -1821,7 +1821,7 @@ export default function SettingsPage() {
                     </Grid>
 
                     <Divider sx={{ my: 3 }} />
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
                       <Button 
                         variant="outlined" 
                         onClick={async () => {
@@ -1848,7 +1848,43 @@ export default function SettingsPage() {
                         disabled={goedgeSyncing}
                       >
                         {goedgeSyncing ? <CircularProgress size={20} sx={{ mr: 1 }} /> : null}
-                        立即同步
+                        增量同步
+                      </Button>
+                      <Button 
+                        variant="outlined"
+                        color="warning"
+                        onClick={async () => {
+                          if (!confirm('完整同步将重新统计所有历史日志，可能需要较长时间，确定继续？')) {
+                            return
+                          }
+                          setGoedgeSyncing(true)
+                          try {
+                            const res = await fetch('/api/traffic/sync', { 
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ fullSync: true })
+                            })
+                            const data = await res.json()
+                            if (res.ok) {
+                              setMessage({ type: 'success', text: `完整同步成功！处理 ${data.tablesProcessed || 0} 个表，${data.logsProcessed} 条日志，更新 ${data.usersUpdated} 个用户` })
+                              // 刷新状态
+                              const statusRes = await fetch('/api/traffic/sync')
+                              if (statusRes.ok) {
+                                const status = await statusRes.json()
+                                setGoedgeSyncStatus(status.state)
+                              }
+                            } else {
+                              setMessage({ type: 'error', text: data.error || '同步失败' })
+                            }
+                          } catch {
+                            setMessage({ type: 'error', text: '同步请求失败' })
+                          }
+                          setGoedgeSyncing(false)
+                        }}
+                        disabled={goedgeSyncing}
+                      >
+                        {goedgeSyncing ? <CircularProgress size={20} sx={{ mr: 1 }} /> : null}
+                        完整同步（重新统计所有历史）
                       </Button>
                       {goedgeSyncStatus?.lastSyncTime && (
                         <Typography variant="body2" color="text.secondary">

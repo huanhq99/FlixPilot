@@ -115,22 +115,13 @@ function extractUserId(content: Record<string, unknown>): string | null {
   }
 }
 
-async function syncFromGoEdge(config: GoEdgeConfig): Promise<{
+async function syncFromGoEdge(config: GoEdgeConfig, fullSync: boolean = false): Promise<{
   success: boolean
   usersUpdated: number
   logsProcessed: number
+  tablesProcessed?: number
   error?: string
 }> {
-  const today = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-  const tableName = `edgeHTTPAccessLogs_${today}`
-  
-  let state = loadSyncState()
-  
-  // 如果日期变了，重置 lastId
-  if (state.date !== today) {
-    state = { lastId: 0, date: today, lastSyncTime: null }
-  }
-  
   let connection: mysql.Connection | null = null
   
   try {
@@ -142,68 +133,95 @@ async function syncFromGoEdge(config: GoEdgeConfig): Promise<{
       database: config.mysql.database,
     })
     
-    // 检查表是否存在
-    const [tables] = await connection.execute(
-      `SHOW TABLES LIKE '${tableName}'`
+    // 获取所有日志表
+    const [tableRows] = await connection.execute(
+      `SHOW TABLES LIKE 'edgeHTTPAccessLogs_%'`
     )
     
-    if (!Array.isArray(tables) || tables.length === 0) {
-      return { success: true, usersUpdated: 0, logsProcessed: 0, error: `Table ${tableName} not found` }
+    const tables = (tableRows as Array<Record<string, string>>)
+      .map(row => Object.values(row)[0])
+      .sort() // 按日期排序
+    
+    if (tables.length === 0) {
+      return { success: true, usersUpdated: 0, logsProcessed: 0, error: 'No log tables found' }
     }
     
-    // 查询视频请求日志
-    const [rows] = await connection.execute(
-      `SELECT id, content
-       FROM ${tableName}
-       WHERE id > ?
-         AND domain = ?
-         AND JSON_EXTRACT(content, '$.requestPath') LIKE '%/videos/%'
-         AND JSON_EXTRACT(content, '$.bytesSent') > 0
-       ORDER BY id ASC
-       LIMIT 5000`,
-      [state.lastId, config.embyDomain]
-    )
+    let state = loadSyncState()
+    const trafficData = loadTrafficData()
+    const now = new Date()
+    const nowISO = now.toISOString()
     
-    const logs = rows as Array<{ id: number; content: string | Record<string, unknown> }>
+    let totalLogsProcessed = 0
+    let tablesProcessed = 0
+    const allTrafficByUser: Record<string, { bytes: number; month: string }[]> = {}
     
-    if (logs.length === 0) {
-      state.lastSyncTime = new Date().toISOString()
-      saveSyncState(state)
-      return { success: true, usersUpdated: 0, logsProcessed: 0 }
-    }
+    // 如果是完整同步，处理所有表；否则只处理今天的表
+    const tablesToProcess = fullSync ? tables : tables.slice(-1)
     
-    // 统计流量
-    const trafficByUser: Record<string, number> = {}
-    let maxId = state.lastId
-    
-    for (const log of logs) {
-      maxId = Math.max(maxId, log.id)
+    for (const tableName of tablesToProcess) {
+      // 从表名提取日期 edgeHTTPAccessLogs_20251208 -> 2025-12
+      const dateStr = tableName.replace('edgeHTTPAccessLogs_', '')
+      const month = `${dateStr.slice(0, 4)}-${dateStr.slice(4, 6)}`
       
-      let content: Record<string, unknown>
-      try {
-        content = typeof log.content === 'string' ? JSON.parse(log.content) : log.content
-      } catch {
-        continue
+      // 获取该表的同步状态
+      const tableState = fullSync ? 0 : (state.date === dateStr ? state.lastId : 0)
+      
+      // 查询视频请求日志
+      const [rows] = await connection.execute(
+        `SELECT id, content
+         FROM ${tableName}
+         WHERE id > ?
+           AND domain = ?
+           AND JSON_EXTRACT(content, '$.requestPath') LIKE '%/videos/%'
+           AND JSON_EXTRACT(content, '$.bytesSent') > 0
+         ORDER BY id ASC
+         LIMIT 50000`,
+        [tableState, config.embyDomain]
+      )
+      
+      const logs = rows as Array<{ id: number; content: string | Record<string, unknown> }>
+      
+      if (logs.length === 0) continue
+      
+      tablesProcessed++
+      let maxId = tableState
+      
+      for (const log of logs) {
+        maxId = Math.max(maxId, log.id)
+        
+        let content: Record<string, unknown>
+        try {
+          content = typeof log.content === 'string' ? JSON.parse(log.content) : log.content
+        } catch {
+          continue
+        }
+        
+        const userId = extractUserId(content)
+        if (!userId) continue
+        
+        const bytesSent = (content.bytesSent as number) || (content.bodyBytesSent as number) || 0
+        if (bytesSent > 0) {
+          if (!allTrafficByUser[userId]) {
+            allTrafficByUser[userId] = []
+          }
+          allTrafficByUser[userId].push({ bytes: bytesSent, month })
+        }
       }
       
-      const userId = extractUserId(content)
-      if (!userId) continue
+      totalLogsProcessed += logs.length
       
-      const bytesSent = (content.bytesSent as number) || (content.bodyBytesSent as number) || 0
-      if (bytesSent > 0) {
-        trafficByUser[userId] = (trafficByUser[userId] || 0) + bytesSent
+      // 更新该表的状态（仅用于增量同步）
+      if (!fullSync && tableName === tables[tables.length - 1]) {
+        state.lastId = maxId
+        state.date = dateStr
       }
     }
     
     // 更新流量数据
-    const trafficData = loadTrafficData()
-    const now = new Date()
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-    const nowISO = now.toISOString()
     
-    for (const [userId, bytes] of Object.entries(trafficByUser)) {
+    for (const [userId, trafficList] of Object.entries(allTrafficByUser)) {
       if (!trafficData.users[userId]) {
-        // 新用户，初始化数据结构
         trafficData.users[userId] = {
           totalDownloadBytes: 0,
           totalUploadBytes: 0,
@@ -217,24 +235,29 @@ async function syncFromGoEdge(config: GoEdgeConfig): Promise<{
       
       const userData = trafficData.users[userId]
       
-      // 检查是否需要切换月份
-      if (userData.currentMonth !== currentMonth) {
-        // 保存上个月的数据到历史
-        if (userData.currentMonth && (userData.monthlyDownloadBytes > 0 || userData.monthlyUploadBytes > 0)) {
-          userData.history[userData.currentMonth] = {
-            downloadBytes: userData.monthlyDownloadBytes,
-            uploadBytes: userData.monthlyUploadBytes
-          }
-        }
-        // 重置当月计数
-        userData.currentMonth = currentMonth
+      // 如果是完整同步，需要重置数据
+      if (fullSync) {
+        userData.totalDownloadBytes = 0
         userData.monthlyDownloadBytes = 0
-        userData.monthlyUploadBytes = 0
+        userData.history = {}
       }
       
-      // 累加流量
-      userData.totalDownloadBytes += bytes
-      userData.monthlyDownloadBytes += bytes
+      // 按月累加流量
+      for (const { bytes, month } of trafficList) {
+        userData.totalDownloadBytes += bytes
+        
+        if (month === currentMonth) {
+          userData.monthlyDownloadBytes += bytes
+        } else {
+          // 历史月份
+          if (!userData.history[month]) {
+            userData.history[month] = { downloadBytes: 0, uploadBytes: 0 }
+          }
+          userData.history[month].downloadBytes += bytes
+        }
+      }
+      
+      userData.currentMonth = currentMonth
       userData.lastUpdated = nowISO
     }
     
@@ -242,14 +265,14 @@ async function syncFromGoEdge(config: GoEdgeConfig): Promise<{
     saveTrafficData(trafficData)
     
     // 保存状态
-    state.lastId = maxId
     state.lastSyncTime = nowISO
     saveSyncState(state)
     
     return {
       success: true,
-      usersUpdated: Object.keys(trafficByUser).length,
-      logsProcessed: logs.length
+      usersUpdated: Object.keys(allTrafficByUser).length,
+      logsProcessed: totalLogsProcessed,
+      tablesProcessed
     }
     
   } catch (error) {
@@ -261,7 +284,6 @@ async function syncFromGoEdge(config: GoEdgeConfig): Promise<{
     }
   }
 }
-
 // 全局定时器
 let syncInterval: NodeJS.Timeout | null = null
 
@@ -310,7 +332,7 @@ async function checkAndAutoSync(): Promise<{ synced: boolean; result?: Awaited<R
 }
 
 // POST: 手动触发同步
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
     const config = loadConfig()
     
@@ -318,7 +340,16 @@ export async function POST() {
       return NextResponse.json({ error: 'GoEdge sync not enabled' }, { status: 400 })
     }
     
-    const result = await syncFromGoEdge(config.goedge)
+    // 检查是否是完整同步请求
+    let fullSync = false
+    try {
+      const body = await request.json()
+      fullSync = body.fullSync === true
+    } catch {
+      // 没有 body 或解析失败，使用默认值
+    }
+    
+    const result = await syncFromGoEdge(config.goedge, fullSync)
     
     return NextResponse.json(result)
   } catch (error) {
