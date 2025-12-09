@@ -166,17 +166,17 @@ async function syncFromGoEdge(config: GoEdgeConfig, fullSync: boolean = false): 
       // 获取该表的同步状态
       const tableState = fullSync ? 0 : (state.date === dateStr ? state.lastId : 0)
       
-      // 查询视频请求日志
+      // 查询视频请求日志（同时匹配带端口和不带端口的域名）
       const [rows] = await connection.execute(
         `SELECT id, content
          FROM ${tableName}
          WHERE id > ?
-           AND domain = ?
+           AND (domain = ? OR domain = ? OR domain = ?)
            AND JSON_EXTRACT(content, '$.requestPath') LIKE '%/videos/%'
            AND JSON_EXTRACT(content, '$.bytesSent') > 0
          ORDER BY id ASC
          LIMIT 50000`,
-        [tableState, config.embyDomain]
+        [tableState, config.embyDomain, `${config.embyDomain}:443`, `${config.embyDomain}:80`]
       )
       
       const logs = rows as Array<{ id: number; content: string | Record<string, unknown> }>
