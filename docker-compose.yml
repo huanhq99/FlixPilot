@@ -1,6 +1,6 @@
 services:
   flixpilot:
-    image: ghcr.io/huanhq99/flixpilot:latest
+    image: huanhq99/flixpilot:latest
     container_name: flixpilot
     restart: unless-stopped
     ports:
@@ -16,15 +16,15 @@ services:
       - LICENSE_SERVER=http://54.39.102.63:3100
       # 可选：设置强 JWT 密钥（生产环境建议设置）
       # - JWT_SECRET=your-super-secret-key-here
-    # 配置说明：
-    # 所有配置都在 ./data/config.json 文件中管理
-    # 包括：TMDB、Emby、MoviePilot、Telegram Bot、Gemini AI 等
-    # 详见 ./data/config.example.json 示例文件
+      # 配置说明：
+      # 所有配置都在 ./data/config.json 文件中管理
+      # 包括：TMDB、Emby、MoviePilot、Telegram Bot、Gemini AI 等
+      # 详见 ./data/config.example.json 示例文件
     depends_on:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/auth/login"]
+      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:3005/api/auth/login" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -38,7 +38,7 @@ services:
       - redis_data:/data
     command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5

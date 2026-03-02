@@ -1,44 +1,10 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+# Ignore everything
+*
 
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-# Data directory - 包含用户敏感配置，绝不提交！
-data/*
-!data/.gitkeep
+# Except these
+!.gitignore
+!docker-compose.yml
+!README.md
+!PROJECT_OVERVIEW.md
 !data/config.example.json
-
-# Next.js
-.next/
-out/
-
-# Environment files
-.env
-.env.local
-.env.production
-.env*.local
-
-# Build info
-tsconfig.tsbuildinfo
-
-backend/data
+!docs/
