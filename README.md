@@ -1,4 +1,4 @@
-# 🎬 FlixPilot `v2.2.5.025`
+# 🎬 FlixPilot `v2.2.5.026`
 
 <p align="center">
   <strong>专业的 Emby / Jellyfin 媒体服务器管理与运维中枢</strong>
