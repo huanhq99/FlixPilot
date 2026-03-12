@@ -1,4 +1,5 @@
 # 🎬 FlixPilot `v2.2.5.026`
+[![Telegram](https://img.shields.io/badge/TELEGRAM-加入交流群-blue?style=for-the-badge&logo=telegram&labelColor=4b4b4b)](https://t.me/EmbyCockpit)
 
 <p align="center">
   <strong>专业的 Emby / Jellyfin 媒体服务器管理与运维中枢</strong>
