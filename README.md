@@ -1,15 +1,11 @@
-# 🎬 FlixPilot `v2.2.5.026`
-[![Telegram](https://img.shields.io/badge/TELEGRAM-加入交流群-blue?style=for-the-badge&logo=telegram&labelColor=4b4b4b)](https://t.me/EmbyCockpit)
+# 🎬 FlixPilot - 你的全能 Emby / 流媒体管理中枢
 
 <p align="center">
-  <strong>专业的 Emby / Jellyfin 媒体服务器管理与运维中枢</strong>
-</p>
-
-<p align="center">
-  <img src="https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js" alt="Next.js" />
-  <img src="https://img.shields.io/badge/MUI-6-blue?style=for-the-badge&logo=mui" alt="MUI" />
-  <img src="https://img.shields.io/badge/Docker-Supported-blue?style=for-the-badge&logo=docker" alt="Docker" />
-  <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License" />
+  <a href="https://github.com/huanhq99/FlixPilot"><img src="https://img.shields.io/github/stars/huanhq99/FlixPilot?style=flat-square&logo=github&label=stars&color=blue" alt="stars"></a>
+  <a href="https://github.com/huanhq99/FlixPilot"><img src="https://img.shields.io/github/forks/huanhq99/FlixPilot?style=flat-square&logo=github&label=forks&color=blue" alt="forks"></a>
+  <a href="https://github.com/huanhq99/FlixPilot/blob/main/LICENSE"><img src="https://img.shields.io/github/license/huanhq99/FlixPilot?style=flat-square&color=gray" alt="license"></a>
+  <a href="https://hub.docker.com/r/huanhq99/flixpilot"><img src="https://img.shields.io/docker/pulls/huanhq99/flixpilot?style=flat-square&logo=docker&color=blue" alt="docker pulls"></a>
+  <a href="https://t.me/EmbyCockpit"><img src="https://img.shields.io/badge/Telegram-加入交流群-0088cc?style=flat-square&logo=telegram" alt="Telegram"></a>
 </p>
 
 ---
