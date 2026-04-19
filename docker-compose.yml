@@ -12,10 +12,10 @@ services:
       - DATA_DIR=/app/data
       - TZ=Asia/Shanghai
       - REDIS_URL=redis://redis:6379
-      # 授权服务器地址（用于功能授权验证）
-      - LICENSE_SERVER=http://54.39.102.63:3100
-      # 可选：设置强 JWT 密钥（生产环境建议设置）
-      # - JWT_SECRET=your-super-secret-key-here
+      # 可选：设置强密钥（生产环境建议设置，未设置时自动生成到 data/*.txt）
+      # - JWT_SECRET=your-jwt-secret
+      # - CRON_SECRET=your-cron-secret
+      # - MASTER_KEY=your-master-key
       # 配置说明：
       # 所有配置都在 ./data/config.json 文件中管理
       # 包括：TMDB、Emby、MoviePilot、Telegram Bot、Gemini AI 等
@@ -24,11 +24,16 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:3005/api/auth/login" ]
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3005/api/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 45s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   redis:
     image: redis:7-alpine
@@ -42,6 +47,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   redis_data:
