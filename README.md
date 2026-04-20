@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <strong>Emby  媒体服务器全功能管理平台</strong><br/>
+  <strong>Emby / Jellyfin 媒体服务器全功能管理平台</strong><br/>
   前后端一体 · Next.js 15 + React 18 + MUI 6 + TypeScript
 </p>
 
@@ -22,7 +22,7 @@
 
 ## 🚀 项目简介
 
-**FlixPilot** 是一款专为流媒体服务器（Emby）打造的全功能管理面板。它不仅提供了完善的用户管理与流量统计功能，更深度整合了 **影视发现**、**追剧日历**、**智能缺集审计**、**媒体运维中心**、**Telegram Bot**、**AI 字幕翻译** 等 Pro 级特性，致力于为私有云媒体用户提供极致的自动化管理体验。
+**FlixPilot** 是一款专为流媒体服务器（Emby / Jellyfin）打造的全功能管理面板。它不仅提供了完善的用户管理与流量统计功能，更深度整合了 **影视发现**、**追剧日历**、**智能缺集审计**、**媒体运维中心**、**Telegram Bot**、**AI 字幕翻译** 等 Pro 级特性，致力于为私有云媒体用户提供极致的自动化管理体验。
 
 ---
 
@@ -88,7 +88,7 @@
 
 ## 🐳 Docker 部署
 
-推荐使用 **Docker Compose** 一键部署。完整示例见 [`docker-compose.production.yml`](docker-compose.production.yml)。
+推荐使用 **Docker Compose** 一键部署。
 
 **镜像**：[`huanhq99/flixpilot`](https://hub.docker.com/r/huanhq99/flixpilot)（支持 AMD64 + ARM64）
 
@@ -96,19 +96,12 @@
 
 ```bash
 # 1. 下载部署文件
-curl -O https://raw.githubusercontent.com/huanhq99/FlixPilot/main/docker-compose.production.yml
+curl -O https://raw.githubusercontent.com/huanhq99/FlixPilot/main/docker-compose.yml
 
-# 2. 创建 .env 并生成密钥（强烈建议）
-cat > .env <<EOF
-JWT_SECRET=$(openssl rand -hex 32)
-CRON_SECRET=$(openssl rand -hex 32)
-MASTER_KEY=$(openssl rand -hex 32)
-EOF
+# 2. 启动
+docker compose up -d
 
-# 3. 启动
-docker compose -f docker-compose.production.yml up -d
-
-# 4. 打开浏览器访问 http://服务器IP:3005
+# 3. 打开浏览器访问 http://服务器IP:3005
 #    首次访问会自动进入 /setup 初始化向导
 ```
 
@@ -127,8 +120,8 @@ docker compose -f docker-compose.production.yml up -d
 ### 升级
 
 ```bash
-docker compose -f docker-compose.production.yml pull
-docker compose -f docker-compose.production.yml up -d
+docker compose pull
+docker compose up -d
 ```
 
 数据自动持久化在 `./data`，升级无损。
@@ -189,7 +182,7 @@ FlixPilot/
 │       └── format.ts             # 格式化工具
 ├── data/                         # JSON + SQLite 数据 (持久化)
 ├── scripts/                      # 调试/测试脚本
-├── docker-compose.production.yml # 生产部署
+├── docker-compose.yml            # Docker Compose 部署
 ├── Dockerfile
 └── vitest.config.ts
 ```
