@@ -1,7 +1,7 @@
 # 🎬 FlixPilot · 视界
 
 <p align="center">
-  <img src="public/logo.png" alt="FlixPilot" width="120" />
+  <img src="public/branding/vision_banner.png" alt="FlixPilot" width="360" />
 </p>
 
 <p align="center">
