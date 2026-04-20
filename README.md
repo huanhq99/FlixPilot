@@ -1,32 +1,67 @@
 # 🎬 FlixPilot · 视界
 
 <p align="center">
-  <img src="public/logo.png" alt="FlixPilot" width="200" />
+  <img src="public/logo.png" alt="FlixPilot" width="160" />
 </p>
 
 <p align="center">
-  <strong>Emby / Jellyfin 媒体服务器全功能管理平台</strong><br/>
-  前后端一体 · Next.js 15 + React 18 + MUI 6 + TypeScript
+  <strong>为 Emby / Jellyfin 量身打造的全能管理面板</strong><br/>
+  <sub>一个面板，接管你的私有云媒体服务器</sub>
 </p>
 
 <p align="center">
-  <a href="https://github.com/huanhq99/FlixPilot"><img src="https://img.shields.io/github/stars/huanhq99/FlixPilot?style=flat-square&logo=github&label=stars&color=blue" alt="stars"></a>
-  <a href="https://github.com/huanhq99/FlixPilot"><img src="https://img.shields.io/github/forks/huanhq99/FlixPilot?style=flat-square&logo=github&label=forks&color=blue" alt="forks"></a>
-  <a href="https://github.com/huanhq99/FlixPilot/blob/main/LICENSE"><img src="https://img.shields.io/github/license/huanhq99/FlixPilot?style=flat-square&color=gray" alt="license"></a>
-  <a href="https://hub.docker.com/r/huanhq99/flixpilot"><img src="https://img.shields.io/docker/pulls/huanhq99/flixpilot?style=flat-square&logo=docker&color=blue" alt="docker pulls"></a>
-  <a href="https://hub.docker.com/r/huanhq99/flixpilot"><img src="https://img.shields.io/docker/v/huanhq99/flixpilot?style=flat-square&logo=docker&label=version&color=green" alt="version"></a>
-  <a href="https://t.me/EmbyCockpit"><img src="https://img.shields.io/badge/Telegram-加入交流群-0088cc?style=flat-square&logo=telegram" alt="Telegram"></a>
+  <a href="https://github.com/huanhq99/FlixPilot/stargazers"><img src="https://img.shields.io/github/stars/huanhq99/FlixPilot?style=flat-square&logo=github&label=Stars&color=blue" alt="stars"></a>
+  <a href="https://github.com/huanhq99/FlixPilot/network/members"><img src="https://img.shields.io/github/forks/huanhq99/FlixPilot?style=flat-square&logo=github&label=Forks&color=blue" alt="forks"></a>
+  <a href="https://hub.docker.com/r/huanhq99/flixpilot"><img src="https://img.shields.io/docker/pulls/huanhq99/flixpilot?style=flat-square&logo=docker&color=blue&label=Pulls" alt="docker pulls"></a>
+  <a href="https://hub.docker.com/r/huanhq99/flixpilot"><img src="https://img.shields.io/docker/v/huanhq99/flixpilot?style=flat-square&logo=docker&label=Version&color=green" alt="version"></a>
+  <a href="https://github.com/huanhq99/FlixPilot/blob/main/LICENSE"><img src="https://img.shields.io/github/license/huanhq99/FlixPilot?style=flat-square&color=gray&label=License" alt="license"></a>
+  <a href="https://t.me/EmbyCockpit"><img src="https://img.shields.io/badge/Telegram-交流群-0088cc?style=flat-square&logo=telegram" alt="Telegram"></a>
+</p>
+
+<p align="center">
+  <a href="#-快速开始">快速开始</a> ·
+  <a href="#-核心特性">核心特性</a> ·
+  <a href="#-界面预览">界面预览</a> ·
+  <a href="#-docker-部署">部署</a> ·
+  <a href="#-常见问题">FAQ</a> ·
+  <a href="https://t.me/EmbyCockpit">加入交流群</a>
 </p>
 
 ---
 
-## 🚀 项目简介
+## 💡 这是什么？
 
-**FlixPilot** 是一款专为流媒体服务器（Emby / Jellyfin）打造的全功能管理面板。它不仅提供了完善的用户管理与流量统计功能，更深度整合了 **影视发现**、**追剧日历**、**智能缺集审计**、**媒体运维中心**、**Telegram Bot**、**AI 字幕翻译** 等 Pro 级特性，致力于为私有云媒体用户提供极致的自动化管理体验。
+你是否正在经历这些：
+
+- 🧩 Emby 后台功能散乱，要装一堆插件才能凑齐用户管理、流量统计、求片……
+- 📺 观众反复私聊问"XX 剧的 S02E08 有没有入库"，你还得手动一集集核对
+- 💸 CDN 流量账单像谜，搞不清楚谁刷了多少，会员到期也没人提醒
+- 🤖 想做 Telegram Bot 搜索 / 求片 / 签到，但又不会从头开发
+- 🎞️ 想给生肉剧集加中文字幕，折腾翻译脚本折腾到想砸键盘
+
+**FlixPilot** 就是为了解决这些问题而生的——**一个面板搞定所有事**。
+
+> 🎯 **定位**：给中小型 Emby / Jellyfin 车队主、家庭影院玩家、私有云发烧友的 "一体化驾驶舱"。
+> 📦 **形态**：Docker 一键部署，单镜像，自带 Web UI、API、定时任务、Bot、插件中心。
+> 🔑 **理念**：让非运维背景的站长也能轻松管理成百上千用户。
 
 ---
 
-## ✨ 核心特性
+## 🚀 快速开始
+
+```bash
+# 下载 docker-compose.yml
+curl -O https://raw.githubusercontent.com/huanhq99/FlixPilot/main/docker-compose.yml
+
+# 启动
+docker compose up -d
+
+# 浏览器访问 http://你的IP:3005 → 初始化向导
+```
+
+三步完成。剩下的交给面板。
+
+
 
 ### 🎬 影视发现与浏览
 - **全球流媒体发现页**：10 大平台（爱优腾 B / Netflix / Disney+ / HBO / Apple TV+ / Amazon / Hulu）筛选，平台专属预设
@@ -83,6 +118,21 @@
 - 登录限流：5 次失败锁定 15 分钟
 - Cron / Webhook 端点 Token 认证
 - 备份导出自动遮蔽敏感字段
+
+---
+
+## 🖼️ 界面预览
+
+> 截图会在后续版本陆续补充，可先加入 [Telegram 交流群](https://t.me/EmbyCockpit) 查看真实部署案例。
+
+| 模块 | 说明 |
+|------|------|
+| 🏠 **可拖拽仪表盘** | 12 个 Widget 自由组合，管理员与普通用户视图自动切换 |
+| 🎞️ **全球影视发现** | 10 大平台筛选 + 平台专属 Preset，无限滚动 + URL 状态同步 |
+| 📅 **追剧日历** | 双色库存标记，一眼看懂哪一集还缺 |
+| 🔍 **智能缺集审计** | 30 线程并发扫描，Emby vs TMDB 自动对比 |
+| 📊 **播放监控 & 排行** | 实时会话 + 历史回放 + 热度榜单 |
+| 🤖 **Telegram Bot** | 搜索 / 求片 / 签到 / 一键转存 115 |
 
 ---
 
@@ -204,6 +254,48 @@ pnpm build
 # 运行测试
 pnpm test
 ```
+
+---
+
+## ❓ 常见问题
+
+<details>
+<summary><strong>FlixPilot 是官方 Emby / Jellyfin 的一部分吗？</strong></summary>
+
+不是。FlixPilot 是独立的第三方管理面板，通过官方 API 接入你自有的 Emby / Jellyfin 服务器。它不修改服务器本身，卸载干净无残留。
+</details>
+
+<details>
+<summary><strong>必须懂代码才能部署吗？</strong></summary>
+
+不需要。只要你会在一台 VPS 或 NAS 上执行 <code>docker compose up -d</code>，就能跑起来。其他所有配置都在 Web 初始化向导里完成。
+</details>
+
+<details>
+<summary><strong>数据会上传到第三方服务器吗？</strong></summary>
+
+不会。所有用户数据、配置、播放历史都只存在你自己的 <code>./data</code> 目录里。面板本身无遥测。
+</details>
+
+<details>
+<summary><strong>支持多用户 / 车队运营吗？</strong></summary>
+
+完全支持。内置邀请码、激活码、积分 / 签到、会员到期、流量配额、Telegram Bot 通知等车队常用能力。
+</details>
+
+<details>
+<summary><strong>和 MoviePilot / Jellyseerr / Overseerr 是什么关系？</strong></summary>
+
+FlixPilot 聚焦在 "Emby 车队主的日常运维 + 用户自助浏览" 这个细分场景，和纯下载 / 纯求片工具互补而不是替代。配置了 MoviePilot 后可直接联动求片。
+</details>
+
+---
+
+## 🤝 社区与反馈
+
+- 📢 **Telegram 交流群**：<a href="https://t.me/EmbyCockpit">t.me/EmbyCockpit</a>
+- 🐛 **Bug 反馈 & 功能建议**：[GitHub Issues](https://github.com/huanhq99/FlixPilot/issues)
+- ⭐ 如果这个项目帮到你，欢迎点个 Star 支持一下
 
 ---
 
