@@ -8,3 +8,6 @@
 !PROJECT_OVERVIEW.md
 !data/config.example.json
 !docs/
+!public/
+!public/branding/
+!public/branding/vision_banner.png
