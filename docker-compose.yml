@@ -7,6 +7,12 @@ services:
       - "3005:3005"
     volumes:
       - ./data:/app/data
+      # CloudNAS 挂载：去重删除联动清理 115 网盘真实文件需要此挂载
+      # 路径示例（按你的实际 CD2 挂载点改）：
+      #   群晖 / 飞牛: /volume1/docker/CloudNAS:/CloudNAS:rslave
+      #   通用相对路径: ./CloudNAS:/CloudNAS:rslave
+      - ./CloudNAS:/CloudNAS:rslave
+      - ./CloudNAS:/CloudNAS:rslave
     environment:
       - NODE_ENV=production
       - DATA_DIR=/app/data
