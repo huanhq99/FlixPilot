@@ -12,7 +12,6 @@ services:
       #   群晖 / 飞牛: /volume1/docker/CloudNAS:/CloudNAS:rslave
       #   通用相对路径: ./CloudNAS:/CloudNAS:rslave
       - ./CloudNAS:/CloudNAS:rslave
-      - ./CloudNAS:/CloudNAS:rslave
     environment:
       - NODE_ENV=production
       - DATA_DIR=/app/data
