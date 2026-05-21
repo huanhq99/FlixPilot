@@ -12,19 +12,13 @@ services:
       #   群晖 / 飞牛: /volume1/docker/CloudNAS:/CloudNAS:rslave
       #   通用相对路径: ./CloudNAS:/CloudNAS:rslave
       - ./CloudNAS:/CloudNAS:rslave
+      #   strm路径
+      - ./strm:/strm
     environment:
       - NODE_ENV=production
       - DATA_DIR=/app/data
       - TZ=Asia/Shanghai
       - REDIS_URL=redis://redis:6379
-      # 可选：设置强密钥（生产环境建议设置，未设置时自动生成到 data/*.txt）
-      # - JWT_SECRET=your-jwt-secret
-      # - CRON_SECRET=your-cron-secret
-      # - MASTER_KEY=your-master-key
-      # 配置说明：
-      # 所有配置都在 ./data/config.json 文件中管理
-      # 包括：TMDB、Emby、MoviePilot、Telegram Bot、Gemini AI 等
-      # 详见 ./data/config.example.json 示例文件
     depends_on:
       redis:
         condition: service_healthy
