@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 500" width="1600" height="500" role="img" aria-labelledby="title desc">
+  <title id="title">FlixPilot · 视界</title>
+  <desc id="desc">Emby 站长的一体化运营面板</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f8fcff"/>
+      <stop offset="0.62" stop-color="#eef8fb"/>
+      <stop offset="1" stop-color="#fff7eb"/>
+    </linearGradient>
+    <linearGradient id="aqua" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#78d5ef"/>
+      <stop offset="1" stop-color="#2b9ec2"/>
+    </linearGradient>
+    <linearGradient id="amber" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffca64"/>
+      <stop offset="1" stop-color="#ff8a3d"/>
+    </linearGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#0b4d63" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+
+  <rect x="18" y="18" width="1564" height="464" rx="38" fill="url(#bg)" stroke="#d5edf4" stroke-width="2"/>
+  <path d="M80 372 C254 284 315 98 520 126 C700 151 724 294 916 286 C1084 279 1150 142 1510 106" fill="none" stroke="#c5edf6" stroke-width="30" stroke-linecap="round" opacity="0.5"/>
+  <path d="M1090 422 C1210 382 1285 346 1516 382" fill="none" stroke="#ffd29a" stroke-width="20" stroke-linecap="round" opacity="0.55"/>
+
+  <g transform="translate(300 244)" filter="url(#softShadow)">
+    <path d="M-102 -106 L74 -4 C103 13 103 55 74 72 L-102 174 C-137 194 -180 169 -180 128 L-180 -60 C-180 -101 -137 -126 -102 -106Z" fill="#ffffff" stroke="#78d5ef" stroke-width="14"/>
+    <path d="M-70 -68 L41 -4 C61 8 61 38 41 50 L-70 114 C-90 126 -116 111 -116 87 L-116 -41 C-116 -65 -90 -80 -70 -68Z" fill="url(#aqua)" opacity="0.9"/>
+    <path d="M-206 -72 C-238 -32 -238 95 -206 136" fill="none" stroke="#9de2f3" stroke-width="13" stroke-linecap="round" opacity="0.7"/>
+    <path d="M-240 -42 C-260 2 -260 65 -240 108" fill="none" stroke="#c9f2fb" stroke-width="10" stroke-linecap="round" opacity="0.8"/>
+    <circle cx="-132" cy="-102" r="9" fill="url(#amber)"/>
+  </g>
+
+  <g transform="translate(670 138)">
+    <text x="0" y="0" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="26" font-weight="800" fill="#1081a1" letter-spacing="6">EMBY OPS COCKPIT</text>
+    <text x="0" y="88" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="82" font-weight="900" fill="#08182f">FlixPilot · 视界</text>
+    <text x="4" y="146" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="34" font-weight="800" fill="#17354d">把 Emby 从“能看”推进到“好运营”</text>
+    <text x="4" y="196" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="24" font-weight="500" fill="#496070">求片审批 · 追剧缺集 · 播放风控 · TG Bot · AI Agent · 115 联动</text>
+  </g>
+
+  <g transform="translate(670 392)" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="20" font-weight="800">
+    <rect x="0" y="-40" width="184" height="54" rx="17" fill="#ffffff" stroke="#cfe8ef"/>
+    <text x="28" y="-6" fill="#17354d">3 分钟部署</text>
+    <rect x="210" y="-40" width="222" height="54" rx="17" fill="#ffffff" stroke="#cfe8ef"/>
+    <text x="238" y="-6" fill="#17354d">一屏看清站点</text>
+    <rect x="458" y="-40" width="260" height="54" rx="17" fill="#ffffff" stroke="#cfe8ef"/>
+    <text x="490" y="-6" fill="#17354d">自动化接住琐事</text>
+  </g>
+</svg>
