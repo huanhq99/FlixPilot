@@ -82,63 +82,31 @@ docker compose up -d
 
 ## ✨ 核心特性
 
-围绕 Emby 站点运营的 6 个核心闭环。
+一句话：把 Emby 站点运营从“人肉处理”变成“流程闭环”。
 
-<table>
-  <tr>
-    <td align="center" width="33%">
-      <h3>🎬 自助找片</h3>
-      <strong>发现 · 详情 · 播放</strong><br/>
-      <sub>用户自己完成内容探索</sub>
-    </td>
-    <td align="center" width="33%">
-      <h3>📩 求片闭环</h3>
-      <strong>查重 · 审批 · 订阅</strong><br/>
-      <sub>从提交到入库都有状态</sub>
-    </td>
-    <td align="center" width="33%">
-      <h3>📅 追剧缺集</h3>
-      <strong>日历 · 进度 · 漏集</strong><br/>
-      <sub>哪集缺了，一眼看见</sub>
-    </td>
-  </tr>
-  <tr>
-    <td align="center" width="33%">
-      <h3>👥 用户运营</h3>
-      <strong>会员 · 积分 · 卡密</strong><br/>
-      <sub>车队日常不用表格撑</sub>
-    </td>
-    <td align="center" width="33%">
-      <h3>🛡️ 播放风控</h3>
-      <strong>在线 · 历史 · 异地</strong><br/>
-      <sub>共享、异常、热度都能追</sub>
-    </td>
-    <td align="center" width="33%">
-      <h3>🤖 自动化</h3>
-      <strong>115 · TG · AI Agent</strong><br/>
-      <sub>搜索、转存、通知串起来</sub>
-    </td>
-  </tr>
-</table>
+|  | 场景 | FlixPilot 做什么 | 结果 |
+|---|------|------------------|------|
+| 🎬 | **自助找片** | 发现、详情、播放、收藏、片单 | 用户少问，入口统一 |
+| 📩 | **求片闭环** | 查重、投票、审批、订阅、通知 | 从提交到入库都有状态 |
+| 📅 | **追剧缺集** | 日历、进度、漏集、下一集 | 哪集缺了，一眼看见 |
+| 👥 | **用户运营** | 会员、积分、卡密、邀请码、配额 | 车队日常不用表格撑 |
+| 🛡️ | **播放风控** | 在线会话、历史排行、异地 IP、设备规则 | 共享和异常有迹可查 |
+| 🤖 | **自动化联动** | MoviePilot、115、Telegram、AI Agent | 搜索、转存、通知串起来 |
 
 ## 🖼️ 主要界面
 
-从用户入口到站长后台，常用页面都按“少切换、快判断”设计。
+常用页面按“先看状态，再处理问题”的节奏排布。
 
-<table>
-  <tr>
-    <td align="center" width="25%"><strong>🏠 仪表盘</strong><br/><sub>站点状态一屏看清</sub></td>
-    <td align="center" width="25%"><strong>🎞️ 影视发现</strong><br/><sub>平台、趋势、详情、播放</sub></td>
-    <td align="center" width="25%"><strong>📅 追剧日历</strong><br/><sub>更新排期和入库状态</sub></td>
-    <td align="center" width="25%"><strong>📡 追剧订阅</strong><br/><sub>进度、漏集、下一集</sub></td>
-  </tr>
-  <tr>
-    <td align="center" width="25%"><strong>🔍 缺集审计</strong><br/><sub>Emby 对比 TMDB</sub></td>
-    <td align="center" width="25%"><strong>📊 播放监控</strong><br/><sub>实时会话和历史排行</sub></td>
-    <td align="center" width="25%"><strong>🛡️ 设备管控</strong><br/><sub>客户端规则和风控</sub></td>
-    <td align="center" width="25%"><strong>🤖 Telegram Bot</strong><br/><sub>搜索、求片、签到、通知</sub></td>
-  </tr>
-</table>
+|  | 页面 | 一眼看到 | 常用动作 |
+|---|------|----------|----------|
+| 🏠 | **仪表盘** | 在线播放、待处理求片、最近入库、服务器状态 | 拖拽 Widget，快速扫站点 |
+| 🎞️ | **影视发现** | 平台筛选、趋势榜、详情、预告片 | 找片、播放、收藏、求片 |
+| 📅 | **追剧日历** | 更新排期、库存状态、本月更新 | 看哪天更新、哪集未入库 |
+| 📡 | **追剧订阅** | 入库进度、漏集、下一集时间 | 追更、补缺、自动求片 |
+| 🔍 | **缺集审计** | Emby 与 TMDB 对比结果 | 扫描媒体库，定位缺失集 |
+| 📊 | **播放监控** | 实时会话、播放历史、热度排行 | 看在线、查异常、做风控 |
+| 🧰 | **设备管控** | 客户端类型、播放规则、限制策略 | 管设备、控共享、放行白名单 |
+| 💬 | **Telegram Bot** | 搜索、求片、签到、通知 | 用户自助，站长少手动回复 |
 
 ## 🐳 Docker 部署
 
