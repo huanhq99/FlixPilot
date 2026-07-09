@@ -1,33 +1,37 @@
 services:
-  flixpilot:
-    image: huanhq99/flixpilot:latest
-    container_name: flixpilot
+  flixpilot-api:
+    image: huanhq99/flixpilot-api:latest
+    container_name: flixpilot-api
     restart: unless-stopped
     ports:
-      - "3005:3005"
+      # Emby 反代网关预留端口段；实际使用哪个端口由 EMBY_GATEWAY_PORT 和面板映射端口决定
+      - "8091-8095:8091-8095"
     volumes:
-      - ./data:/app/data
-      # FlixPilot 面板数据目录
-      - ./CloudNAS:/CloudNAS:rslave
+      - /opt/stacks/flixpilot/data:/app/data
+      - /opt/stacks/CloudNAS:/CloudNAS:rslave
       # CloudNAS 挂载目录：去重删除联动清理 115 网盘真实文件时需要
-      - ./strm:/strm
+      - /opt/stacks/strm:/strm
       # 本地 STRM 文件目录：去重删除本地 STRM 文件时需要
-      - ./emby/config/data:/emby-data:ro
-      # Emby 用户数据库目录：导入 Emby 用户时用于保留原 Emby 登录密码校验，只读挂载  
+      - /opt/stacks/emby/config/data:/emby-data:ro
+      # Emby 用户数据库目录：导入 Emby 用户时用于保留原 Emby 登录密码校验，只读挂载 
     environment:
-      - NODE_ENV=production
       - DATA_DIR=/app/data
+      # Emby 反代网关实际监听端口，需和面板里的“面板映射端口”一致；默认 8091，可改为 8092-8095
+      - EMBY_GATEWAY_PORT=8091
       - TZ=Asia/Shanghai
       - REDIS_URL=redis://redis:6379
+      # - JWT_SECRET=your-jwt-secret
+      # - CRON_SECRET=your-cron-secret
+      # - MASTER_KEY=your-master-key
     depends_on:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://localhost:3005/api/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/live"]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 45s
+      retries: 5
+      start_period: 60s
     logging:
       driver: json-file
       options:
@@ -39,22 +43,38 @@ services:
     container_name: flixpilot-redis
     restart: unless-stopped
     volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy
-      allkeys-lru
+      - /opt/stacks/flixpilot/redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
     healthcheck:
-      test:
-        - CMD
-        - redis-cli
-        - ping
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
     logging:
       driver: json-file
       options:
-        max-size: 10m
+        max-size: "10m"
         max-file: "3"
-volumes:
-  redis_data: null
-networks: {}
+
+  flixpilot:
+    image: huanhq99/flixpilot-go:latest
+    container_name: flixpilot
+    restart: unless-stopped
+    ports:
+      - "3005:3005"
+    environment:
+      - TZ=Asia/Shanghai
+    depends_on:
+      flixpilot-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3005/api/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
