@@ -1,100 +1,30 @@
 services:
-  flixpilot-api:
-    image: huanhq99/flixpilot-api:latest
-    container_name: flixpilot-api
+  flixpilot:
+    image: huanhq99/flixpilot:latest
     restart: unless-stopped
     ports:
-      # Emby 反代网关预留端口段。
+      - "3005:3005"
       - "8091-8095:8091-8095"
+      # Emby 反代网关预留端口段。
     volumes:
       - ./data:/app/data
-      - ./CloudNAS:/CloudNAS:rslave
+      - ./CloudNAS:/CloudNAS
       # CloudNAS 挂载目录：去重删除联动清理 115 网盘真实文件时需要
       - ./strm:/strm
       # 本地 STRM 文件目录：去重删除本地 STRM 文件时需要
       # - /path/to/emby/config/data:/emby-data:ro
-      # Emby 用户数据库目录：导入 Emby 用户时用于保留原 Emby 登录密码校验，只读挂载 
+      # Emby 用户数据库目录：导入 Emby 用户时用于保留原 Emby 登录密码校验，只读挂载
     environment:
-      - DATA_DIR=/app/data
-      - EMBY_GATEWAY_PORT=8091
-      # Emby 反代网关实际监听端口，需和面板里的“面板映射端口”一致；默认 8091，可改为 8092-8095
-      - TZ=Asia/Shanghai
       - REDIS_URL=redis://redis:6379
-      # - JWT_SECRET=your-jwt-secret
-      # - CRON_SECRET=your-cron-secret
-      # - MASTER_KEY=your-master-key
-    networks:
-      - flixpilot-network
-    depends_on:
-      redis:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/live"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "5"
-
-  flixpilot:
-    image: huanhq99/flixpilot-go:latest
-    container_name: flixpilot
-    restart: unless-stopped
-    ports:
-      - "3005:3005"
-    environment:
-      - API_UPSTREAM=http://flixpilot-api:8080
       - TZ=Asia/Shanghai
-    networks:
-      - flixpilot-network
     depends_on:
-      flixpilot-api:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3005/__health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 45s
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "5"
+      - redis
 
   redis:
     image: redis:7-alpine
-    container_name: flixpilot-redis
     restart: unless-stopped
-    command:
-      - redis-server
-      - --appendonly
-      - "yes"
-      - --maxmemory
-      - 128mb
-      - --maxmemory-policy
-      - allkeys-lru
     volumes:
       - redis_data:/data
-    networks:
-      - flixpilot-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-networks:
-  flixpilot-network:
 
 volumes:
   redis_data:
