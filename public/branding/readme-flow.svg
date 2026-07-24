@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="240" viewBox="0 0 880 240">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f4f8ff"/>
+      <stop offset="1" stop-color="#eef3fd"/>
+    </linearGradient>
+    <linearGradient id="node" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#f6f9ff"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#3662EC" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+
+  <rect x="0" y="0" width="880" height="240" rx="16" fill="url(#bg)"/>
+
+  <text x="440" y="42" text-anchor="middle" font-family="-apple-system,'PingFang SC','Microsoft YaHei',sans-serif" font-size="18" font-weight="700" fill="#1e293b">一个求片，怎么自己跑完全程</text>
+  <text x="440" y="64" text-anchor="middle" font-family="-apple-system,'PingFang SC','Microsoft YaHei',sans-serif" font-size="12" fill="#64748b">提交之后，站长只需要看一眼通知</text>
+
+  <!-- nodes -->
+  <g font-family="-apple-system,'PingFang SC','Microsoft YaHei',sans-serif">
+    <!-- 1 -->
+    <rect x="30" y="96" width="120" height="76" rx="12" fill="url(#node)" stroke="#d7e2fb" filter="url(#shadow)"/>
+    <text x="90" y="126" text-anchor="middle" font-size="20">🙋</text>
+    <text x="90" y="150" text-anchor="middle" font-size="13" font-weight="600" fill="#1e293b">用户求片</text>
+    <text x="90" y="166" text-anchor="middle" font-size="10" fill="#64748b">投票 / 配额 / 查重</text>
+    <!-- 2 -->
+    <rect x="180" y="96" width="120" height="76" rx="12" fill="url(#node)" stroke="#d7e2fb" filter="url(#shadow)"/>
+    <text x="240" y="126" text-anchor="middle" font-size="20">✅</text>
+    <text x="240" y="150" text-anchor="middle" font-size="13" font-weight="600" fill="#1e293b">审批订阅</text>
+    <text x="240" y="166" text-anchor="middle" font-size="10" fill="#64748b">面板或 TG 一键通过</text>
+    <!-- 3 -->
+    <rect x="330" y="96" width="120" height="76" rx="12" fill="url(#node)" stroke="#d7e2fb" filter="url(#shadow)"/>
+    <text x="390" y="126" text-anchor="middle" font-size="20">⬇️</text>
+    <text x="390" y="150" text-anchor="middle" font-size="13" font-weight="600" fill="#1e293b">自动下载</text>
+    <text x="390" y="166" text-anchor="middle" font-size="10" fill="#64748b">MoviePilot / 115</text>
+    <!-- 4 -->
+    <rect x="480" y="96" width="120" height="76" rx="12" fill="url(#node)" stroke="#d7e2fb" filter="url(#shadow)"/>
+    <text x="540" y="126" text-anchor="middle" font-size="20">🎬</text>
+    <text x="540" y="150" text-anchor="middle" font-size="13" font-weight="600" fill="#1e293b">Emby 入库</text>
+    <text x="540" y="166" text-anchor="middle" font-size="10" fill="#64748b">Webhook 实时回传</text>
+    <!-- 5 -->
+    <rect x="630" y="96" width="120" height="76" rx="12" fill="#3662EC" filter="url(#shadow)"/>
+    <text x="690" y="126" text-anchor="middle" font-size="20">📣</text>
+    <text x="690" y="150" text-anchor="middle" font-size="13" font-weight="600" fill="#ffffff">通知送达</text>
+    <text x="690" y="166" text-anchor="middle" font-size="10" fill="#dbe4ff">TG 频道 / 站内 / 模板海报</text>
+  </g>
+
+  <!-- arrows -->
+  <g stroke="#3662EC" stroke-width="2" fill="none" opacity="0.55">
+    <path d="M152 134 h26" marker-end="url(#arrow)"/>
+    <path d="M302 134 h26" marker-end="url(#arrow)"/>
+    <path d="M452 134 h26" marker-end="url(#arrow)"/>
+    <path d="M602 134 h26" marker-end="url(#arrow)"/>
+  </g>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#3662EC" opacity="0.55"/>
+    </marker>
+  </defs>
+
+  <!-- footer strip -->
+  <text x="440" y="210" text-anchor="middle" font-family="-apple-system,'PingFang SC','Microsoft YaHei',sans-serif" font-size="11" fill="#8494b8">追剧日历 · 缺集扫描 · 播放风控 · 会员积分 —— 同一套自动化在后台持续运转</text>
+</svg>

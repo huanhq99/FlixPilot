@@ -32,6 +32,12 @@ docker compose up -d
 
 访问 `http://服务器IP:3005`，首次进入自动打开初始化向导。只需要一个镜像（`huanhq99/flixpilot`，amd64/arm64）+ 自带 Redis。
 
+## 🔁 一个求片的旅程
+
+<p align="center">
+  <img src="public/branding/readme-flow.svg" alt="求片自动化流程：用户求片 → 审批订阅 → 自动下载 → Emby 入库 → 通知送达" width="880" />
+</p>
+
 ## ✨ 特性一览
 
 |  |  |  |
