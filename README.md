@@ -183,7 +183,6 @@ cp -a data data.backup.$(date +%Y%m%d)
 - Webhook、Cron、管理员接口都应使用强随机密钥。
 - 如果旧日志或截图暴露过 Emby API Key，建议在 Emby 后台重新生成。
 
-## ❓ 常见问题
 
 <details>
 <summary><strong>必须搭配 Emby 使用吗？</strong></summary>

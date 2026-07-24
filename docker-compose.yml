@@ -1,62 +1,30 @@
 services:
   flixpilot:
     image: huanhq99/flixpilot:latest
-    container_name: flixpilot
     restart: unless-stopped
     ports:
       - "3005:3005"
+      - "8091-8095:8091-8095"
+      # Emby 反代网关预留端口段。
     volumes:
       - ./data:/app/data
-      # CloudNAS 挂载：去重删除联动清理 115 网盘真实文件需要此挂载
-      # 路径示例（按你的实际 CD2 挂载点改）：
-      #   群晖 / 飞牛: /volume1/docker/CloudNAS:/CloudNAS:rslave
-      #   通用相对路径: ./CloudNAS:/CloudNAS:rslave
-      - ./CloudNAS:/CloudNAS:rslave
+      - ./CloudNAS:/CloudNAS
+      # CloudNAS 挂载目录：去重删除联动清理 115 网盘真实文件时需要
+      - ./strm:/strm
+      # 本地 STRM 文件目录：去重删除本地 STRM 文件时需要
+      # - /path/to/emby/config/data:/emby-data:ro
+      # Emby 用户数据库目录：导入 Emby 用户时用于保留原 Emby 登录密码校验，只读挂载
     environment:
-      - NODE_ENV=production
-      - DATA_DIR=/app/data
-      - TZ=Asia/Shanghai
       - REDIS_URL=redis://redis:6379
-      # 可选：设置强密钥（生产环境建议设置，未设置时自动生成到 data/*.txt）
-      # - JWT_SECRET=your-jwt-secret
-      # - CRON_SECRET=your-cron-secret
-      # - MASTER_KEY=your-master-key
-      # 配置说明：
-      # 所有配置都在 ./data/config.json 文件中管理
-      # 包括：TMDB、Emby、MoviePilot、Telegram Bot、Gemini AI 等
-      # 详见 ./data/config.example.json 示例文件
+      - TZ=Asia/Shanghai
     depends_on:
-      redis:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://localhost:3005/api/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 45s
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "5"
+      - redis
 
   redis:
     image: redis:7-alpine
-    container_name: flixpilot-redis
     restart: unless-stopped
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
-    healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
 
 volumes:
   redis_data:
