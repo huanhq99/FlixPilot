@@ -7,8 +7,13 @@
 !README.md
 !PROJECT_OVERVIEW.md
 !data/config.example.json
-!docs/
+!.agents/
+!.agents/skills/
+!.agents/skills/**
 !public/
+!public/client-icons/
+!public/client-icons/**
 !public/branding/
+!public/branding/readme-hero.svg
 !public/branding/vision_banner.png
 !public/logo.png
